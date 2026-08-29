@@ -16,8 +16,10 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS spheres (
-    id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    nom  TEXT UNIQUE NOT NULL
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom         TEXT UNIQUE NOT NULL,
+    description TEXT DEFAULT '',
+    chef_id     INTEGER REFERENCES users(id)
   );
 
   CREATE TABLE IF NOT EXISTS pouvoirs (
