@@ -40,6 +40,13 @@ db.exec(`
     grade      TEXT DEFAULT ''
   );
 
+  CREATE TABLE IF NOT EXISTS sphere_grades (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    sphere_id INTEGER NOT NULL REFERENCES spheres(id),
+    nom       TEXT NOT NULL,
+    ordre     INTEGER DEFAULT 0
+  );
+
   CREATE TABLE IF NOT EXISTS rapports (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     auteur_id  INTEGER NOT NULL REFERENCES users(id),
