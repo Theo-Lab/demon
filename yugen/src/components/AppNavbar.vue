@@ -22,6 +22,7 @@
       <!-- Dropdown -->
       <div v-if="menuOpen" class="dropdown">
         <button class="dropdown-item" @click="$router.push('/profil'); menuOpen = false">Mon profil</button>
+        <button class="dropdown-item" @click="$router.push('/projets'); menuOpen = false">Mes projets</button>
         <div class="dropdown-sep"></div>
         <button class="dropdown-item dropdown-item--danger" @click.stop="logout">Déconnexion</button>
       </div>

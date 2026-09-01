@@ -143,6 +143,56 @@ export async function getUsers() {
   return data.users
 }
 
+// ── Projets ────────────────────────────────────────────────────────────────
+
+export async function getMesProjets() {
+  const res = await fetch(`${BASE}/projets`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.projets
+}
+
+export async function getProjet(token) {
+  const res = await fetch(`${BASE}/projets/${token}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.projet
+}
+
+export async function createProjet(titre, doc_titre, contenu) {
+  const res = await fetch(`${BASE}/projets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ titre, doc_titre, contenu }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.projet
+}
+
+export async function updateProjet(token, titre, doc_titre, contenu) {
+  const res = await fetch(`${BASE}/projets/${token}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ titre, doc_titre, contenu }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function deleteProjet(token) {
+  const res = await fetch(`${BASE}/projets/${token}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export function logout() {
   localStorage.removeItem('token')
 }
