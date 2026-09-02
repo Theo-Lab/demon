@@ -26,6 +26,7 @@
 
       <!-- Album -->
       <div v-else-if="bloc.type === 'album' && bloc.images?.length" class="bloc-album">
+        <p v-if="bloc.titre" class="album-titre">{{ bloc.titre }}</p>
         <div class="album-grid">
           <div
             v-for="(img, j) in bloc.images"
@@ -189,6 +190,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 /* ── Album ────────────────────────────────── */
 .bloc-album {}
+
+.album-titre {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin: 0 0 0.75rem;
+}
 
 .album-grid {
   display: grid;

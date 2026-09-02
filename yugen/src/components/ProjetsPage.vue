@@ -84,10 +84,14 @@
             <!-- Bloc album -->
             <div v-else-if="bloc.type === 'album'" class="bloc-inner">
               <span class="bloc-badge">Album</span>
+              <input v-model="bloc.titre" class="field-input" type="text" placeholder="Titre de l'album (optionnel)" />
               <div class="album-editor">
-                <div v-for="(img, j) in bloc.images" :key="j" class="album-editor-thumb">
-                  <img :src="`${mediaBase}${img.url}`" alt="" />
-                  <button class="album-thumb-del" @click="bloc.images.splice(j, 1)">×</button>
+                <div v-for="(img, j) in bloc.images" :key="j" class="album-editor-item">
+                  <div class="album-editor-thumb">
+                    <img :src="`${mediaBase}${img.url}`" alt="" />
+                    <button class="album-thumb-del" @click="bloc.images.splice(j, 1)">×</button>
+                  </div>
+                  <input v-model="img.legende" class="field-input album-img-legende" type="text" placeholder="Légende..." />
                 </div>
                 <label class="album-editor-add">
                   <input type="file" accept="image/*" multiple class="upload-input" @change="e => handleAlbumUpload(e, bloc)" />
@@ -278,12 +282,14 @@ function formatDate(dt) {
 .upload-label:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
 .upload-input { display: none; }
 
-.album-editor { display: flex; flex-wrap: wrap; gap: 6px; }
-.album-editor-thumb { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+.album-editor { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+.album-editor-item { display: flex; flex-direction: column; gap: 4px; width: 100px; flex-shrink: 0; }
+.album-editor-thumb { position: relative; width: 100px; height: 80px; }
 .album-editor-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; border: 1px solid rgba(255,255,255,0.08); }
 .album-thumb-del { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.7); border: none; color: rgba(255,255,255,0.7); font-size: 0.75rem; width: 18px; height: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
 .album-thumb-del:hover { color: #fff; background: rgba(139,26,26,0.8); }
-.album-editor-add { width: 80px; height: 80px; border: 1px dashed rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; cursor: pointer; color: rgba(255,255,255,0.3); font-size: 1.4rem; transition: border-color 0.15s, color 0.15s; flex-shrink: 0; }
+.album-img-legende { font-size: 0.78rem !important; padding: 0.3rem 0.5rem !important; }
+.album-editor-add { width: 100px; height: 80px; border: 1px dashed rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; cursor: pointer; color: rgba(255,255,255,0.3); font-size: 1.4rem; transition: border-color 0.15s, color 0.15s; flex-shrink: 0; align-self: flex-start; }
 .album-editor-add:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
 
 .add-blocs { display: flex; gap: 0.5rem; }

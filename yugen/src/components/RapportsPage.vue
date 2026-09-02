@@ -97,10 +97,14 @@
             <!-- Bloc album -->
             <div v-else-if="bloc.type === 'album'" class="bloc-inner">
               <span class="bloc-badge">Album</span>
+              <input v-model="bloc.titre" class="field-input" type="text" placeholder="Titre de l'album (optionnel)" />
               <div class="album-editor">
-                <div v-for="(img, j) in bloc.images" :key="j" class="album-editor-thumb">
-                  <img :src="`${mediaBase}${img.url}`" alt="" />
-                  <button class="album-thumb-del" @click="bloc.images.splice(j, 1)">×</button>
+                <div v-for="(img, j) in bloc.images" :key="j" class="album-editor-item">
+                  <div class="album-editor-thumb">
+                    <img :src="`${mediaBase}${img.url}`" alt="" />
+                    <button class="album-thumb-del" @click="bloc.images.splice(j, 1)">×</button>
+                  </div>
+                  <input v-model="img.legende" class="field-input album-img-legende" type="text" placeholder="Légende..." />
                 </div>
                 <label class="album-editor-add">
                   <input type="file" accept="image/*" multiple class="upload-input" @change="e => handleAlbumUpload(e, bloc)" />
@@ -616,14 +620,22 @@ function formatDate(dt) {
 .album-editor {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.album-editor-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100px;
+  flex-shrink: 0;
 }
 
 .album-editor-thumb {
   position: relative;
-  width: 80px;
+  width: 100px;
   height: 80px;
-  flex-shrink: 0;
 }
 
 .album-editor-thumb img {
@@ -653,8 +665,13 @@ function formatDate(dt) {
 }
 .album-thumb-del:hover { color: #fff; background: rgba(139,26,26,0.8); }
 
+.album-img-legende {
+  font-size: 0.78rem !important;
+  padding: 0.3rem 0.5rem !important;
+}
+
 .album-editor-add {
-  width: 80px;
+  width: 100px;
   height: 80px;
   border: 1px dashed rgba(255,255,255,0.15);
   display: flex;
@@ -665,6 +682,7 @@ function formatDate(dt) {
   font-size: 1.4rem;
   transition: border-color 0.15s, color 0.15s;
   flex-shrink: 0;
+  align-self: flex-start;
 }
 .album-editor-add:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
 
