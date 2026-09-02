@@ -15,18 +15,34 @@
 
       <!-- Image -->
       <div v-else-if="bloc.type === 'image'" class="bloc-image">
-        <img :src="`${mediaBase}${bloc.url}`" :alt="bloc.legende || ''" />
+        <img
+          :src="`${mediaBase}${bloc.url}`"
+          :alt="bloc.legende || ''"
+          @click="lightboxSrc = `${mediaBase}${bloc.url}`"
+          class="clickable-img"
+        />
         <p v-if="bloc.legende" class="image-legende">{{ bloc.legende }}</p>
       </div>
 
     </div>
   </div>
+
+  <!-- Lightbox -->
+  <Teleport to="body">
+    <div v-if="lightboxSrc" class="lightbox" @click="lightboxSrc = null">
+      <img :src="lightboxSrc" class="lightbox-img" @click.stop />
+      <button class="lightbox-close" @click="lightboxSrc = null">✕</button>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { MEDIA_BASE } from '../config.js'
+
 defineProps({ blocs: Array })
 const mediaBase = MEDIA_BASE
+const lightboxSrc = ref(null)
 </script>
 
 <style scoped>
@@ -85,6 +101,12 @@ const mediaBase = MEDIA_BASE
   border: 1px solid rgba(255,255,255,0.06);
 }
 
+.clickable-img {
+  cursor: zoom-in;
+  transition: opacity 0.15s;
+}
+.clickable-img:hover { opacity: 0.85; }
+
 .image-legende {
   font-family: 'Crimson Text', Georgia, serif;
   font-style: italic;
@@ -93,4 +115,38 @@ const mediaBase = MEDIA_BASE
   text-align: center;
   margin: 0;
 }
+
+/* ── Lightbox ─────────────────────────────── */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+
+.lightbox-img {
+  max-width: 92vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: default;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.5rem;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.lightbox-close:hover { color: #fff; }
 </style>
