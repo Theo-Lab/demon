@@ -124,6 +124,22 @@
           <button class="add-bloc-btn" @click="ajouterBloc('texte')">+ Texte</button>
           <button class="add-bloc-btn" @click="ajouterBloc('image')">+ Image</button>
           <button class="add-bloc-btn" @click="ajouterBloc('album')">+ Album</button>
+          <button class="add-bloc-btn add-bloc-btn--preview" @click="showPreview = !showPreview">
+            {{ showPreview ? 'Masquer' : 'Prévisualiser' }}
+          </button>
+        </div>
+
+        <!-- Prévisualisation -->
+        <div v-if="showPreview" class="preview-panel">
+          <div class="preview-header">
+            <span class="preview-label">Aperçu</span>
+          </div>
+          <div class="preview-body">
+            <h1 class="preview-titre">{{ form.titre || 'Sans titre' }}</h1>
+            <div class="preview-divider"></div>
+            <BlocRenderer v-if="form.blocs.length" :blocs="previewBlocs" />
+            <p v-else class="preview-empty">Aucun bloc.</p>
+          </div>
         </div>
 
         <p v-if="formError" class="error-msg">{{ formError }}</p>
@@ -223,6 +239,14 @@ const formLoading = ref(false)
 const formError = ref('')
 const form = ref({ type: 'mission', titre: '', blocs: [] })
 const editRapport = ref(null)
+const showPreview = ref(false)
+
+const previewBlocs = computed(() =>
+  form.value.blocs.map(bloc => {
+    if (bloc.type === 'album') return { type: 'album', titre: bloc.titre, images: bloc.images || [] }
+    return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
+  })
+)
 
 const activeFilter = ref('tous')
 const filterOptions = [
@@ -279,6 +303,7 @@ function ouvrirEdition(rapport) {
 function fermerForm() {
   showForm.value = false
   editRapport.value = null
+  showPreview.value = false
   form.value = { type: 'mission', titre: '', blocs: [] }
   formError.value = ''
 }
@@ -794,6 +819,59 @@ function formatDate(dt) {
 }
 
 .add-bloc-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
+
+/* ── Prévisualisation ─────────────────────── */
+.add-bloc-btn--preview {
+  margin-left: auto;
+  color: rgba(139,26,26,0.7);
+  border-color: rgba(139,26,26,0.2);
+}
+.add-bloc-btn--preview:hover { color: #8b1a1a; border-color: rgba(139,26,26,0.4); }
+
+.preview-panel {
+  border: 1px solid rgba(255,255,255,0.06);
+  background: #0d0d0e;
+}
+
+.preview-header {
+  padding: 0.6rem 1.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.preview-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.52rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.15);
+}
+
+.preview-body {
+  padding: 2rem 1.5rem;
+}
+
+.preview-titre {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.05em;
+  margin: 0 0 1.2rem;
+}
+
+.preview-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin-bottom: 1.8rem;
+}
+
+.preview-empty {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  color: rgba(255,255,255,0.15);
+  font-size: 0.95rem;
+  margin: 0;
+}
 
 .error-msg {
   font-family: 'Crimson Text', Georgia, serif;
