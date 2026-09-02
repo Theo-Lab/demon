@@ -10,16 +10,19 @@
           <p class="page-label">Ordre Démoniaque</p>
           <h1 class="page-title">Rapports</h1>
         </div>
-        <button class="btn-new" @click="showForm = !showForm">
-          {{ showForm ? 'Annuler' : 'Nouveau rapport' }}
+        <button class="btn-new" @click="ouvrirCreation">
+          {{ showForm && !editRapport ? 'Annuler' : 'Nouveau rapport' }}
         </button>
       </div>
 
       <div class="page-divider"></div>
 
-      <!-- Formulaire de création -->
+      <!-- Formulaire création / édition -->
       <div v-if="showForm" class="form-card">
-        <h2 class="form-title">Nouveau rapport</h2>
+        <div class="form-header">
+          <h2 class="form-title">{{ editRapport ? 'Modifier le rapport' : 'Nouveau rapport' }}</h2>
+          <button class="form-close" @click="fermerForm">✕</button>
+        </div>
 
         <div class="form-row">
           <div class="field">
@@ -125,9 +128,14 @@
 
         <p v-if="formError" class="error-msg">{{ formError }}</p>
 
-        <button class="btn-submit" @click="submitRapport" :disabled="formLoading">
-          {{ formLoading ? '...' : 'Soumettre le rapport' }}
-        </button>
+        <div class="form-actions">
+          <button class="btn-submit" @click="doSubmit(false)" :disabled="formLoading">
+            {{ formLoading ? '...' : editRapport ? 'Enregistrer' : 'Soumettre' }}
+          </button>
+          <button class="btn-brouillon" @click="doSubmit(true)" :disabled="formLoading">
+            {{ formLoading ? '...' : 'Brouillon' }}
+          </button>
+        </div>
       </div>
 
       <!-- Filtres -->
@@ -159,7 +167,8 @@
               <RouterLink :to="`/rapports/${r.token}`" class="rapport-titre" @click.stop>{{ r.titre }}</RouterLink>
             </div>
             <div class="rapport-right">
-              <span class="rapport-statut" :class="`rapport-statut--${r.statut}`">{{ statutLabel(r.statut) }}</span>
+              <span v-if="r.brouillon" class="rapport-statut rapport-statut--brouillon">Brouillon</span>
+              <span v-else class="rapport-statut" :class="`rapport-statut--${r.statut}`">{{ statutLabel(r.statut) }}</span>
               <span class="rapport-date">{{ formatDate(r.created_at) }}</span>
             </div>
           </div>
@@ -171,10 +180,20 @@
             <BlocRenderer :blocs="parseBlocs(r.contenu)" />
 
             <div class="rapport-actions">
-              <template v-if="currentUser?.role === 'admin'">
+              <template v-if="currentUser?.role === 'admin' && !r.brouillon">
                 <button v-if="r.statut !== 'valide'" class="action-btn action-btn--valid" @click.stop="changeStatut(r, 'valide')">Valider</button>
                 <button v-if="r.statut !== 'refuse'" class="action-btn action-btn--refuse" @click.stop="changeStatut(r, 'refuse')">Refuser</button>
               </template>
+              <button
+                v-if="currentUser?.id === r.auteur_id"
+                class="action-btn action-btn--edit"
+                @click.stop="ouvrirEdition(r)"
+              >Modifier</button>
+              <button
+                v-if="currentUser?.id === r.auteur_id && r.brouillon"
+                class="action-btn action-btn--publish"
+                @click.stop="publierRapport(r)"
+              >Publier</button>
               <button class="action-btn action-btn--delete" @click.stop="supprimerRapport(r)">Supprimer</button>
             </div>
           </div>
@@ -190,7 +209,7 @@ import { ref, computed, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import BlocRenderer from './BlocRenderer.vue'
 import { currentUser } from '../auth.js'
-import { getRapports, createRapport, updateStatutRapport, deleteRapport, uploadImage } from '../api.js'
+import { getRapports, createRapport, updateRapport, updateStatutRapport, deleteRapport, uploadImage } from '../api.js'
 import { MEDIA_BASE } from '../config.js'
 const mediaBase = MEDIA_BASE
 
@@ -203,6 +222,7 @@ const showForm = ref(false)
 const formLoading = ref(false)
 const formError = ref('')
 const form = ref({ type: 'mission', titre: '', blocs: [] })
+const editRapport = ref(null)
 
 const activeFilter = ref('tous')
 const filterOptions = [
@@ -234,6 +254,33 @@ function ajouterBloc(type) {
   const base = { _id: ++_bid, type, titre: '', contenu: '', url: '', legende: '' }
   if (type === 'album') base.images = []
   form.value.blocs.push(base)
+}
+
+function ouvrirCreation() {
+  if (showForm.value && !editRapport.value) { fermerForm(); return }
+  fermerForm()
+  showForm.value = true
+}
+
+function ouvrirEdition(rapport) {
+  fermerForm()
+  form.value.type = rapport.type
+  form.value.titre = rapport.titre
+  form.value.blocs = parseBlocs(rapport.contenu).map(b => {
+    const bloc = { ...b, _id: ++_bid }
+    if (b.type === 'album') bloc.images = (b.images || []).map(img => ({ ...img }))
+    return bloc
+  })
+  editRapport.value = rapport
+  showForm.value = true
+  selected.value = null
+}
+
+function fermerForm() {
+  showForm.value = false
+  editRapport.value = null
+  form.value = { type: 'mission', titre: '', blocs: [] }
+  formError.value = ''
 }
 
 function supprimerBloc(i) {
@@ -290,11 +337,8 @@ async function handleAlbumUpload(e, bloc) {
   }
 }
 
-async function submitRapport() {
-  if (!form.value.titre || form.value.blocs.length === 0) {
-    formError.value = 'Ajoutez un titre et au moins un bloc.'
-    return
-  }
+async function doSubmit(asBrouillon) {
+  if (!form.value.titre) { formError.value = 'Ajoutez un titre.'; return }
   formLoading.value = true
   formError.value = ''
   try {
@@ -302,14 +346,34 @@ async function submitRapport() {
       if (bloc.type === 'album') return { type: 'album', images: bloc.images.map(({ url, legende }) => ({ url, legende })) }
       return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
     }))
-    const r = await createRapport(form.value.type, form.value.titre, contenu)
-    rapports.value.unshift(r)
-    form.value = { type: 'mission', titre: '', blocs: [] }
-    showForm.value = false
+    if (editRapport.value) {
+      const updated = await updateRapport(editRapport.value.token, {
+        type: form.value.type,
+        titre: form.value.titre,
+        contenu,
+        brouillon: asBrouillon,
+      })
+      const idx = rapports.value.findIndex(r => r.id === updated.id)
+      if (idx !== -1) rapports.value[idx] = updated
+    } else {
+      const r = await createRapport(form.value.type, form.value.titre, contenu, asBrouillon)
+      rapports.value.unshift(r)
+    }
+    fermerForm()
   } catch (e) {
     formError.value = e.message
   } finally {
     formLoading.value = false
+  }
+}
+
+async function publierRapport(rapport) {
+  try {
+    const updated = await updateRapport(rapport.token, { brouillon: false })
+    const idx = rapports.value.findIndex(r => r.id === rapport.id)
+    if (idx !== -1) rapports.value[idx] = updated
+  } catch (e) {
+    alert(e.message)
   }
 }
 
@@ -429,6 +493,12 @@ function formatDate(dt) {
   gap: 1.2rem;
 }
 
+.form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .form-title {
   font-family: 'Cinzel', serif;
   font-size: 0.65rem;
@@ -436,6 +506,24 @@ function formatDate(dt) {
   color: rgba(255,255,255,0.3);
   text-transform: uppercase;
   margin: 0;
+}
+
+.form-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.25);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.15s;
+}
+.form-close:hover { color: #fff; }
+
+.form-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
 }
 
 .form-row {
@@ -731,6 +819,21 @@ function formatDate(dt) {
 .btn-submit:hover:not(:disabled) { background: #a82020; }
 .btn-submit:disabled { opacity: 0.5; cursor: default; }
 
+.btn-brouillon {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.4);
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.2rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-brouillon:hover:not(:disabled) { color: #fff; border-color: rgba(255,255,255,0.25); }
+.btn-brouillon:disabled { opacity: 0.5; cursor: default; }
+
 /* ── Filtres ──────────────────────────────── */
 .filters {
   display: flex;
@@ -838,6 +941,7 @@ function formatDate(dt) {
 .rapport-statut--en_attente { color: rgba(255,255,255,0.25); }
 .rapport-statut--valide     { color: #3a7a3a; }
 .rapport-statut--refuse     { color: #8b1a1a; }
+.rapport-statut--brouillon  { color: #6a5a20; }
 
 .rapport-date {
   font-family: 'Crimson Text', Georgia, serif;
@@ -882,6 +986,10 @@ function formatDate(dt) {
 .action-btn--valid:hover  { background: rgba(58,122,58,0.1); }
 .action-btn--refuse { color: #8b1a1a; border-color: rgba(139,26,26,0.3); }
 .action-btn--refuse:hover { background: rgba(139,26,26,0.1); }
+.action-btn--edit { color: rgba(255,255,255,0.35); border-color: rgba(255,255,255,0.1); }
+.action-btn--edit:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+.action-btn--publish { color: #6a9a3a; border-color: rgba(106,154,58,0.3); }
+.action-btn--publish:hover { background: rgba(106,154,58,0.1); }
 .action-btn--delete { color: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.1); margin-left: auto; }
 .action-btn--delete:hover { color: #8b1a1a; border-color: rgba(139,26,26,0.3); }
 

@@ -64,6 +64,7 @@ db.exec(`
     titre      TEXT NOT NULL,
     contenu    TEXT NOT NULL,
     statut     TEXT DEFAULT 'en_attente' CHECK(statut IN ('en_attente', 'valide', 'refuse')),
+    brouillon  INTEGER NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `)
@@ -82,8 +83,9 @@ if (count.n === 0) {
   insert.run('gyutaro', hash('lune6'),        'Gyutaro', 'Lune Supérieure 6', 'membre')
 }
 
-// Ajout colonne token si elle n'existe pas encore
+// Migrations colonnes rapports
 try { db.exec(`ALTER TABLE rapports ADD COLUMN token TEXT`) } catch {}
+try { db.exec(`ALTER TABLE rapports ADD COLUMN brouillon INTEGER NOT NULL DEFAULT 0`) } catch {}
 
 // Génère un token pour les rapports qui n'en ont pas
 const crypto = require('crypto')

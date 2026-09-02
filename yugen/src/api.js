@@ -230,11 +230,22 @@ export async function getRapport(slug) {
   return data.rapport
 }
 
-export async function createRapport(type, titre, contenu) {
+export async function createRapport(type, titre, contenu, brouillon = false) {
   const res = await fetch(`${BASE}/rapports`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-    body: JSON.stringify({ type, titre, contenu }),
+    body: JSON.stringify({ type, titre, contenu, brouillon }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.rapport
+}
+
+export async function updateRapport(slug, { type, titre, contenu, brouillon } = {}) {
+  const res = await fetch(`${BASE}/rapports/${slug}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ type, titre, contenu, brouillon }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
