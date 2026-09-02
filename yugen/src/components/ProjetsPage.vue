@@ -80,6 +80,21 @@
               </div>
               <input v-model="bloc.legende" class="field-input" type="text" placeholder="Légende (optionnel)" />
             </div>
+
+            <!-- Bloc album -->
+            <div v-else-if="bloc.type === 'album'" class="bloc-inner">
+              <span class="bloc-badge">Album</span>
+              <div class="album-editor">
+                <div v-for="(img, j) in bloc.images" :key="j" class="album-editor-thumb">
+                  <img :src="`${mediaBase}${img.url}`" alt="" />
+                  <button class="album-thumb-del" @click="bloc.images.splice(j, 1)">×</button>
+                </div>
+                <label class="album-editor-add">
+                  <input type="file" accept="image/*" multiple class="upload-input" @change="e => handleAlbumUpload(e, bloc)" />
+                  <span>+</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -87,6 +102,7 @@
           <button class="add-bloc-btn" @click="ajouterBloc('section')">+ Section</button>
           <button class="add-bloc-btn" @click="ajouterBloc('texte')">+ Texte</button>
           <button class="add-bloc-btn" @click="ajouterBloc('image')">+ Image</button>
+          <button class="add-bloc-btn" @click="ajouterBloc('album')">+ Album</button>
         </div>
 
         <p v-if="formError" class="error-msg">{{ formError }}</p>
@@ -121,6 +137,7 @@
 import { ref, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { getMesProjets, createProjet, deleteProjet, uploadImage } from '../api.js'
+
 import { MEDIA_BASE } from '../config.js'
 
 const mediaBase = MEDIA_BASE
@@ -139,7 +156,9 @@ onMounted(async () => {
 
 let _bid = 0
 function ajouterBloc(type) {
-  form.value.blocs.push({ _id: ++_bid, type, titre: '', contenu: '', url: '', legende: '' })
+  const base = { _id: ++_bid, type, titre: '', contenu: '', url: '', legende: '' }
+  if (type === 'album') base.images = []
+  form.value.blocs.push(base)
 }
 function supprimerBloc(i) { form.value.blocs.splice(i, 1) }
 function monterBloc(i) {
@@ -162,6 +181,19 @@ async function handlePaste(e, bloc) {
   if (item) await uploadBloc(item.getAsFile(), bloc)
 }
 
+async function handleAlbumUpload(e, bloc) {
+  const files = [...e.target.files]
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue
+    try {
+      const url = await uploadImage(file)
+      bloc.images.push({ url, legende: '' })
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+}
+
 async function submitProjet() {
   if (!form.value.titre || !form.value.doc_titre) {
     formError.value = 'Titre et titre du document requis.'
@@ -170,7 +202,10 @@ async function submitProjet() {
   formLoading.value = true
   formError.value = ''
   try {
-    const contenu = JSON.stringify(form.value.blocs.map(({ type, titre, contenu, url, legende }) => ({ type, titre, contenu, url, legende })))
+    const contenu = JSON.stringify(form.value.blocs.map(bloc => {
+      if (bloc.type === 'album') return { type: 'album', images: bloc.images.map(({ url, legende }) => ({ url, legende })) }
+      return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
+    }))
     const p = await createProjet(form.value.titre, form.value.doc_titre, contenu)
     projets.value.unshift(p)
     form.value = { titre: '', doc_titre: '', blocs: [] }
@@ -242,6 +277,14 @@ function formatDate(dt) {
 .upload-label { display: inline-block; font-family: 'Cinzel', serif; font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 0.4rem 0.8rem; cursor: pointer; transition: all 0.15s; background: rgba(0,0,0,0.4); }
 .upload-label:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
 .upload-input { display: none; }
+
+.album-editor { display: flex; flex-wrap: wrap; gap: 6px; }
+.album-editor-thumb { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+.album-editor-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; border: 1px solid rgba(255,255,255,0.08); }
+.album-thumb-del { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.7); border: none; color: rgba(255,255,255,0.7); font-size: 0.75rem; width: 18px; height: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+.album-thumb-del:hover { color: #fff; background: rgba(139,26,26,0.8); }
+.album-editor-add { width: 80px; height: 80px; border: 1px dashed rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; cursor: pointer; color: rgba(255,255,255,0.3); font-size: 1.4rem; transition: border-color 0.15s, color 0.15s; flex-shrink: 0; }
+.album-editor-add:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
 
 .add-blocs { display: flex; gap: 0.5rem; }
 .add-bloc-btn { background: none; border: 1px solid rgba(255,255,255,0.07); color: rgba(255,255,255,0.3); font-family: 'Cinzel', serif; font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.45rem 0.9rem; cursor: pointer; transition: all 0.15s; }

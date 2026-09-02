@@ -13,15 +13,29 @@
         <p>{{ bloc.contenu }}</p>
       </div>
 
-      <!-- Image -->
+      <!-- Image simple -->
       <div v-else-if="bloc.type === 'image'" class="bloc-image">
         <img
           :src="`${mediaBase}${bloc.url}`"
           :alt="bloc.legende || ''"
-          @click="openLightbox(bloc.url)"
+          @click="openLightbox(standaloneImages, bloc.url)"
           class="clickable-img"
         />
         <p v-if="bloc.legende" class="image-legende">{{ bloc.legende }}</p>
+      </div>
+
+      <!-- Album -->
+      <div v-else-if="bloc.type === 'album' && bloc.images?.length" class="bloc-album">
+        <div class="album-grid">
+          <div
+            v-for="(img, j) in bloc.images"
+            :key="j"
+            class="album-cell"
+            @click="openLightbox(albumImages(bloc), img.url)"
+          >
+            <img :src="`${mediaBase}${img.url}`" :alt="img.legende || ''" />
+          </div>
+        </div>
       </div>
 
     </div>
@@ -32,22 +46,20 @@
     <div v-if="lightboxIndex !== null" class="lightbox" @click="closeLightbox">
 
       <img
-        :src="`${mediaBase}${images[lightboxIndex].url}`"
-        :alt="images[lightboxIndex].legende || ''"
+        :src="`${mediaBase}${lightboxImages[lightboxIndex].url}`"
+        :alt="lightboxImages[lightboxIndex].legende || ''"
         class="lightbox-img"
         @click.stop
       />
 
-      <p v-if="images[lightboxIndex].legende" class="lightbox-legende">
-        {{ images[lightboxIndex].legende }}
+      <p v-if="lightboxImages[lightboxIndex].legende" class="lightbox-legende">
+        {{ lightboxImages[lightboxIndex].legende }}
       </p>
 
-      <!-- Flèches -->
-      <button v-if="images.length > 1" class="lightbox-arrow lightbox-arrow--left" @click.stop="prev">&#8592;</button>
-      <button v-if="images.length > 1" class="lightbox-arrow lightbox-arrow--right" @click.stop="next">&#8594;</button>
+      <button v-if="lightboxImages.length > 1" class="lightbox-arrow lightbox-arrow--left" @click.stop="prev">&#8592;</button>
+      <button v-if="lightboxImages.length > 1" class="lightbox-arrow lightbox-arrow--right" @click.stop="next">&#8594;</button>
 
-      <!-- Compteur -->
-      <span v-if="images.length > 1" class="lightbox-counter">{{ lightboxIndex + 1 }} / {{ images.length }}</span>
+      <span v-if="lightboxImages.length > 1" class="lightbox-counter">{{ lightboxIndex + 1 }} / {{ lightboxImages.length }}</span>
 
       <button class="lightbox-close" @click="closeLightbox">✕</button>
     </div>
@@ -61,27 +73,36 @@ import { MEDIA_BASE } from '../config.js'
 const props = defineProps({ blocs: Array })
 const mediaBase = MEDIA_BASE
 
-const images = computed(() =>
-  (props.blocs || []).filter(b => b.type === 'image')
-)
-
+const lightboxImages = ref([])
 const lightboxIndex = ref(null)
 
-function openLightbox(url) {
-  const idx = images.value.findIndex(b => b.url === url)
+const standaloneImages = computed(() =>
+  (props.blocs || [])
+    .filter(b => b.type === 'image')
+    .map(b => ({ url: b.url, legende: b.legende || '' }))
+)
+
+function albumImages(bloc) {
+  return (bloc.images || []).map(img => ({ url: img.url, legende: img.legende || '' }))
+}
+
+function openLightbox(images, startUrl) {
+  lightboxImages.value = images
+  const idx = images.findIndex(img => img.url === startUrl)
   lightboxIndex.value = idx !== -1 ? idx : 0
 }
 
 function closeLightbox() {
   lightboxIndex.value = null
+  lightboxImages.value = []
 }
 
 function prev() {
-  lightboxIndex.value = (lightboxIndex.value - 1 + images.value.length) % images.value.length
+  lightboxIndex.value = (lightboxIndex.value - 1 + lightboxImages.value.length) % lightboxImages.value.length
 }
 
 function next() {
-  lightboxIndex.value = (lightboxIndex.value + 1) % images.value.length
+  lightboxIndex.value = (lightboxIndex.value + 1) % lightboxImages.value.length
 }
 
 function onKey(e) {
@@ -136,7 +157,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   margin: 0;
 }
 
-/* ── Image ────────────────────────────────── */
+/* ── Image simple ─────────────────────────── */
 .bloc-image {
   display: flex;
   flex-direction: column;
@@ -164,6 +185,35 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   color: rgba(255,255,255,0.25);
   text-align: center;
   margin: 0;
+}
+
+/* ── Album ────────────────────────────────── */
+.bloc-album {}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.album-cell {
+  aspect-ratio: 1;
+  overflow: hidden;
+  cursor: zoom-in;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.album-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.15s, transform 0.2s;
+}
+
+.album-cell:hover img {
+  opacity: 0.85;
+  transform: scale(1.03);
 }
 
 /* ── Lightbox ─────────────────────────────── */
@@ -214,10 +264,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.lightbox-arrow:hover {
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-}
+.lightbox-arrow:hover { background: rgba(255,255,255,0.1); color: #fff; }
 .lightbox-arrow--left  { left: 1.5rem; }
 .lightbox-arrow--right { right: 1.5rem; }
 
