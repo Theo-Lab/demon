@@ -18,7 +18,7 @@
         <img
           :src="`${mediaBase}${bloc.url}`"
           :alt="bloc.legende || ''"
-          @click="lightboxSrc = `${mediaBase}${bloc.url}`"
+          @click="openLightbox(bloc.url)"
           class="clickable-img"
         />
         <p v-if="bloc.legende" class="image-legende">{{ bloc.legende }}</p>
@@ -29,20 +29,70 @@
 
   <!-- Lightbox -->
   <Teleport to="body">
-    <div v-if="lightboxSrc" class="lightbox" @click="lightboxSrc = null">
-      <img :src="lightboxSrc" class="lightbox-img" @click.stop />
-      <button class="lightbox-close" @click="lightboxSrc = null">✕</button>
+    <div v-if="lightboxIndex !== null" class="lightbox" @click="closeLightbox">
+
+      <img
+        :src="`${mediaBase}${images[lightboxIndex].url}`"
+        :alt="images[lightboxIndex].legende || ''"
+        class="lightbox-img"
+        @click.stop
+      />
+
+      <p v-if="images[lightboxIndex].legende" class="lightbox-legende">
+        {{ images[lightboxIndex].legende }}
+      </p>
+
+      <!-- Flèches -->
+      <button v-if="images.length > 1" class="lightbox-arrow lightbox-arrow--left" @click.stop="prev">&#8592;</button>
+      <button v-if="images.length > 1" class="lightbox-arrow lightbox-arrow--right" @click.stop="next">&#8594;</button>
+
+      <!-- Compteur -->
+      <span v-if="images.length > 1" class="lightbox-counter">{{ lightboxIndex + 1 }} / {{ images.length }}</span>
+
+      <button class="lightbox-close" @click="closeLightbox">✕</button>
     </div>
   </Teleport>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { MEDIA_BASE } from '../config.js'
 
-defineProps({ blocs: Array })
+const props = defineProps({ blocs: Array })
 const mediaBase = MEDIA_BASE
-const lightboxSrc = ref(null)
+
+const images = computed(() =>
+  (props.blocs || []).filter(b => b.type === 'image')
+)
+
+const lightboxIndex = ref(null)
+
+function openLightbox(url) {
+  const idx = images.value.findIndex(b => b.url === url)
+  lightboxIndex.value = idx !== -1 ? idx : 0
+}
+
+function closeLightbox() {
+  lightboxIndex.value = null
+}
+
+function prev() {
+  lightboxIndex.value = (lightboxIndex.value - 1 + images.value.length) % images.value.length
+}
+
+function next() {
+  lightboxIndex.value = (lightboxIndex.value + 1) % images.value.length
+}
+
+function onKey(e) {
+  if (lightboxIndex.value === null) return
+  if (e.key === 'Escape') closeLightbox()
+  if (e.key === 'ArrowLeft') prev()
+  if (e.key === 'ArrowRight') next()
+}
+
+onMounted(() => window.addEventListener('keydown', onKey))
+onUnmounted(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <style scoped>
@@ -121,7 +171,7 @@ const lightboxSrc = ref(null)
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.88);
+  background: rgba(0, 0, 0, 0.92);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -129,11 +179,57 @@ const lightboxSrc = ref(null)
 }
 
 .lightbox-img {
-  max-width: 92vw;
-  max-height: 90vh;
+  max-width: 88vw;
+  max-height: 84vh;
   object-fit: contain;
   border: 1px solid rgba(255,255,255,0.08);
   cursor: default;
+}
+
+.lightbox-legende {
+  position: absolute;
+  bottom: 3.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.35);
+  white-space: nowrap;
+}
+
+.lightbox-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.5);
+  font-size: 1.4rem;
+  width: 2.8rem;
+  height: 2.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.lightbox-arrow:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+.lightbox-arrow--left  { left: 1.5rem; }
+.lightbox-arrow--right { right: 1.5rem; }
+
+.lightbox-counter {
+  position: absolute;
+  bottom: 1.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Cinzel', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.2);
 }
 
 .lightbox-close {
