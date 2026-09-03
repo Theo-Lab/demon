@@ -89,6 +89,7 @@ try { db.exec(`ALTER TABLE rapports ADD COLUMN brouillon INTEGER NOT NULL DEFAUL
 
 // Migration colonne users
 try { db.exec(`ALTER TABLE users ADD COLUMN pouvoir_nom TEXT DEFAULT ''`) } catch {}
+try { db.exec(`ALTER TABLE users ADD COLUMN signature TEXT DEFAULT ''`) } catch {}
 
 // Génère un token pour les rapports qui n'en ont pas
 const crypto = require('crypto')

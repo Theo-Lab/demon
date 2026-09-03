@@ -41,7 +41,7 @@ router.get('/me', (req, res) => {
 
   try {
     const payload = jwt.verify(auth.split(' ')[1], SECRET)
-    const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom FROM users WHERE id = ?').get(payload.id)
+    const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature FROM users WHERE id = ?').get(payload.id)
     if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
     const spheres = db.prepare(`
       SELECT s.id, s.nom, us.grade as grade_sphere
@@ -63,15 +63,16 @@ router.patch('/profile', (req, res) => {
 
   try {
     const payload = jwt.verify(auth.split(' ')[1], SECRET)
-    const { pouvoir_nom, grade, role } = req.body
-    const current = db.prepare('SELECT pouvoir_nom, grade, role FROM users WHERE id = ?').get(payload.id)
-    db.prepare('UPDATE users SET pouvoir_nom = ?, grade = ?, role = ? WHERE id = ?').run(
+    const { pouvoir_nom, grade, role, signature } = req.body
+    const current = db.prepare('SELECT pouvoir_nom, grade, role, signature FROM users WHERE id = ?').get(payload.id)
+    db.prepare('UPDATE users SET pouvoir_nom = ?, grade = ?, role = ?, signature = ? WHERE id = ?').run(
       pouvoir_nom !== undefined ? pouvoir_nom : current.pouvoir_nom,
       grade       !== undefined ? grade       : current.grade,
       role        !== undefined ? role        : current.role,
+      signature   !== undefined ? signature   : current.signature,
       payload.id
     )
-    const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom FROM users WHERE id = ?').get(payload.id)
+    const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature FROM users WHERE id = ?').get(payload.id)
     const spheres = db.prepare(`
       SELECT s.id, s.nom, us.grade as grade_sphere
       FROM user_spheres us

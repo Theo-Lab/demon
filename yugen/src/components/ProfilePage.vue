@@ -79,6 +79,20 @@
 
         <div class="sep"></div>
 
+        <!-- Signature -->
+        <section class="section">
+          <h2 class="section-title">Signature</h2>
+          <p class="section-hint">Ajoutée automatiquement en bas de chaque rapport.</p>
+          <textarea
+            v-model="editSignature"
+            class="signature-input"
+            placeholder="Votre signature..."
+            rows="4"
+          ></textarea>
+        </section>
+
+        <div class="sep"></div>
+
         <section class="section">
           <div class="pouvoir-field" style="justify-content:flex-end">
             <button class="pouvoir-btn" @click="saveProfile" :disabled="saving">
@@ -104,6 +118,7 @@ import { getMe, updateProfile, getSpheres, joinSphere, leaveSphere } from '../ap
 const user = ref(null)
 const pouvNom = ref('')
 const editGrade = ref('')
+const editSignature = ref('')
 const saving = ref(false)
 const saveError = ref('')
 const saveOk = ref(false)
@@ -118,6 +133,7 @@ onMounted(async () => {
     user.value = data
     pouvNom.value = data.pouvoir_nom || ''
     editGrade.value = data.grade || ''
+    editSignature.value = data.signature || ''
     userSphereIds.value = new Set((data.spheres || []).map(s => s.id))
     if (currentUser.value) currentUser.value = { ...currentUser.value, ...data }
   }
@@ -149,12 +165,13 @@ async function saveProfile() {
   saveError.value = ''
   saveOk.value = false
   try {
-    const updated = await updateProfile({ pouvoir_nom: pouvNom.value, grade: editGrade.value })
+    const updated = await updateProfile({ pouvoir_nom: pouvNom.value, grade: editGrade.value, signature: editSignature.value })
     user.value = updated
     pouvNom.value = updated.pouvoir_nom || ''
     editGrade.value = updated.grade || ''
+    editSignature.value = updated.signature || ''
     if (currentUser.value) {
-      currentUser.value = { ...currentUser.value, pouvoir_nom: updated.pouvoir_nom, grade: updated.grade }
+      currentUser.value = { ...currentUser.value, pouvoir_nom: updated.pouvoir_nom, grade: updated.grade, signature: updated.signature }
     }
     saveOk.value = true
     setTimeout(() => { saveOk.value = false }, 2500)
@@ -384,6 +401,33 @@ async function saveProfile() {
   font-size: 0.9rem;
   color: rgba(74,154,74,0.8);
 }
+
+/* ── Signature ────────────────────────────── */
+.section-hint {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.2);
+  margin-bottom: 0.9rem;
+}
+
+.signature-input {
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #fff;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  padding: 0.65rem 0.8rem;
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+  line-height: 1.6;
+  transition: border-color 0.15s;
+}
+.signature-input:focus { border-color: rgba(139,26,26,0.5); }
+.signature-input::placeholder { color: rgba(255,255,255,0.15); }
 
 /* ── Vide ─────────────────────────────────── */
 .empty-text {

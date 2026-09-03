@@ -36,7 +36,7 @@ router.get('/', auth, (req, res) => {
   let rapports
   if (user.role === 'admin') {
     rapports = db.prepare(`
-      SELECT r.*, u.nom as auteur_nom, u.grade as auteur_grade, u.pouvoir_nom as auteur_pouvoir,
+      SELECT r.*, u.nom as auteur_nom, u.grade as auteur_grade, u.pouvoir_nom as auteur_pouvoir, u.signature as auteur_signature,
         (SELECT GROUP_CONCAT(s.nom, ' · ') FROM user_spheres us2 JOIN spheres s ON s.id = us2.sphere_id WHERE us2.user_id = u.id) as auteur_spheres
       FROM rapports r
       JOIN users u ON u.id = r.auteur_id
@@ -45,7 +45,7 @@ router.get('/', auth, (req, res) => {
     `).all(req.user.id)
   } else {
     rapports = db.prepare(`
-      SELECT r.*, u.nom as auteur_nom, u.grade as auteur_grade, u.pouvoir_nom as auteur_pouvoir,
+      SELECT r.*, u.nom as auteur_nom, u.grade as auteur_grade, u.pouvoir_nom as auteur_pouvoir, u.signature as auteur_signature,
         (SELECT GROUP_CONCAT(s.nom, ' · ') FROM user_spheres us2 JOIN spheres s ON s.id = us2.sphere_id WHERE us2.user_id = u.id) as auteur_spheres
       FROM rapports r
       JOIN users u ON u.id = r.auteur_id

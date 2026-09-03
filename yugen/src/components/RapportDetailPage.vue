@@ -25,6 +25,11 @@
 
         <BlocRenderer :blocs="parseBlocs(rapport.contenu)" />
 
+        <div v-if="rapport.auteur_signature" class="rapport-signature">
+          <div class="signature-line"></div>
+          <p class="signature-text">{{ rapport.auteur_signature }}</p>
+        </div>
+
         <div class="rapport-footer">
           <div v-if="isLoggedIn" class="footer-actions">
             <template v-if="currentUser?.role === 'admin'">
@@ -211,6 +216,26 @@ function formatDate(dt) {
   height: 1px;
   background: rgba(255,255,255,0.07);
   margin-bottom: 2.5rem;
+}
+
+/* ── Signature ────────────────────────────── */
+.rapport-signature {
+  margin: 2.5rem 0 1.5rem;
+}
+
+.signature-line {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin-bottom: 1rem;
+}
+
+.signature-text {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.3);
+  white-space: pre-wrap;
+  line-height: 1.6;
 }
 
 /* ── Footer ───────────────────────────────── */
