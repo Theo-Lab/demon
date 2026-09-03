@@ -37,6 +37,26 @@ export async function getMe() {
   return data.user
 }
 
+export async function joinSphere(id) {
+  const res = await fetch(`${BASE}/auth/spheres/${id}/join`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function leaveSphere(id) {
+  const res = await fetch(`${BASE}/auth/spheres/${id}/leave`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function updateProfile({ pouvoir_nom, grade, role } = {}) {
   const res = await fetch(`${BASE}/auth/profile`, {
     method: 'PATCH',

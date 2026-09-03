@@ -41,13 +41,25 @@
         <!-- Sphères -->
         <section class="section">
           <h2 class="section-title">Sphères</h2>
-          <div v-if="user?.spheres && user.spheres.length > 0" class="spheres-list">
-            <div v-for="s in user.spheres" :key="s.id" class="sphere-item">
+          <div v-if="allSpheres.length > 0" class="spheres-list">
+            <label
+              v-for="s in allSpheres"
+              :key="s.id"
+              class="sphere-check-item"
+              :class="{ 'sphere-check-item--active': userSphereIds.has(s.id) }"
+            >
+              <input
+                type="checkbox"
+                :checked="userSphereIds.has(s.id)"
+                :disabled="sphereLoading"
+                @change="toggleSphere(s)"
+                class="sphere-checkbox"
+              />
               <span class="sphere-nom">{{ s.nom }}</span>
-              <span v-if="s.grade_sphere" class="sphere-grade">{{ s.grade_sphere }}</span>
-            </div>
+              <span v-if="userSphereIds.has(s.id)" class="sphere-joined-tag">Membre</span>
+            </label>
           </div>
-          <p v-else class="empty-text">Aucune sphère assignée.</p>
+          <p v-else class="empty-text">Aucune sphère créée.</p>
         </section>
 
         <div class="sep"></div>
@@ -87,7 +99,7 @@
 import { ref, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { currentUser } from '../auth.js'
-import { getMe, updateProfile } from '../api.js'
+import { getMe, updateProfile, getSpheres, joinSphere, leaveSphere } from '../api.js'
 
 const user = ref(null)
 const pouvNom = ref('')
@@ -96,17 +108,41 @@ const saving = ref(false)
 const saveError = ref('')
 const saveOk = ref(false)
 
+const allSpheres = ref([])
+const userSphereIds = ref(new Set())
+const sphereLoading = ref(false)
+
 onMounted(async () => {
-  const data = await getMe()
+  const [data, spheres] = await Promise.all([getMe(), getSpheres()])
   if (data) {
     user.value = data
     pouvNom.value = data.pouvoir_nom || ''
     editGrade.value = data.grade || ''
-    if (currentUser.value) {
-      currentUser.value = { ...currentUser.value, ...data }
-    }
+    userSphereIds.value = new Set((data.spheres || []).map(s => s.id))
+    if (currentUser.value) currentUser.value = { ...currentUser.value, ...data }
   }
+  allSpheres.value = spheres || []
 })
+
+async function toggleSphere(sphere) {
+  sphereLoading.value = true
+  try {
+    if (userSphereIds.value.has(sphere.id)) {
+      await leaveSphere(sphere.id)
+      userSphereIds.value.delete(sphere.id)
+      user.value.spheres = user.value.spheres.filter(s => s.id !== sphere.id)
+    } else {
+      await joinSphere(sphere.id)
+      userSphereIds.value.add(sphere.id)
+      user.value.spheres = [...(user.value.spheres || []), { id: sphere.id, nom: sphere.nom, grade_sphere: '' }]
+    }
+    userSphereIds.value = new Set(userSphereIds.value)
+  } catch (e) {
+    alert(e.message)
+  } finally {
+    sphereLoading.value = false
+  }
+}
 
 async function saveProfile() {
   saving.value = true
@@ -256,13 +292,27 @@ async function saveProfile() {
 .spheres-list {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.4rem;
 }
 
-.sphere-item {
+.sphere-check-item {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.sphere-check-item:hover { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.1); }
+.sphere-check-item--active { border-color: rgba(139,26,26,0.3); background: rgba(139,26,26,0.05); }
+
+.sphere-checkbox {
+  accent-color: #8b1a1a;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
 .sphere-nom {
@@ -270,13 +320,15 @@ async function saveProfile() {
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   color: #d4cfc9;
+  flex: 1;
 }
 
-.sphere-grade {
-  font-family: 'Crimson Text', Georgia, serif;
-  font-style: italic;
-  font-size: 0.88rem;
-  color: rgba(139,26,26,0.8);
+.sphere-joined-tag {
+  font-family: 'Cinzel', serif;
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(139,26,26,0.7);
 }
 
 /* ── Pouvoir ──────────────────────────────── */

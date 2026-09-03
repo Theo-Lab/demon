@@ -110,6 +110,34 @@ router.post('/register', (req, res) => {
   res.status(201).json({ token, user })
 })
 
+// POST /api/auth/spheres/:id/join — rejoindre une sphère soi-même
+router.post('/spheres/:id/join', (req, res) => {
+  const auth = req.headers.authorization
+  if (!auth) return res.status(401).json({ message: 'Non authentifié.' })
+  try {
+    const payload = jwt.verify(auth.split(' ')[1], SECRET)
+    const sphere = db.prepare('SELECT id FROM spheres WHERE id = ?').get(req.params.id)
+    if (!sphere) return res.status(404).json({ message: 'Sphère introuvable.' })
+    db.prepare('INSERT OR IGNORE INTO user_spheres (user_id, sphere_id, grade) VALUES (?, ?, ?)').run(payload.id, sphere.id, '')
+    res.json({ message: 'Rejoint.' })
+  } catch {
+    res.status(401).json({ message: 'Token invalide.' })
+  }
+})
+
+// DELETE /api/auth/spheres/:id/leave — quitter une sphère soi-même
+router.delete('/spheres/:id/leave', (req, res) => {
+  const auth = req.headers.authorization
+  if (!auth) return res.status(401).json({ message: 'Non authentifié.' })
+  try {
+    const payload = jwt.verify(auth.split(' ')[1], SECRET)
+    db.prepare('DELETE FROM user_spheres WHERE user_id = ? AND sphere_id = ?').run(payload.id, req.params.id)
+    res.json({ message: 'Quitté.' })
+  } catch {
+    res.status(401).json({ message: 'Token invalide.' })
+  }
+})
+
 // GET /api/auth/users — liste des users (auth requise)
 router.get('/users', (req, res) => {
   const auth = req.headers.authorization
