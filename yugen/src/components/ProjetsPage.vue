@@ -49,7 +49,7 @@
                 </div>
               </div>
               <textarea v-model="bloc.contenu" class="field-input field-textarea" placeholder="Contenu..."></textarea>
-              <div class="album-editor">
+              <div class="album-editor" tabindex="0" @paste.prevent="e => handleMultiPaste(e, bloc)">
                 <div v-for="(img, j) in (bloc.images || [])" :key="j" class="album-editor-item">
                   <div class="album-editor-thumb">
                     <img :src="`${mediaBase}${img.url}`" alt="" />
@@ -213,6 +213,16 @@ async function handleDrop(e, bloc) { bloc._dragOver = false; await uploadBloc(e.
 async function handlePaste(e, bloc) {
   const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'))
   if (item) await uploadBloc(item.getAsFile(), bloc)
+}
+
+async function handleMultiPaste(e, bloc) {
+  if (!bloc.images) bloc.images = []
+  const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'))
+  if (!item) return
+  try {
+    const url = await uploadImage(item.getAsFile())
+    bloc.images.push({ url, legende: '' })
+  } catch (err) { alert(err.message) }
 }
 
 async function handleSectionUpload(e, bloc) {
