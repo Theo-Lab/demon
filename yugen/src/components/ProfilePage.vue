@@ -27,10 +27,7 @@
             </div>
             <div class="info-item">
               <span class="info-label">Rôle</span>
-              <select v-model="editRole" class="pouvoir-input" style="max-width:200px">
-                <option value="membre">membre</option>
-                <option value="admin">admin</option>
-              </select>
+              <span class="info-value info-value--role">{{ user?.role }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Grade</span>
@@ -95,7 +92,6 @@ import { getMe, updateProfile } from '../api.js'
 const user = ref(null)
 const pouvNom = ref('')
 const editGrade = ref('')
-const editRole = ref('membre')
 const saving = ref(false)
 const saveError = ref('')
 const saveOk = ref(false)
@@ -106,7 +102,6 @@ onMounted(async () => {
     user.value = data
     pouvNom.value = data.pouvoir_nom || ''
     editGrade.value = data.grade || ''
-    editRole.value = data.role || 'membre'
     if (currentUser.value) {
       currentUser.value = { ...currentUser.value, ...data }
     }
@@ -118,13 +113,12 @@ async function saveProfile() {
   saveError.value = ''
   saveOk.value = false
   try {
-    const updated = await updateProfile({ pouvoir_nom: pouvNom.value, grade: editGrade.value, role: editRole.value })
+    const updated = await updateProfile({ pouvoir_nom: pouvNom.value, grade: editGrade.value })
     user.value = updated
     pouvNom.value = updated.pouvoir_nom || ''
     editGrade.value = updated.grade || ''
-    editRole.value = updated.role || 'membre'
     if (currentUser.value) {
-      currentUser.value = { ...currentUser.value, pouvoir_nom: updated.pouvoir_nom, grade: updated.grade, role: updated.role }
+      currentUser.value = { ...currentUser.value, pouvoir_nom: updated.pouvoir_nom, grade: updated.grade }
     }
     saveOk.value = true
     setTimeout(() => { saveOk.value = false }, 2500)
