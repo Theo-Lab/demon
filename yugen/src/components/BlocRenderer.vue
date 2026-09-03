@@ -9,7 +9,7 @@
         <div v-if="bloc.images?.length" class="section-images">
           <div class="album-grid">
             <div
-              v-for="(img, j) in bloc.images"
+              v-for="(img, j) in visibleImages(bloc, i)"
               :key="j"
               class="album-cell"
               @click="openLightbox(sectionImages(bloc), img.url)"
@@ -17,6 +17,9 @@
               <img :src="`${mediaBase}${img.url}`" :alt="img.legende || ''" />
             </div>
           </div>
+          <button v-if="bloc.images.length > 3" class="show-more-btn" @click="toggleExpanded(i)">
+            {{ expanded.has(i) ? 'Réduire' : `+ ${bloc.images.length - 3} photo${bloc.images.length - 3 > 1 ? 's' : ''}` }}
+          </button>
         </div>
       </div>
 
@@ -41,7 +44,7 @@
         <p v-if="bloc.titre" class="album-titre">{{ bloc.titre }}</p>
         <div class="album-grid">
           <div
-            v-for="(img, j) in bloc.images"
+            v-for="(img, j) in visibleImages(bloc, i)"
             :key="j"
             class="album-cell"
             @click="openLightbox(albumImages(bloc), img.url)"
@@ -49,6 +52,9 @@
             <img :src="`${mediaBase}${img.url}`" :alt="img.legende || ''" />
           </div>
         </div>
+        <button v-if="bloc.images.length > 3" class="show-more-btn" @click="toggleExpanded(i)">
+          {{ expanded.has(i) ? 'Réduire' : `+ ${bloc.images.length - 3} photo${bloc.images.length - 3 > 1 ? 's' : ''}` }}
+        </button>
       </div>
 
     </div>
@@ -88,6 +94,18 @@ const mediaBase = MEDIA_BASE
 
 const lightboxImages = ref([])
 const lightboxIndex = ref(null)
+const expanded = ref(new Set())
+
+function toggleExpanded(i) {
+  const s = new Set(expanded.value)
+  s.has(i) ? s.delete(i) : s.add(i)
+  expanded.value = s
+}
+
+function visibleImages(bloc, i) {
+  if (expanded.value.has(i) || bloc.images.length <= 3) return bloc.images
+  return bloc.images.slice(0, 3)
+}
 
 const standaloneImages = computed(() =>
   (props.blocs || [])
@@ -167,6 +185,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 .section-images {
   margin-top: 1rem;
 }
+
+.show-more-btn {
+  margin-top: 6px;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.3);
+  font-family: 'Cinzel', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  display: block;
+  width: 100%;
+}
+.show-more-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
 
 /* ── Texte ────────────────────────────────── */
 .bloc-texte p {
