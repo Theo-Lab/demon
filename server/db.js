@@ -87,6 +87,9 @@ if (count.n === 0) {
 try { db.exec(`ALTER TABLE rapports ADD COLUMN token TEXT`) } catch {}
 try { db.exec(`ALTER TABLE rapports ADD COLUMN brouillon INTEGER NOT NULL DEFAULT 0`) } catch {}
 
+// Migration colonne users
+try { db.exec(`ALTER TABLE users ADD COLUMN pouvoir_nom TEXT DEFAULT ''`) } catch {}
+
 // Génère un token pour les rapports qui n'en ont pas
 const crypto = require('crypto')
 const sansToken = db.prepare(`SELECT id FROM rapports WHERE token IS NULL`).all()

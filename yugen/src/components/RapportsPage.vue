@@ -224,6 +224,7 @@
 
             <div class="card-foot">
               <span class="card-auteur">{{ r.auteur_nom }}</span>
+              <span v-if="r.auteur_grade" class="card-auteur-grade">{{ r.auteur_grade }}</span>
               <span class="card-sep">·</span>
               <span class="card-date">{{ formatDate(r.created_at) }}</span>
               <span class="card-chevron" :class="{ 'card-chevron--open': selected?.id === r.id }">›</span>
@@ -1110,6 +1111,13 @@ function formatDate(dt) {
   font-style: italic;
   font-size: 0.9rem;
   color: rgba(255,255,255,0.35);
+}
+
+.card-auteur-grade {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: 0.78rem;
+  color: rgba(139,26,26,0.75);
 }
 
 .card-sep {

@@ -37,6 +37,17 @@ export async function getMe() {
   return data.user
 }
 
+export async function updateProfile(pouvoir_nom) {
+  const res = await fetch(`${BASE}/auth/profile`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ pouvoir_nom }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.user
+}
+
 // ── Sphères ────────────────────────────────────────────────────────────────
 
 export async function getSpheres() {
