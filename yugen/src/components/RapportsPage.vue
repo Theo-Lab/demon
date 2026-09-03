@@ -187,42 +187,44 @@
         <div
           v-for="r in filteredRapports"
           :key="r.id"
-          class="rapport-item"
+          class="rapport-card"
+          :class="{ 'rapport-card--open': selected?.id === r.id, 'rapport-card--brouillon': r.brouillon }"
           @click="selected = selected?.id === r.id ? null : r"
         >
-          <div class="rapport-top">
-            <div class="rapport-meta">
-              <span class="rapport-type" :class="`rapport-type--${r.type}`">{{ typeLabel(r.type) }}</span>
-              <RouterLink :to="`/rapports/${r.token}`" class="rapport-titre" @click.stop>{{ r.titre }}</RouterLink>
+          <!-- Barre latérale colorée -->
+          <div class="card-bar" :class="`card-bar--${r.brouillon ? 'brouillon' : r.type}`"></div>
+
+          <div class="card-body">
+            <div class="card-head">
+              <span class="card-type" :class="`card-type--${r.type}`">{{ typeLabel(r.type) }}</span>
+              <span v-if="r.brouillon" class="card-statut card-statut--brouillon">Brouillon</span>
+              <span v-else class="card-statut" :class="`card-statut--${r.statut}`">{{ statutLabel(r.statut) }}</span>
             </div>
-            <div class="rapport-right">
-              <span v-if="r.brouillon" class="rapport-statut rapport-statut--brouillon">Brouillon</span>
-              <span v-else class="rapport-statut" :class="`rapport-statut--${r.statut}`">{{ statutLabel(r.statut) }}</span>
-              <span class="rapport-date">{{ formatDate(r.created_at) }}</span>
+
+            <RouterLink :to="`/rapports/${r.token}`" class="card-titre" @click.stop>
+              {{ r.titre }}
+            </RouterLink>
+
+            <div class="card-foot">
+              <span class="card-auteur">{{ r.auteur_nom }}</span>
+              <span class="card-sep">·</span>
+              <span class="card-date">{{ formatDate(r.created_at) }}</span>
+              <span class="card-chevron" :class="{ 'card-chevron--open': selected?.id === r.id }">›</span>
             </div>
           </div>
-          <p class="rapport-auteur">Par {{ r.auteur_nom }}</p>
 
-          <!-- Détail dépliable -->
-          <div v-if="selected?.id === r.id" class="rapport-detail">
-            <div class="rapport-sep"></div>
+          <!-- Contenu dépliable -->
+          <div v-if="selected?.id === r.id" class="card-detail" @click.stop>
             <BlocRenderer :blocs="parseBlocs(r.contenu)" />
 
-            <div class="rapport-actions">
+            <div class="card-actions">
               <template v-if="currentUser?.role === 'admin' && !r.brouillon">
                 <button v-if="r.statut !== 'valide'" class="action-btn action-btn--valid" @click.stop="changeStatut(r, 'valide')">Valider</button>
                 <button v-if="r.statut !== 'refuse'" class="action-btn action-btn--refuse" @click.stop="changeStatut(r, 'refuse')">Refuser</button>
               </template>
-              <button
-                v-if="currentUser?.id === r.auteur_id"
-                class="action-btn action-btn--edit"
-                @click.stop="ouvrirEdition(r)"
-              >Modifier</button>
-              <button
-                v-if="currentUser?.id === r.auteur_id && r.brouillon"
-                class="action-btn action-btn--publish"
-                @click.stop="publierRapport(r)"
-              >Publier</button>
+              <button v-if="currentUser?.id === r.auteur_id" class="action-btn action-btn--edit" @click.stop="ouvrirEdition(r)">Modifier</button>
+              <button v-if="currentUser?.id === r.auteur_id && r.brouillon" class="action-btn action-btn--publish" @click.stop="publierRapport(r)">Publier</button>
+              <RouterLink :to="`/rapports/${r.token}`" class="action-btn action-btn--view" @click.stop>Voir la page</RouterLink>
               <button class="action-btn action-btn--delete" @click.stop="supprimerRapport(r)">Supprimer</button>
             </div>
           </div>
@@ -972,133 +974,175 @@ function formatDate(dt) {
   font-size: 0.98rem;
   padding: 2rem 0;
 }
-
 .state-msg--error { color: #8b1a1a; }
 
 .rapport-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* ── Carte rapport ────────────────────────── */
+.rapport-card {
+  display: flex;
+  background: #111113;
   border: 1px solid rgba(255,255,255,0.06);
-}
-
-.rapport-item {
-  padding: 1.2rem 1.5rem;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
   cursor: pointer;
-  transition: background 0.12s;
+  transition: border-color 0.15s, background 0.15s;
+  overflow: hidden;
 }
 
-.rapport-item:last-child { border-bottom: none; }
-.rapport-item:hover { background: rgba(255,255,255,0.02); }
+.rapport-card:hover { border-color: rgba(255,255,255,0.12); background: #141416; }
+.rapport-card--open { border-color: rgba(255,255,255,0.1); background: #141416; }
+.rapport-card--brouillon { opacity: 0.75; }
+.rapport-card--brouillon:hover { opacity: 1; }
 
-.rapport-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.3rem;
+/* Barre latérale colorée */
+.card-bar {
+  width: 3px;
+  flex-shrink: 0;
 }
+.card-bar--mission    { background: #8b1a1a; }
+.card-bar--journalier { background: rgba(255,255,255,0.15); }
+.card-bar--sphere     { background: #4a6a8a; }
+.card-bar--brouillon  { background: #6a5015; }
 
-.rapport-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+/* Corps de la carte */
+.card-body {
+  flex: 1;
+  padding: 1.1rem 1.4rem;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
 }
 
-.rapport-type {
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.card-type {
   font-family: 'Cinzel', serif;
-  font-size: 0.52rem;
-  letter-spacing: 0.1em;
+  font-size: 0.48rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 0.2rem 0.5rem;
+  padding: 0.18rem 0.55rem;
   border: 1px solid;
   white-space: nowrap;
 }
+.card-type--mission    { color: #8b1a1a; border-color: rgba(139,26,26,0.35); }
+.card-type--journalier { color: rgba(255,255,255,0.35); border-color: rgba(255,255,255,0.1); }
+.card-type--sphere     { color: #6a9ab0; border-color: rgba(106,154,176,0.3); }
 
-.rapport-type--mission    { color: #8b1a1a; border-color: rgba(139,26,26,0.3); }
-.rapport-type--journalier { color: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.12); }
-.rapport-type--sphere     { color: #6a7fa0; border-color: rgba(106,127,160,0.3); }
-
-.rapport-titre {
+.card-statut {
   font-family: 'Cinzel', serif;
-  font-size: 0.75rem;
+  font-size: 0.45rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.55rem;
+}
+.card-statut--en_attente { color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); }
+.card-statut--valide     { color: #4a9a4a; background: rgba(74,154,74,0.08); }
+.card-statut--refuse     { color: #9a3a3a; background: rgba(154,58,58,0.08); }
+.card-statut--brouillon  { color: #9a7a20; background: rgba(154,122,32,0.08); }
+
+.card-titre {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-size: 1rem;
+  font-weight: 700;
   color: #fff;
   letter-spacing: 0.04em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   text-decoration: none;
+  line-height: 1.3;
   transition: color 0.15s;
+  display: block;
 }
-.rapport-titre:hover { color: rgba(255,255,255,0.6); }
+.card-titre:hover { color: rgba(255,255,255,0.7); }
 
-.rapport-right {
+.card-foot {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  flex-shrink: 0;
+  gap: 0.45rem;
 }
 
-.rapport-statut {
-  font-family: 'Cinzel', serif;
-  font-size: 0.5rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.rapport-statut--en_attente { color: rgba(255,255,255,0.25); }
-.rapport-statut--valide     { color: #3a7a3a; }
-.rapport-statut--refuse     { color: #8b1a1a; }
-.rapport-statut--brouillon  { color: #6a5a20; }
-
-.rapport-date {
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 0.82rem;
-  color: rgba(255,255,255,0.2);
-  white-space: nowrap;
-}
-
-.rapport-auteur {
+.card-auteur {
   font-family: 'Crimson Text', Georgia, serif;
   font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.35);
+}
+
+.card-sep {
+  color: rgba(255,255,255,0.15);
+  font-size: 0.8rem;
+}
+
+.card-date {
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.85rem;
   color: rgba(255,255,255,0.2);
 }
 
-/* ── Détail dépliable ─────────────────────── */
-.rapport-sep {
-  height: 1px;
-  background: rgba(255,255,255,0.06);
-  margin: 1rem 0;
+.card-chevron {
+  margin-left: auto;
+  font-size: 1.1rem;
+  color: rgba(255,255,255,0.2);
+  transform: rotate(90deg);
+  transition: transform 0.2s, color 0.15s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.card-chevron--open {
+  transform: rotate(270deg);
+  color: rgba(255,255,255,0.4);
 }
 
-.rapport-actions {
+/* ── Contenu dépliable ────────────────────── */
+.card-detail {
+  padding: 0 1.4rem 1.4rem 1.7rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 0;
+}
+
+.card-actions {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
-  margin-top: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  flex-wrap: wrap;
 }
 
 .action-btn {
   background: none;
   font-family: 'Cinzel', serif;
-  font-size: 0.55rem;
+  font-size: 0.52rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0.35rem 0.8rem;
+  padding: 0.32rem 0.75rem;
   cursor: pointer;
   border: 1px solid;
   transition: all 0.12s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 
-.action-btn--valid  { color: #3a7a3a; border-color: rgba(58,122,58,0.3); }
-.action-btn--valid:hover  { background: rgba(58,122,58,0.1); }
-.action-btn--refuse { color: #8b1a1a; border-color: rgba(139,26,26,0.3); }
-.action-btn--refuse:hover { background: rgba(139,26,26,0.1); }
-.action-btn--edit { color: rgba(255,255,255,0.35); border-color: rgba(255,255,255,0.1); }
-.action-btn--edit:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+.action-btn--valid   { color: #4a9a4a; border-color: rgba(74,154,74,0.3); }
+.action-btn--valid:hover   { background: rgba(74,154,74,0.08); }
+.action-btn--refuse  { color: #9a3a3a; border-color: rgba(154,58,58,0.3); }
+.action-btn--refuse:hover  { background: rgba(154,58,58,0.08); }
+.action-btn--edit    { color: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.1); }
+.action-btn--edit:hover    { color: #fff; border-color: rgba(255,255,255,0.3); }
 .action-btn--publish { color: #6a9a3a; border-color: rgba(106,154,58,0.3); }
-.action-btn--publish:hover { background: rgba(106,154,58,0.1); }
-.action-btn--delete { color: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.1); margin-left: auto; }
-.action-btn--delete:hover { color: #8b1a1a; border-color: rgba(139,26,26,0.3); }
+.action-btn--publish:hover { background: rgba(106,154,58,0.08); }
+.action-btn--view    { color: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.08); }
+.action-btn--view:hover    { color: #fff; border-color: rgba(255,255,255,0.2); }
+.action-btn--delete  { color: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.07); margin-left: auto; }
+.action-btn--delete:hover  { color: #9a3a3a; border-color: rgba(154,58,58,0.3); }
 
 @media (max-width: 600px) {
   .page-inner { padding: 2rem 1.2rem 4rem; }
