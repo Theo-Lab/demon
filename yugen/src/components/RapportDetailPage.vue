@@ -18,6 +18,7 @@
             · {{ formatDate(rapport.created_at) }}
           </p>
           <p v-if="rapport.auteur_grade" class="rapport-auteur-grade">{{ rapport.auteur_grade }}</p>
+          <p v-if="rapport.auteur_pouvoir" class="rapport-auteur-pouvoir">{{ rapport.auteur_pouvoir }}</p>
           <p v-if="rapport.auteur_spheres" class="rapport-auteur-spheres">{{ rapport.auteur_spheres }}</p>
         </div>
 
@@ -203,6 +204,14 @@ function formatDate(dt) {
   font-size: 0.88rem;
   color: rgba(139,26,26,0.85);
   margin-top: 0.3rem;
+}
+
+.rapport-auteur-pouvoir {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: rgba(106,127,160,0.8);
+  margin-top: 0.15rem;
 }
 
 .rapport-auteur-spheres {
