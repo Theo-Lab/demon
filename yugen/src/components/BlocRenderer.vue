@@ -4,7 +4,7 @@
 
       <!-- Section -->
       <div v-if="bloc.type === 'section'" class="bloc-section">
-        <h3 class="section-titre">{{ bloc.titre }}</h3>
+        <h3 class="section-titre" :style="bloc.couleur ? { color: bloc.couleur } : {}">{{ bloc.titre }}</h3>
         <p v-if="bloc.contenu" class="section-contenu">{{ bloc.contenu }}</p>
         <div v-if="bloc.images?.length" class="section-images">
           <div class="album-grid">
@@ -21,6 +21,13 @@
             {{ expanded.has(i) ? 'Réduire' : `+ ${bloc.images.length - 3} photo${bloc.images.length - 3 > 1 ? 's' : ''}` }}
           </button>
         </div>
+      </div>
+
+      <!-- Séparateur -->
+      <div v-else-if="bloc.type === 'separateur'" class="bloc-separateur">
+        <span class="sep-line"></span>
+        <span class="sep-ornement">◆</span>
+        <span class="sep-line"></span>
       </div>
 
       <!-- Texte -->
@@ -211,6 +218,35 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   width: 100%;
 }
 .show-more-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
+
+/* ── Séparateur ───────────────────────────── */
+.bloc-separateur {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.sep-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to var(--dir, right), transparent, rgba(139,26,26,0.6), transparent);
+}
+
+.bloc-separateur .sep-line:first-child {
+  background: linear-gradient(to right, transparent, rgba(139,26,26,0.6));
+}
+
+.bloc-separateur .sep-line:last-child {
+  background: linear-gradient(to left, transparent, rgba(139,26,26,0.6));
+}
+
+.sep-ornement {
+  color: #8b1a1a;
+  font-size: 0.55rem;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
 
 /* ── Texte ────────────────────────────────── */
 .bloc-texte p {

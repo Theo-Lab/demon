@@ -1,7 +1,5 @@
 <template>
   <div class="page">
-    <AppNavbar />
-
     <div class="page-inner">
 
       <div v-if="loading" class="state-msg">Chargement...</div>
@@ -57,7 +55,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppNavbar from './AppNavbar.vue'
 import BlocRenderer from './BlocRenderer.vue'
 import { isLoggedIn, currentUser } from '../auth.js'
 import { getRapport, updateStatutRapport, deleteRapport } from '../api.js'

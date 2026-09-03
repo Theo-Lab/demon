@@ -55,7 +55,13 @@
             <!-- Bloc section -->
             <div v-if="bloc.type === 'section'" class="bloc-inner">
               <span class="bloc-badge">Section</span>
-              <input v-model="bloc.titre" class="field-input bloc-section-titre" type="text" placeholder="Titre de section" />
+              <div class="section-titre-row">
+                <input v-model="bloc.titre" class="field-input bloc-section-titre" type="text" placeholder="Titre de section" style="flex:1" />
+                <div class="couleur-picker">
+                  <input type="color" v-model="bloc.couleur" class="couleur-input" title="Couleur du titre" />
+                  <input v-model="bloc.couleur" class="field-input couleur-hex" type="text" placeholder="#ffffff" maxlength="7" />
+                </div>
+              </div>
               <textarea v-model="bloc.contenu" class="field-input field-textarea" placeholder="Contenu de la section..."></textarea>
               <div class="album-editor">
                 <div v-for="(img, j) in (bloc.images || [])" :key="j" class="album-editor-item">
@@ -69,6 +75,16 @@
                   <input type="file" accept="image/*" multiple class="upload-input" @change="e => handleSectionUpload(e, bloc)" />
                   <span>+</span>
                 </label>
+              </div>
+            </div>
+
+            <!-- Bloc séparateur -->
+            <div v-else-if="bloc.type === 'separateur'" class="bloc-inner bloc-inner--sep">
+              <span class="bloc-badge">Séparateur</span>
+              <div class="sep-preview">
+                <span class="sep-preview-line"></span>
+                <span class="sep-preview-ornement">◆</span>
+                <span class="sep-preview-line"></span>
               </div>
             </div>
 
@@ -137,6 +153,7 @@
           <button class="add-bloc-btn" @click="ajouterBloc('texte')">+ Texte</button>
           <button class="add-bloc-btn" @click="ajouterBloc('image')">+ Image</button>
           <button class="add-bloc-btn" @click="ajouterBloc('album')">+ Album</button>
+          <button class="add-bloc-btn" @click="ajouterBloc('separateur')">+ Séparateur</button>
           <button class="add-bloc-btn add-bloc-btn--preview" @click="showPreview = !showPreview">
             {{ showPreview ? 'Masquer' : 'Prévisualiser' }}
           </button>
@@ -399,7 +416,8 @@ async function doSubmit(asBrouillon) {
   try {
     const contenu = JSON.stringify(form.value.blocs.map(bloc => {
       if (bloc.type === 'album') return { type: 'album', titre: bloc.titre, images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
-      if (bloc.type === 'section') return { type: 'section', titre: bloc.titre, contenu: bloc.contenu, images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
+      if (bloc.type === 'section') return { type: 'section', titre: bloc.titre, contenu: bloc.contenu, couleur: bloc.couleur || '', images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
+      if (bloc.type === 'separateur') return { type: 'separateur' }
       return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
     }))
     if (editRapport.value) {
@@ -681,6 +699,16 @@ function formatDate(dt) {
   text-transform: uppercase;
   color: rgba(255,255,255,0.2);
 }
+
+.section-titre-row { display: flex; align-items: center; gap: 0.6rem; }
+.couleur-picker { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+.couleur-input { width: 28px; height: 28px; border: 1px solid rgba(255,255,255,0.1); background: none; cursor: pointer; padding: 0; border-radius: 0; }
+.couleur-hex { width: 90px !important; font-size: 0.85rem !important; padding: 0.4rem 0.5rem !important; font-family: monospace !important; }
+
+.bloc-inner--sep { justify-content: center; }
+.sep-preview { display: flex; align-items: center; gap: 0.8rem; width: 100%; }
+.sep-preview-line { flex: 1; height: 1px; background: rgba(139,26,26,0.4); }
+.sep-preview-ornement { color: #8b1a1a; font-size: 0.55rem; opacity: 0.7; }
 
 .bloc-section-titre {
   font-family: 'Cinzel', serif !important;
