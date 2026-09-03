@@ -37,11 +37,11 @@ export async function getMe() {
   return data.user
 }
 
-export async function updateProfile(pouvoir_nom) {
+export async function updateProfile({ pouvoir_nom, grade, role } = {}) {
   const res = await fetch(`${BASE}/auth/profile`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-    body: JSON.stringify({ pouvoir_nom }),
+    body: JSON.stringify({ pouvoir_nom, grade, role }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)

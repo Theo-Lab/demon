@@ -56,16 +56,21 @@ router.get('/me', (req, res) => {
   }
 })
 
-// PATCH /api/auth/profile — mise à jour pouvoir_nom (auth requise)
+// PATCH /api/auth/profile — mise à jour profil (auth requise)
 router.patch('/profile', (req, res) => {
   const auth = req.headers.authorization
   if (!auth) return res.status(401).json({ message: 'Non authentifié.' })
 
   try {
     const payload = jwt.verify(auth.split(' ')[1], SECRET)
-    const { pouvoir_nom } = req.body
-    if (pouvoir_nom === undefined) return res.status(400).json({ message: 'Champ pouvoir_nom manquant.' })
-    db.prepare('UPDATE users SET pouvoir_nom = ? WHERE id = ?').run(pouvoir_nom, payload.id)
+    const { pouvoir_nom, grade, role } = req.body
+    const current = db.prepare('SELECT pouvoir_nom, grade, role FROM users WHERE id = ?').get(payload.id)
+    db.prepare('UPDATE users SET pouvoir_nom = ?, grade = ?, role = ? WHERE id = ?').run(
+      pouvoir_nom !== undefined ? pouvoir_nom : current.pouvoir_nom,
+      grade       !== undefined ? grade       : current.grade,
+      role        !== undefined ? role        : current.role,
+      payload.id
+    )
     const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom FROM users WHERE id = ?').get(payload.id)
     const spheres = db.prepare(`
       SELECT s.id, s.nom, us.grade as grade_sphere

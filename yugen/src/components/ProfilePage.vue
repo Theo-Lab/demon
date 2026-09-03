@@ -27,11 +27,14 @@
             </div>
             <div class="info-item">
               <span class="info-label">Rôle</span>
-              <span class="info-value info-value--role">{{ user?.role }}</span>
+              <select v-model="editRole" class="pouvoir-input" style="max-width:200px">
+                <option value="membre">membre</option>
+                <option value="admin">admin</option>
+              </select>
             </div>
             <div class="info-item">
               <span class="info-label">Grade</span>
-              <span class="info-value">{{ user?.grade || '—' }}</span>
+              <input v-model="editGrade" class="pouvoir-input" type="text" placeholder="Ex: Lune Supérieure 1..." />
             </div>
           </div>
         </section>
@@ -62,8 +65,15 @@
               type="text"
               placeholder="Nom du pouvoir sanguinaire..."
             />
+          </div>
+        </section>
+
+        <div class="sep"></div>
+
+        <section class="section">
+          <div class="pouvoir-field" style="justify-content:flex-end">
             <button class="pouvoir-btn" @click="saveProfile" :disabled="saving">
-              {{ saving ? '...' : 'Enregistrer' }}
+              {{ saving ? '...' : 'Enregistrer le profil' }}
             </button>
           </div>
           <p v-if="saveError" class="save-error">{{ saveError }}</p>
@@ -84,6 +94,8 @@ import { getMe, updateProfile } from '../api.js'
 
 const user = ref(null)
 const pouvNom = ref('')
+const editGrade = ref('')
+const editRole = ref('membre')
 const saving = ref(false)
 const saveError = ref('')
 const saveOk = ref(false)
@@ -93,7 +105,8 @@ onMounted(async () => {
   if (data) {
     user.value = data
     pouvNom.value = data.pouvoir_nom || ''
-    // Mettre à jour le store auth si différent
+    editGrade.value = data.grade || ''
+    editRole.value = data.role || 'membre'
     if (currentUser.value) {
       currentUser.value = { ...currentUser.value, ...data }
     }
@@ -105,11 +118,13 @@ async function saveProfile() {
   saveError.value = ''
   saveOk.value = false
   try {
-    const updated = await updateProfile(pouvNom.value)
+    const updated = await updateProfile({ pouvoir_nom: pouvNom.value, grade: editGrade.value, role: editRole.value })
     user.value = updated
     pouvNom.value = updated.pouvoir_nom || ''
+    editGrade.value = updated.grade || ''
+    editRole.value = updated.role || 'membre'
     if (currentUser.value) {
-      currentUser.value = { ...currentUser.value, pouvoir_nom: updated.pouvoir_nom }
+      currentUser.value = { ...currentUser.value, pouvoir_nom: updated.pouvoir_nom, grade: updated.grade, role: updated.role }
     }
     saveOk.value = true
     setTimeout(() => { saveOk.value = false }, 2500)
