@@ -166,7 +166,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 .section-titre {
   font-family: 'Cinzel', serif;
-  font-size: 1.35rem;
+  font-size: 1.6rem;
   letter-spacing: 0.08em;
   color: #fff;
   margin: 0 0 0.8rem;
