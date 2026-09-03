@@ -43,6 +43,19 @@
               <span class="bloc-badge">Section</span>
               <input v-model="bloc.titre" class="field-input bloc-section-titre" type="text" placeholder="Titre de section" />
               <textarea v-model="bloc.contenu" class="field-input field-textarea" placeholder="Contenu..."></textarea>
+              <div class="album-editor">
+                <div v-for="(img, j) in (bloc.images || [])" :key="j" class="album-editor-item">
+                  <div class="album-editor-thumb">
+                    <img :src="`${mediaBase}${img.url}`" alt="" />
+                    <button class="album-thumb-del" @click="bloc.images.splice(j, 1)">×</button>
+                  </div>
+                  <input v-model="img.legende" class="field-input album-img-legende" type="text" placeholder="Légende..." />
+                </div>
+                <label class="album-editor-add">
+                  <input type="file" accept="image/*" multiple class="upload-input" @change="e => handleSectionUpload(e, bloc)" />
+                  <span>+</span>
+                </label>
+              </div>
             </div>
 
             <div v-else-if="bloc.type === 'texte'" class="bloc-inner">
@@ -161,7 +174,7 @@ onMounted(async () => {
 let _bid = 0
 function ajouterBloc(type) {
   const base = { _id: ++_bid, type, titre: '', contenu: '', url: '', legende: '' }
-  if (type === 'album') base.images = []
+  if (type === 'album' || type === 'section') base.images = []
   form.value.blocs.push(base)
 }
 function supprimerBloc(i) { form.value.blocs.splice(i, 1) }
@@ -183,6 +196,20 @@ async function handleDrop(e, bloc) { bloc._dragOver = false; await uploadBloc(e.
 async function handlePaste(e, bloc) {
   const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'))
   if (item) await uploadBloc(item.getAsFile(), bloc)
+}
+
+async function handleSectionUpload(e, bloc) {
+  if (!bloc.images) bloc.images = []
+  const files = [...e.target.files]
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue
+    try {
+      const url = await uploadImage(file)
+      bloc.images.push({ url, legende: '' })
+    } catch (err) {
+      alert(err.message)
+    }
+  }
 }
 
 async function handleAlbumUpload(e, bloc) {
@@ -207,7 +234,8 @@ async function submitProjet() {
   formError.value = ''
   try {
     const contenu = JSON.stringify(form.value.blocs.map(bloc => {
-      if (bloc.type === 'album') return { type: 'album', images: bloc.images.map(({ url, legende }) => ({ url, legende })) }
+      if (bloc.type === 'album') return { type: 'album', titre: bloc.titre, images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
+      if (bloc.type === 'section') return { type: 'section', titre: bloc.titre, contenu: bloc.contenu, images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
       return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
     }))
     const p = await createProjet(form.value.titre, form.value.doc_titre, contenu)

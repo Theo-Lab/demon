@@ -5,7 +5,19 @@
       <!-- Section -->
       <div v-if="bloc.type === 'section'" class="bloc-section">
         <h3 class="section-titre">{{ bloc.titre }}</h3>
-        <p class="section-contenu">{{ bloc.contenu }}</p>
+        <p v-if="bloc.contenu" class="section-contenu">{{ bloc.contenu }}</p>
+        <div v-if="bloc.images?.length" class="section-images">
+          <div class="album-grid">
+            <div
+              v-for="(img, j) in bloc.images"
+              :key="j"
+              class="album-cell"
+              @click="openLightbox(sectionImages(bloc), img.url)"
+            >
+              <img :src="`${mediaBase}${img.url}`" :alt="img.legende || ''" />
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Texte -->
@@ -87,6 +99,10 @@ function albumImages(bloc) {
   return (bloc.images || []).map(img => ({ url: img.url, legende: img.legende || '' }))
 }
 
+function sectionImages(bloc) {
+  return (bloc.images || []).map(img => ({ url: img.url, legende: img.legende || '' }))
+}
+
 function openLightbox(images, startUrl) {
   lightboxImages.value = images
   const idx = images.findIndex(img => img.url === startUrl)
@@ -146,6 +162,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   line-height: 1.8;
   white-space: pre-wrap;
   margin: 0;
+}
+
+.section-images {
+  margin-top: 1rem;
 }
 
 /* ── Texte ────────────────────────────────── */

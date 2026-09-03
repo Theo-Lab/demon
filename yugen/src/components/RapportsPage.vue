@@ -57,6 +57,19 @@
               <span class="bloc-badge">Section</span>
               <input v-model="bloc.titre" class="field-input bloc-section-titre" type="text" placeholder="Titre de section" />
               <textarea v-model="bloc.contenu" class="field-input field-textarea" placeholder="Contenu de la section..."></textarea>
+              <div class="album-editor">
+                <div v-for="(img, j) in (bloc.images || [])" :key="j" class="album-editor-item">
+                  <div class="album-editor-thumb">
+                    <img :src="`${mediaBase}${img.url}`" alt="" />
+                    <button class="album-thumb-del" @click="bloc.images.splice(j, 1)">×</button>
+                  </div>
+                  <input v-model="img.legende" class="field-input album-img-legende" type="text" placeholder="Légende..." />
+                </div>
+                <label class="album-editor-add">
+                  <input type="file" accept="image/*" multiple class="upload-input" @change="e => handleSectionUpload(e, bloc)" />
+                  <span>+</span>
+                </label>
+              </div>
             </div>
 
             <!-- Bloc texte -->
@@ -244,6 +257,7 @@ const showPreview = ref(false)
 const previewBlocs = computed(() =>
   form.value.blocs.map(bloc => {
     if (bloc.type === 'album') return { type: 'album', titre: bloc.titre, images: bloc.images || [] }
+    if (bloc.type === 'section') return { type: 'section', titre: bloc.titre, contenu: bloc.contenu, images: bloc.images || [] }
     return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
   })
 )
@@ -276,7 +290,7 @@ onMounted(load)
 let _bid = 0
 function ajouterBloc(type) {
   const base = { _id: ++_bid, type, titre: '', contenu: '', url: '', legende: '' }
-  if (type === 'album') base.images = []
+  if (type === 'album' || type === 'section') base.images = []
   form.value.blocs.push(base)
 }
 
@@ -292,7 +306,7 @@ function ouvrirEdition(rapport) {
   form.value.titre = rapport.titre
   form.value.blocs = parseBlocs(rapport.contenu).map(b => {
     const bloc = { ...b, _id: ++_bid }
-    if (b.type === 'album') bloc.images = (b.images || []).map(img => ({ ...img }))
+    if (b.type === 'album' || b.type === 'section') bloc.images = (b.images || []).map(img => ({ ...img }))
     return bloc
   })
   editRapport.value = rapport
@@ -349,6 +363,20 @@ async function handlePaste(e, bloc) {
   await uploadBloc(item.getAsFile(), bloc)
 }
 
+async function handleSectionUpload(e, bloc) {
+  if (!bloc.images) bloc.images = []
+  const files = [...e.target.files]
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue
+    try {
+      const url = await uploadImage(file)
+      bloc.images.push({ url, legende: '' })
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+}
+
 async function handleAlbumUpload(e, bloc) {
   const files = [...e.target.files]
   for (const file of files) {
@@ -368,7 +396,8 @@ async function doSubmit(asBrouillon) {
   formError.value = ''
   try {
     const contenu = JSON.stringify(form.value.blocs.map(bloc => {
-      if (bloc.type === 'album') return { type: 'album', images: bloc.images.map(({ url, legende }) => ({ url, legende })) }
+      if (bloc.type === 'album') return { type: 'album', titre: bloc.titre, images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
+      if (bloc.type === 'section') return { type: 'section', titre: bloc.titre, contenu: bloc.contenu, images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
       return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
     }))
     if (editRapport.value) {
