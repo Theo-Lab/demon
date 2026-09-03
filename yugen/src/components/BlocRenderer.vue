@@ -160,17 +160,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 /* ── Section ──────────────────────────────── */
 .bloc-section {
+  padding-left: 1.4rem;
   border-left: 2px solid #8b1a1a;
-  padding-left: 1.2rem;
 }
 
 .section-titre {
   font-family: 'Cinzel', serif;
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.6);
-  margin: 0 0 0.7rem;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  color: #fff;
+  margin: 0 0 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.section-titre::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(139,26,26,0.35), transparent);
 }
 
 .section-contenu {
