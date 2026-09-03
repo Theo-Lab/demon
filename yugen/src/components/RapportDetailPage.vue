@@ -24,8 +24,6 @@
         <BlocRenderer :blocs="parseBlocs(rapport.contenu)" />
 
         <div class="rapport-footer">
-          <RouterLink to="/rapports" class="back-link">← Retour aux rapports</RouterLink>
-
           <div v-if="isLoggedIn" class="footer-actions">
             <template v-if="currentUser?.role === 'admin'">
               <button
