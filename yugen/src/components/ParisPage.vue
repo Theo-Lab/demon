@@ -16,22 +16,6 @@
 
       <div class="page-divider"></div>
 
-      <!-- Barre de recherche -->
-      <div class="search-bar">
-        <span class="search-icon">⌕</span>
-        <input v-model="recherche" class="search-input" type="text" placeholder="Rechercher un pari, un joueur…" />
-        <button v-if="recherche" class="search-clear" @click="recherche = ''">×</button>
-      </div>
-
-      <!-- Tris -->
-      <div class="tris">
-        <button
-          v-for="t in trisDisponibles" :key="t.key"
-          :class="['tri-btn', triActif === t.key ? 'tri-btn--actif' : '']"
-          @click="triActif = t.key"
-        >{{ t.label }}</button>
-      </div>
-
       <!-- Onglets -->
       <div class="onglets">
         <button
@@ -41,12 +25,85 @@
           @click="ongletActif = tab.key"
         >
           {{ tab.label }}
-          <span class="onglet-count">{{ tab.count }}</span>
+          <span v-if="tab.count !== undefined" class="onglet-count">{{ tab.count }}</span>
         </button>
       </div>
 
+      <!-- Barre de recherche + tris (masqués sur Stats) -->
+      <template v-if="ongletActif !== 'stats'">
+        <div class="search-bar">
+          <span class="search-icon">⌕</span>
+          <input v-model="recherche" class="search-input" type="text" placeholder="Rechercher un pari, un joueur…" />
+          <button v-if="recherche" class="search-clear" @click="recherche = ''">×</button>
+        </div>
+
+        <div class="tris">
+          <button
+            v-for="t in trisDisponibles" :key="t.key"
+            :class="['tri-btn', triActif === t.key ? 'tri-btn--actif' : '']"
+            @click="triActif = t.key"
+          >{{ t.label }}</button>
+        </div>
+      </template>
+
+      <!-- Panneau Stats -->
+      <div v-if="ongletActif === 'stats'" class="stats-panel">
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <p class="stat-label">En jeu (paris ouverts)</p>
+            <p class="stat-value">{{ stats.enJeu.toLocaleString() }} ¥</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Total distribué (gains)</p>
+            <p class="stat-value">{{ stats.totalDistribue.toLocaleString() }} ¥</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Total misé (tous paris)</p>
+            <p class="stat-value">{{ stats.totalMise.toLocaleString() }} ¥</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Paris ouverts</p>
+            <p class="stat-value">{{ stats.nbOuverts }}</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Paris résolus</p>
+            <p class="stat-value">{{ stats.nbResolus }}</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Nombre de mises total</p>
+            <p class="stat-value">{{ stats.nbMises }}</p>
+          </div>
+        </div>
+
+        <div v-if="stats.topJoueurs.length" class="stats-section">
+          <p class="stats-section-titre">Joueurs les plus actifs</p>
+          <div class="stats-list">
+            <div v-for="(j, i) in stats.topJoueurs" :key="j.nom" class="stats-row">
+              <span class="stats-rank">#{{ i + 1 }}</span>
+              <span class="stats-nom">{{ j.nom }}</span>
+              <span class="stats-detail">{{ j.nbMises }} mise{{ j.nbMises > 1 ? 's' : '' }}</span>
+              <span class="stats-montant">{{ j.total.toLocaleString() }} ¥ misés</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="stats.grossesMises.length" class="stats-section">
+          <p class="stats-section-titre">Plus grosses mises</p>
+          <div class="stats-list">
+            <div v-for="(m, i) in stats.grossesMises" :key="i" class="stats-row">
+              <span class="stats-rank">#{{ i + 1 }}</span>
+              <span class="stats-nom">{{ m.joueur_nom }}</span>
+              <span class="stats-detail">{{ m.issue_label }} (×{{ m.cote }})</span>
+              <span class="stats-montant">{{ m.montant.toLocaleString() }} ¥</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
       <!-- Formulaire création -->
-      <div v-if="showFormCreation" class="form-card">
+      <div v-if="showFormCreation && ongletActif !== 'stats'" class="form-card">
         <h2 class="form-title">Nouveau pari</h2>
 
         <div class="form-row">
@@ -86,6 +143,7 @@
       </div>
 
       <!-- Liste des paris -->
+      <template v-if="ongletActif !== 'stats'">
       <div v-if="loading" class="loading">Chargement…</div>
       <div v-else-if="parisFiltres.length === 0" class="vide">Aucun pari dans cette catégorie.</div>
 
@@ -172,6 +230,7 @@
         </div>
 
       </div>
+      </template>
 
     </div>
   </div>
@@ -229,7 +288,48 @@ const tabs = computed(() => [
   { key: 'ouvert', label: 'En cours', count: paris.value.filter(p => p.statut === 'ouvert' && matchRecherche(p)).length },
   { key: 'resolu', label: 'Résolus',  count: paris.value.filter(p => p.statut === 'resolu' && matchRecherche(p)).length },
   { key: 'tous',   label: 'Tous',     count: paris.value.filter(matchRecherche).length },
+  { key: 'stats',  label: 'Stats' },
 ])
+
+const stats = computed(() => {
+  const tousLesMises = paris.value.flatMap(p => p.mises)
+  const ouvertsMises = paris.value.filter(p => p.statut === 'ouvert').flatMap(p => p.mises)
+  const resolus = paris.value.filter(p => p.statut === 'resolu')
+
+  const enJeu = ouvertsMises.reduce((s, m) => s + m.montant, 0)
+  const totalMise = tousLesMises.reduce((s, m) => s + m.montant, 0)
+
+  let totalDistribue = 0
+  for (const p of resolus) {
+    const issueGagnante = p.issues.find(i => i.id === p.issue_gagnante_id)
+    if (!issueGagnante) continue
+    for (const m of p.mises.filter(m => m.issue_id === p.issue_gagnante_id)) {
+      totalDistribue += Math.round(m.montant * issueGagnante.cote)
+    }
+  }
+
+  // Top joueurs
+  const parJoueur = {}
+  for (const m of tousLesMises) {
+    if (!parJoueur[m.joueur_nom]) parJoueur[m.joueur_nom] = { nom: m.joueur_nom, nbMises: 0, total: 0 }
+    parJoueur[m.joueur_nom].nbMises++
+    parJoueur[m.joueur_nom].total += m.montant
+  }
+  const topJoueurs = Object.values(parJoueur).sort((a, b) => b.total - a.total).slice(0, 5)
+
+  const grossesMises = [...tousLesMises].sort((a, b) => b.montant - a.montant).slice(0, 5)
+
+  return {
+    enJeu,
+    totalMise,
+    totalDistribue,
+    nbOuverts: paris.value.filter(p => p.statut === 'ouvert').length,
+    nbResolus: resolus.length,
+    nbMises: tousLesMises.length,
+    topJoueurs,
+    grossesMises,
+  }
+})
 
 const parisFiltres = computed(() => appliquerTri(parisParStatut.value.filter(matchRecherche)))
 
@@ -660,6 +760,74 @@ async function soumettrResolution(pari) {
   background: rgba(139,26,26,0.25);
   color: #c05050;
 }
+
+/* Stats */
+.stats-panel { display: flex; flex-direction: column; gap: 32px; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.stat-card {
+  background: #141416;
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 20px 22px;
+}
+
+.stat-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  margin: 0 0 10px;
+}
+
+.stat-value {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+  margin: 0;
+  color: #fff;
+}
+
+.stats-section { }
+
+.stats-section-titre {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  margin: 0 0 12px;
+}
+
+.stats-list { display: flex; flex-direction: column; gap: 6px; }
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #141416;
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 10px 16px;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 1rem;
+  color: #d4cfc9;
+}
+
+.stats-rank {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.25);
+  min-width: 24px;
+}
+
+.stats-nom { min-width: 120px; }
+.stats-detail { flex: 1; font-style: italic; color: rgba(255,255,255,0.4); }
+.stats-montant { color: rgba(255,255,255,0.7); font-weight: 600; }
 
 .loading, .vide {
   font-family: 'Crimson Text', Georgia, serif;
