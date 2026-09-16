@@ -83,6 +83,33 @@ if (count.n === 0) {
   insert.run('gyutaro', hash('lune6'),        'Gyutaro', 'Lune Supérieure 6', 'membre')
 }
 
+// Tables paris
+db.exec(`
+  CREATE TABLE IF NOT EXISTS paris (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    titre             TEXT NOT NULL,
+    description       TEXT DEFAULT '',
+    statut            TEXT DEFAULT 'ouvert' CHECK(statut IN ('ouvert', 'resolu')),
+    issue_gagnante_id INTEGER REFERENCES paris_issues(id),
+    created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS paris_issues (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    pari_id INTEGER NOT NULL REFERENCES paris(id) ON DELETE CASCADE,
+    label   TEXT NOT NULL,
+    cote    REAL NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS paris_mises (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    pari_id     INTEGER NOT NULL REFERENCES paris(id) ON DELETE CASCADE,
+    joueur_nom  TEXT NOT NULL,
+    issue_id    INTEGER NOT NULL REFERENCES paris_issues(id),
+    montant     INTEGER NOT NULL
+  );
+`)
+
 // Migrations colonnes rapports
 try { db.exec(`ALTER TABLE rapports ADD COLUMN token TEXT`) } catch {}
 try { db.exec(`ALTER TABLE rapports ADD COLUMN brouillon INTEGER NOT NULL DEFAULT 0`) } catch {}
@@ -90,6 +117,23 @@ try { db.exec(`ALTER TABLE rapports ADD COLUMN brouillon INTEGER NOT NULL DEFAUL
 // Migration colonne users
 try { db.exec(`ALTER TABLE users ADD COLUMN pouvoir_nom TEXT DEFAULT ''`) } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN signature TEXT DEFAULT ''`) } catch {}
+try { db.exec(`ALTER TABLE users ADD COLUMN solde INTEGER DEFAULT 1000`) } catch {}
+db.exec(`UPDATE users SET solde = 1000 WHERE solde IS NULL`)
+
+// Migration paris_mises : remplacer user_id par joueur_nom
+const misesCols = db.prepare(`PRAGMA table_info(paris_mises)`).all().map(c => c.name)
+if (misesCols.includes('user_id')) {
+  db.exec(`
+    DROP TABLE IF EXISTS paris_mises;
+    CREATE TABLE paris_mises (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      pari_id     INTEGER NOT NULL REFERENCES paris(id) ON DELETE CASCADE,
+      joueur_nom  TEXT NOT NULL,
+      issue_id    INTEGER NOT NULL REFERENCES paris_issues(id),
+      montant     INTEGER NOT NULL
+    );
+  `)
+}
 
 // Génère un token pour les rapports qui n'en ont pas
 const crypto = require('crypto')

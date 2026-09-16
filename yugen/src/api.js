@@ -243,6 +243,70 @@ export async function uploadImage(file) {
   return data.url
 }
 
+// ── Paris ──────────────────────────────────────────────────────────────────
+
+export async function getParis() {
+  const res = await fetch(`${BASE}/paris`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.paris
+}
+
+export async function createPari(titre, description, issues) {
+  const res = await fetch(`${BASE}/paris`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ titre, description, issues }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.pari
+}
+
+export async function deletePari(id) {
+  const res = await fetch(`${BASE}/paris/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function addMise(pariId, joueur_nom, issue_id, montant) {
+  const res = await fetch(`${BASE}/paris/${pariId}/mises`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ joueur_nom, issue_id, montant }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.pari
+}
+
+export async function deleteMise(pariId, miseId) {
+  const res = await fetch(`${BASE}/paris/${pariId}/mises/${miseId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.pari
+}
+
+export async function resoudrePari(pariId, issue_gagnante_id) {
+  const res = await fetch(`${BASE}/paris/${pariId}/resoudre`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ issue_gagnante_id }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.pari
+}
+
 // ── Rapports ───────────────────────────────────────────────────────────────
 
 export async function getRapports() {

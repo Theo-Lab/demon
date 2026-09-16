@@ -145,7 +145,7 @@ router.get('/users', (req, res) => {
   if (!auth) return res.status(401).json({ message: 'Non authentifié.' })
   try {
     jwt.verify(auth.split(' ')[1], SECRET)
-    const users = db.prepare('SELECT id, nom, identifiant, grade FROM users ORDER BY nom ASC').all()
+    const users = db.prepare('SELECT id, nom, identifiant, grade, COALESCE(solde, 1000) as solde FROM users ORDER BY nom ASC').all()
     res.json({ users })
   } catch {
     res.status(401).json({ message: 'Token invalide.' })

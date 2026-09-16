@@ -14,6 +14,7 @@ app.use('/api/rapports', require('./routes/rapports'))
 app.use('/api/upload', require('./routes/upload'))
 app.use('/api/spheres', require('./routes/spheres'))
 app.use('/api/projets', require('./routes/projets'))
+app.use('/api/paris', require('./routes/paris'))
 app.use('/uploads', require('express').static('./uploads'))
 
 app.listen(PORT, () => {
