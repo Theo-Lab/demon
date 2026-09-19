@@ -30,7 +30,7 @@
 
       <!-- Formulaire création -->
       <div v-if="showForm" class="form-card">
-        <h2 class="form-title">Nouveau parchemin</h2>
+        <h2 class="form-title">{{ editParchemin ? 'Modifier le parchemin' : 'Nouveau parchemin' }}</h2>
 
         <div class="field">
           <label class="field-label">Titre du parchemin</label>
@@ -154,7 +154,7 @@
         <p v-if="formError" class="error-msg">{{ formError }}</p>
 
         <button class="btn-submit" @click="submitParchemin" :disabled="formLoading">
-          {{ formLoading ? '...' : 'Créer le parchemin' }}
+          {{ formLoading ? '...' : editParchemin ? 'Enregistrer' : 'Créer le parchemin' }}
         </button>
       </div>
 
@@ -173,6 +173,7 @@
           </div>
           <div class="projet-actions">
             <button class="action-btn action-btn--copy" @click="copierLien(p.token)">Copier le lien</button>
+            <button class="action-btn action-btn--edit" @click="ouvrirModification(p)">Modifier</button>
             <button class="action-btn action-btn--delete" @click="supprimerParchemin(p)">Supprimer</button>
           </div>
         </div>
@@ -185,7 +186,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import AppNavbar from './AppNavbar.vue'
-import { getMesParchemins, createParchemin, deleteParchemin, uploadImage } from '../api.js'
+import { getMesParchemins, createParchemin, updateParchemin, deleteParchemin, uploadImage } from '../api.js'
 import { currentUser } from '../auth.js'
 import { MEDIA_BASE } from '../config.js'
 
@@ -199,6 +200,7 @@ const mesParchemins = computed(() => parchemins.value.filter(p => !p.auteur_nom 
 const listeAffichee = computed(() => isAdmin.value && vue.value === 'tous' ? parchemins.value : mesParchemins.value)
 
 const showForm = ref(false)
+const editParchemin = ref(null)
 const formLoading = ref(false)
 const formError = ref('')
 const form = ref({ titre: '', doc_titre: '', blocs: [] })
@@ -272,6 +274,27 @@ async function handleAlbumUpload(e, bloc) {
   }
 }
 
+function serializerBlocs() {
+  return JSON.stringify(form.value.blocs.map(bloc => {
+    if (bloc.type === 'album') return { type: 'album', titre: bloc.titre, images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
+    if (bloc.type === 'section') return { type: 'section', titre: bloc.titre, contenu: bloc.contenu, couleur: bloc.couleur || '', images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
+    if (bloc.type === 'separateur') return { type: 'separateur' }
+    return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
+  }))
+}
+
+function ouvrirModification(p) {
+  editParchemin.value = p
+  let blocs = []
+  try { blocs = JSON.parse(p.contenu || '[]') } catch {}
+  form.value = {
+    titre: p.titre,
+    doc_titre: p.doc_titre,
+    blocs: blocs.map(b => ({ ...b, _id: ++_bid }))
+  }
+  showForm.value = true
+}
+
 async function submitParchemin() {
   if (!form.value.titre || !form.value.doc_titre) {
     formError.value = 'Titre et titre du document requis.'
@@ -280,15 +303,17 @@ async function submitParchemin() {
   formLoading.value = true
   formError.value = ''
   try {
-    const contenu = JSON.stringify(form.value.blocs.map(bloc => {
-      if (bloc.type === 'album') return { type: 'album', titre: bloc.titre, images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
-      if (bloc.type === 'section') return { type: 'section', titre: bloc.titre, contenu: bloc.contenu, couleur: bloc.couleur || '', images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
-      if (bloc.type === 'separateur') return { type: 'separateur' }
-      return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
-    }))
-    const p = await createParchemin(form.value.titre, form.value.doc_titre, contenu)
-    parchemins.value.unshift(p)
+    const contenu = serializerBlocs()
+    if (editParchemin.value) {
+      await updateParchemin(editParchemin.value.token, form.value.titre, form.value.doc_titre, contenu)
+      const idx = parchemins.value.findIndex(x => x.id === editParchemin.value.id)
+      if (idx !== -1) parchemins.value[idx] = { ...parchemins.value[idx], titre: form.value.titre, doc_titre: form.value.doc_titre, contenu }
+    } else {
+      const p = await createParchemin(form.value.titre, form.value.doc_titre, contenu)
+      parchemins.value.unshift(p)
+    }
     form.value = { titre: '', doc_titre: '', blocs: [] }
+    editParchemin.value = null
     showForm.value = false
   } catch (e) {
     formError.value = e.message
@@ -406,6 +431,8 @@ function formatDate(dt) {
 .action-btn { background: none; font-family: 'Cinzel', serif; font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.32rem 0.7rem; cursor: pointer; border: 1px solid; transition: all 0.12s; }
 .action-btn--copy { color: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.1); }
 .action-btn--copy:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+.action-btn--edit { color: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.1); }
+.action-btn--edit:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
 .action-btn--delete { color: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.07); }
 .action-btn--delete:hover { color: #8b1a1a; border-color: rgba(139,26,26,0.3); }
 </style>

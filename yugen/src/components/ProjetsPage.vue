@@ -18,7 +18,7 @@
 
       <!-- Formulaire création -->
       <div v-if="showForm" class="form-card">
-        <h2 class="form-title">Nouveau projet</h2>
+        <h2 class="form-title">{{ editProjet ? 'Modifier le projet' : 'Nouveau projet' }}</h2>
 
         <div class="field">
           <label class="field-label">Titre du projet</label>
@@ -142,7 +142,7 @@
         <p v-if="formError" class="error-msg">{{ formError }}</p>
 
         <button class="btn-submit" @click="submitProjet" :disabled="formLoading">
-          {{ formLoading ? '...' : 'Créer le projet' }}
+          {{ formLoading ? '...' : editProjet ? 'Enregistrer' : 'Créer le projet' }}
         </button>
       </div>
 
@@ -158,6 +158,7 @@
           </div>
           <div class="projet-actions">
             <button class="action-btn action-btn--copy" @click="copierLien(p.token)">Copier le lien</button>
+            <button class="action-btn action-btn--edit" @click="ouvrirModification(p)">Modifier</button>
             <button class="action-btn action-btn--delete" @click="supprimerProjet(p)">Supprimer</button>
           </div>
         </div>
@@ -170,7 +171,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
-import { getMesProjets, createProjet, deleteProjet, uploadImage } from '../api.js'
+import { getMesProjets, createProjet, updateProjet, deleteProjet, uploadImage } from '../api.js'
 
 import { MEDIA_BASE } from '../config.js'
 
@@ -179,6 +180,7 @@ const projets = ref([])
 const loading = ref(true)
 
 const showForm = ref(false)
+const editProjet = ref(null)
 const formLoading = ref(false)
 const formError = ref('')
 const form = ref({ titre: '', doc_titre: '', blocs: [] })
@@ -252,6 +254,27 @@ async function handleAlbumUpload(e, bloc) {
   }
 }
 
+function serializerBlocs() {
+  return JSON.stringify(form.value.blocs.map(bloc => {
+    if (bloc.type === 'album') return { type: 'album', titre: bloc.titre, images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
+    if (bloc.type === 'section') return { type: 'section', titre: bloc.titre, contenu: bloc.contenu, couleur: bloc.couleur || '', images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
+    if (bloc.type === 'separateur') return { type: 'separateur' }
+    return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
+  }))
+}
+
+function ouvrirModification(p) {
+  editProjet.value = p
+  let blocs = []
+  try { blocs = JSON.parse(p.contenu || '[]') } catch {}
+  form.value = {
+    titre: p.titre,
+    doc_titre: p.doc_titre,
+    blocs: blocs.map(b => ({ ...b, _id: ++_bid }))
+  }
+  showForm.value = true
+}
+
 async function submitProjet() {
   if (!form.value.titre || !form.value.doc_titre) {
     formError.value = 'Titre et titre du document requis.'
@@ -260,15 +283,17 @@ async function submitProjet() {
   formLoading.value = true
   formError.value = ''
   try {
-    const contenu = JSON.stringify(form.value.blocs.map(bloc => {
-      if (bloc.type === 'album') return { type: 'album', titre: bloc.titre, images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
-      if (bloc.type === 'section') return { type: 'section', titre: bloc.titre, contenu: bloc.contenu, couleur: bloc.couleur || '', images: (bloc.images || []).map(({ url, legende }) => ({ url, legende })) }
-      if (bloc.type === 'separateur') return { type: 'separateur' }
-      return { type: bloc.type, titre: bloc.titre, contenu: bloc.contenu, url: bloc.url, legende: bloc.legende }
-    }))
-    const p = await createProjet(form.value.titre, form.value.doc_titre, contenu)
-    projets.value.unshift(p)
+    const contenu = serializerBlocs()
+    if (editProjet.value) {
+      await updateProjet(editProjet.value.token, form.value.titre, form.value.doc_titre, contenu)
+      const idx = projets.value.findIndex(x => x.id === editProjet.value.id)
+      if (idx !== -1) projets.value[idx] = { ...projets.value[idx], titre: form.value.titre, doc_titre: form.value.doc_titre, contenu }
+    } else {
+      const p = await createProjet(form.value.titre, form.value.doc_titre, contenu)
+      projets.value.unshift(p)
+    }
     form.value = { titre: '', doc_titre: '', blocs: [] }
+    editProjet.value = null
     showForm.value = false
   } catch (e) {
     formError.value = e.message
@@ -378,6 +403,8 @@ function formatDate(dt) {
 .action-btn { background: none; font-family: 'Cinzel', serif; font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.32rem 0.7rem; cursor: pointer; border: 1px solid; transition: all 0.12s; }
 .action-btn--copy { color: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.1); }
 .action-btn--copy:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+.action-btn--edit { color: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.1); }
+.action-btn--edit:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
 .action-btn--delete { color: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.07); }
 .action-btn--delete:hover { color: #8b1a1a; border-color: rgba(139,26,26,0.3); }
 </style>
