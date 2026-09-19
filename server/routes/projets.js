@@ -20,7 +20,7 @@ function auth(req, res, next) {
 // GET /api/projets — liste privée de l'auteur connecté
 router.get('/', auth, (req, res) => {
   const projets = db.prepare(`
-    SELECT id, titre, doc_titre, token, created_at
+    SELECT id, titre, doc_titre, contenu, token, created_at
     FROM projets
     WHERE auteur_id = ?
     ORDER BY created_at DESC

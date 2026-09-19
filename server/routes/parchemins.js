@@ -22,12 +22,12 @@ router.get('/', auth, (req, res) => {
   const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
   const parchemins = user.role === 'admin'
     ? db.prepare(`
-        SELECT p.id, p.titre, p.doc_titre, p.token, p.created_at, u.nom as auteur_nom
+        SELECT p.id, p.titre, p.doc_titre, p.contenu, p.token, p.created_at, u.nom as auteur_nom
         FROM parchemins p JOIN users u ON u.id = p.auteur_id
         ORDER BY p.created_at DESC
       `).all()
     : db.prepare(`
-        SELECT id, titre, doc_titre, token, created_at
+        SELECT id, titre, doc_titre, contenu, token, created_at
         FROM parchemins WHERE auteur_id = ?
         ORDER BY created_at DESC
       `).all(req.user.id)
