@@ -32,6 +32,12 @@
           <span class="card-link">Consulter →</span>
         </RouterLink>
 
+        <RouterLink to="/projets" class="card">
+          <h2 class="card-title">Projets</h2>
+          <p class="card-desc">Suivre et gérer les projets en cours au sein de l'Ordre Démoniaque.</p>
+          <span class="card-link">Consulter →</span>
+        </RouterLink>
+
         <div class="card card--soon">
           <h2 class="card-title">Pouvoirs Sanguinaires</h2>
           <p class="card-desc">Répertoire des pouvoirs du sang, de leurs membres et hiérarchies.</p>
@@ -92,7 +98,7 @@ import AppNavbar from './AppNavbar.vue'
 /* ── Grille ───────────────────────────────── */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 1px;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.06);
@@ -156,6 +162,6 @@ import AppNavbar from './AppNavbar.vue'
 @media (max-width: 640px) {
   .page-inner { padding: 2.5rem 1.2rem 4rem; }
   .hero-title { font-size: 1.9rem; }
-  .grid { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
