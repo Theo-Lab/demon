@@ -9,6 +9,8 @@ import SphereDetailPage from '../components/SphereDetailPage.vue'
 import ProjetsPage from '../components/ProjetsPage.vue'
 import ProjetDetailPage from '../components/ProjetDetailPage.vue'
 import ParisPage from '../components/ParisPage.vue'
+import ParcheminsPage from '../components/ParcheminsPage.vue'
+import ParcheminDetailPage from '../components/ParcheminDetailPage.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -21,6 +23,8 @@ const routes = [
   { path: '/projets',         component: ProjetsPage       },
   { path: '/projets/:token',  component: ProjetDetailPage  },
   { path: '/paris',           component: ParisPage          },
+  { path: '/parchemins',        component: ParcheminsPage      },
+  { path: '/parchemins/:token', component: ParcheminDetailPage },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 

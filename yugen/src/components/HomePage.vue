@@ -38,6 +38,12 @@
           <span class="card-link">Consulter →</span>
         </RouterLink>
 
+        <RouterLink to="/parchemins" class="card">
+          <h2 class="card-title">Parchemins</h2>
+          <p class="card-desc">Rédiger et consulter les parchemins de l'Ordre.</p>
+          <span class="card-link">Consulter →</span>
+        </RouterLink>
+
         <div class="card card--soon">
           <h2 class="card-title">Pouvoirs Sanguinaires</h2>
           <p class="card-desc">Répertoire des pouvoirs du sang, de leurs membres et hiérarchies.</p>
@@ -98,7 +104,7 @@ import AppNavbar from './AppNavbar.vue'
 /* ── Grille ───────────────────────────────── */
 .grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 1px;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.06);

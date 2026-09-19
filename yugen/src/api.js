@@ -367,3 +367,53 @@ export async function deleteRapport(slug) {
   if (!res.ok) throw new Error(data.message)
   return data
 }
+
+// ── Parchemins ─────────────────────────────────────────────────────────────
+
+export async function getMesParchemins() {
+  const res = await fetch(`${BASE}/parchemins`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.parchemins
+}
+
+export async function getParchemin(token) {
+  const res = await fetch(`${BASE}/parchemins/${token}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.parchemin
+}
+
+export async function createParchemin(titre, doc_titre, contenu) {
+  const res = await fetch(`${BASE}/parchemins`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ titre, doc_titre, contenu }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.parchemin
+}
+
+export async function updateParchemin(token, titre, doc_titre, contenu) {
+  const res = await fetch(`${BASE}/parchemins/${token}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ titre, doc_titre, contenu }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function deleteParchemin(token) {
+  const res = await fetch(`${BASE}/parchemins/${token}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}

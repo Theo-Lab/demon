@@ -57,6 +57,16 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS parchemins (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    auteur_id  INTEGER NOT NULL REFERENCES users(id),
+    titre      TEXT NOT NULL,
+    doc_titre  TEXT NOT NULL,
+    contenu    TEXT NOT NULL DEFAULT '[]',
+    token      TEXT UNIQUE NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS rapports (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     auteur_id  INTEGER NOT NULL REFERENCES users(id),
