@@ -17,14 +17,20 @@ function auth(req, res, next) {
   }
 }
 
-// GET /api/parchemins — liste privée de l'auteur connecté
+// GET /api/parchemins — admin : tous, membre : les siens
 router.get('/', auth, (req, res) => {
-  const parchemins = db.prepare(`
-    SELECT id, titre, doc_titre, token, created_at
-    FROM parchemins
-    WHERE auteur_id = ?
-    ORDER BY created_at DESC
-  `).all(req.user.id)
+  const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
+  const parchemins = user.role === 'admin'
+    ? db.prepare(`
+        SELECT p.id, p.titre, p.doc_titre, p.token, p.created_at, u.nom as auteur_nom
+        FROM parchemins p JOIN users u ON u.id = p.auteur_id
+        ORDER BY p.created_at DESC
+      `).all()
+    : db.prepare(`
+        SELECT id, titre, doc_titre, token, created_at
+        FROM parchemins WHERE auteur_id = ?
+        ORDER BY created_at DESC
+      `).all(req.user.id)
   res.json({ parchemins })
 })
 
@@ -74,11 +80,12 @@ router.patch('/:token', auth, (req, res) => {
   res.json({ message: 'Parchemin mis à jour.' })
 })
 
-// DELETE /api/parchemins/:token — auteur seulement
+// DELETE /api/parchemins/:token — auteur ou admin
 router.delete('/:token', auth, (req, res) => {
   const parchemin = db.prepare('SELECT * FROM parchemins WHERE token = ?').get(req.params.token)
   if (!parchemin) return res.status(404).json({ message: 'Parchemin introuvable.' })
-  if (parchemin.auteur_id !== req.user.id) return res.status(403).json({ message: 'Accès refusé.' })
+  const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
+  if (parchemin.auteur_id !== req.user.id && user.role !== 'admin') return res.status(403).json({ message: 'Accès refusé.' })
 
   db.prepare('DELETE FROM parchemins WHERE token = ?').run(req.params.token)
   res.json({ message: 'Parchemin supprimé.' })

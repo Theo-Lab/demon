@@ -7,7 +7,7 @@
       <div class="page-header">
         <div>
           <p class="page-label">Ordre Démoniaque</p>
-          <h1 class="page-title">Mes Parchemins</h1>
+          <h1 class="page-title">Parchemins</h1>
         </div>
         <button class="btn-new" @click="showForm = !showForm">
           {{ showForm ? 'Annuler' : 'Nouveau parchemin' }}
@@ -15,6 +15,18 @@
       </div>
 
       <div class="page-divider"></div>
+
+      <!-- Onglets admin -->
+      <div v-if="isAdmin" class="onglets">
+        <button :class="['onglet', vue === 'mes' ? 'onglet--actif' : '']" @click="vue = 'mes'">
+          Mes parchemins
+          <span class="onglet-count">{{ mesParchemins.length }}</span>
+        </button>
+        <button :class="['onglet', vue === 'tous' ? 'onglet--actif' : '']" @click="vue = 'tous'">
+          Tous
+          <span class="onglet-count">{{ parchemins.length }}</span>
+        </button>
+      </div>
 
       <!-- Formulaire création -->
       <div v-if="showForm" class="form-card">
@@ -148,13 +160,16 @@
 
       <!-- Liste -->
       <div v-if="loading" class="state-msg">Chargement...</div>
-      <div v-else-if="parchemins.length === 0 && !showForm" class="state-msg">Aucun parchemin créé.</div>
+      <div v-else-if="listeAffichee.length === 0 && !showForm" class="state-msg">Aucun parchemin créé.</div>
 
-      <div v-else-if="parchemins.length > 0" class="projets-list">
-        <div v-for="p in parchemins" :key="p.id" class="projet-item">
+      <div v-else-if="listeAffichee.length > 0" class="projets-list">
+        <div v-for="p in listeAffichee" :key="p.id" class="projet-item">
           <div class="projet-info">
             <RouterLink :to="`/parchemins/${p.token}`" class="projet-titre">{{ p.titre }}</RouterLink>
-            <span class="projet-date">{{ formatDate(p.created_at) }}</span>
+            <span class="projet-date">
+              <span v-if="p.auteur_nom" class="projet-auteur">{{ p.auteur_nom }} · </span>
+              {{ formatDate(p.created_at) }}
+            </span>
           </div>
           <div class="projet-actions">
             <button class="action-btn action-btn--copy" @click="copierLien(p.token)">Copier le lien</button>
@@ -168,15 +183,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { getMesParchemins, createParchemin, deleteParchemin, uploadImage } from '../api.js'
-
+import { currentUser } from '../auth.js'
 import { MEDIA_BASE } from '../config.js'
 
 const mediaBase = MEDIA_BASE
 const parchemins = ref([])
 const loading = ref(true)
+const vue = ref('mes')
+
+const isAdmin = computed(() => currentUser.value?.role === 'admin')
+const mesParchemins = computed(() => parchemins.value.filter(p => !p.auteur_nom || p.auteur_nom === currentUser.value?.nom))
+const listeAffichee = computed(() => isAdmin.value && vue.value === 'tous' ? parchemins.value : mesParchemins.value)
 
 const showForm = ref(false)
 const formLoading = ref(false)
@@ -366,6 +386,14 @@ function formatDate(dt) {
 .btn-submit:disabled { opacity: 0.5; cursor: default; }
 
 .state-msg { font-family: 'Crimson Text', serif; font-style: italic; color: rgba(255,255,255,0.2); font-size: 0.98rem; padding: 2rem 0; }
+
+.onglets { display: flex; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 2rem; }
+.onglet { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; background: transparent; border: none; border-bottom: 2px solid transparent; color: rgba(255,255,255,0.3); padding: 10px 20px; cursor: pointer; margin-bottom: -1px; display: flex; align-items: center; gap: 8px; transition: color 0.15s; }
+.onglet:hover { color: rgba(255,255,255,0.6); }
+.onglet--actif { color: #fff; border-bottom-color: #8b1a1a; }
+.onglet-count { font-family: 'Cinzel', serif; font-size: 0.6rem; background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.4); padding: 1px 6px; border-radius: 2px; }
+.onglet--actif .onglet-count { background: rgba(139,26,26,0.25); color: #c05050; }
+.projet-auteur { font-style: normal; color: rgba(255,255,255,0.35); }
 
 .projets-list { border: 1px solid rgba(255,255,255,0.06); }
 .projet-item { display: flex; align-items: center; justify-content: space-between; padding: 1.1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.04); gap: 1rem; }
