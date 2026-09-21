@@ -10,6 +10,35 @@
         <p class="hero-sub">Jouez vos Yens et tentez la fortune dans les jeux de l'Ordre.</p>
       </div>
 
+      <div class="howto">
+        <p class="howto-title">Comment jouer ?</p>
+        <div class="steps">
+          <div class="step">
+            <span class="step-num">I</span>
+            <div class="step-body">
+              <span class="step-name">Créer un compte</span>
+              <span class="step-desc">Rejoignez l'Ordre en vous inscrivant sur la plateforme.</span>
+            </div>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <span class="step-num">II</span>
+            <div class="step-body">
+              <span class="step-name">Déposer des Yens</span>
+              <span class="step-desc">Adressez-vous à un gestionnaire du site pour créditer votre solde.</span>
+            </div>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <span class="step-num">III</span>
+            <div class="step-body">
+              <span class="step-name">Jouer</span>
+              <span class="step-desc">Choisissez votre jeu et misez vos Yens.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid">
 
         <RouterLink to="/slots" class="card">
@@ -152,7 +181,80 @@ import AppNavbar from './AppNavbar.vue'
   align-self: flex-start;
 }
 
+/* ── Comment jouer ───────────────────────────────── */
+
+.howto {
+  margin-bottom: 3rem;
+  padding: 24px 28px;
+  background: #0e0e10;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.howto-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.22);
+  margin: 0 0 20px;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.step-num {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: #8b1a1a;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.step-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: #d4cfc9;
+}
+
+.step-desc {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.92rem;
+  font-style: italic;
+  color: rgba(255,255,255,0.28);
+  line-height: 1.4;
+}
+
+.step-arrow {
+  font-family: 'Cinzel', serif;
+  color: rgba(255,255,255,0.12);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  align-self: center;
+}
+
 @media (max-width: 640px) {
-  .grid { grid-template-columns: 1fr; }
+  .grid  { grid-template-columns: 1fr; }
+  .steps { flex-direction: column; gap: 16px; }
+  .step-arrow { display: none; }
 }
 </style>
