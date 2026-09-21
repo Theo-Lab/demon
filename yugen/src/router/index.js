@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { currentUser } from '../auth.js'
 import HomePage from '../components/HomePage.vue'
 import ParchmentPage from '../components/ParchmentPage.vue'
 import ProfilePage from '../components/ProfilePage.vue'
@@ -33,7 +34,7 @@ const routes = [
   { path: '/casino',            component: CasinoPage         },
   { path: '/roulette',          component: RoulettePage       },
   { path: '/blackjack',         component: BlackjackPage      },
-  { path: '/casino/admin',      component: CasinoAdminPage    },
+  { path: '/casino/admin',      component: CasinoAdminPage,    meta: { adminOnly: true } },
   { path: '/slots',             component: SlotsPage          },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -42,6 +43,12 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach((to) => {
+  if (to.meta.adminOnly && currentUser.value?.role !== 'admin') {
+    return '/'
+  }
 })
 
 export default router
