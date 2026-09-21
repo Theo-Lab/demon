@@ -230,6 +230,9 @@
       <template v-if="onglet === 'stats'">
         <div v-if="loadingStats" class="loading">Chargement…</div>
         <template v-else-if="stats">
+          <div class="stats-toolbar">
+            <button class="btn-secondary" @click="rafraichirStats">↺ Actualiser</button>
+          </div>
 
           <!-- KPIs globaux -->
           <div class="kpi-grid">
@@ -241,19 +244,32 @@
             <div class="kpi-card">
               <span class="kpi-label">Total misé</span>
               <span class="kpi-val">{{ fmtYen(stats.global.total_mise) }}</span>
+              <span class="kpi-sub">Redistribué {{ fmtYen(stats.global.total_redistribue) }} · RTP {{ rtp }}%</span>
             </div>
             <div class="kpi-card">
-              <span class="kpi-label">Redistribué</span>
-              <span class="kpi-val kpi-val--dim">{{ fmtYen(stats.global.total_redistribue) }}</span>
-              <span class="kpi-sub">RTP {{ rtp }}%</span>
+              <span class="kpi-label">Gains sur jeux</span>
+              <span class="kpi-val" :class="stats.global.benefice_jeux >= 0 ? 'kpi-val--pos' : 'kpi-val--neg'">
+                {{ fmtYen(stats.global.benefice_jeux) }}
+              </span>
+              <span class="kpi-sub">mises − redistribués</span>
             </div>
             <div class="kpi-card kpi-card--accent">
-              <span class="kpi-label">Bénéfice Casino</span>
-              <span class="kpi-val" :class="stats.global.benefice_casino >= 0 ? 'kpi-val--pos' : 'kpi-val--neg'">
-                {{ fmtYen(stats.global.benefice_casino) }}
+              <span class="kpi-label">Position réelle</span>
+              <span class="kpi-val" :class="stats.global.position_nette >= 0 ? 'kpi-val--pos' : 'kpi-val--neg'">
+                {{ fmtYen(stats.global.position_nette) }}
+              </span>
+              <span class="kpi-sub">
+                Dépôts {{ fmtYen(stats.global.total_depots) }} · Retraits {{ fmtYen(stats.global.total_retraits) }}
               </span>
             </div>
           </div>
+
+          <!-- Explication -->
+          <p class="stats-explainer">
+            <strong>Position réelle</strong> = gains sur jeux ({{ fmtYen(stats.global.benefice_jeux) }})
+            − dépôts nets admin ({{ fmtYen(stats.global.net_admin) }}).
+            C'est ce que le casino a réellement gagné ou perdu.
+          </p>
 
           <!-- Par jeu -->
           <div class="stats-section">
@@ -276,8 +292,8 @@
                   <td>{{ fmtYen(j.total_mise) }}</td>
                   <td>{{ fmtYen(j.total_redistribue) }}</td>
                   <td class="stats-rtp">{{ rtpJeu(j) }}%</td>
-                  <td :class="j.benefice_casino >= 0 ? 'gain--pos' : 'gain--neg'">
-                    {{ fmtYen(j.benefice_casino) }}
+                  <td :class="j.benefice_jeux >= 0 ? 'gain--pos' : 'gain--neg'">
+                    {{ fmtYen(j.benefice_jeux) }}
                   </td>
                 </tr>
               </tbody>
@@ -572,6 +588,9 @@ const rtp = computed(() => {
   if (!stats.value || !stats.value.global.total_mise) return '—'
   return (stats.value.global.total_redistribue / stats.value.global.total_mise * 100).toFixed(1)
 })
+
+// Forcer le rechargement des stats quand on revient sur l'onglet
+function rafraichirStats() { stats.value = null; chargerStats() }
 
 function rtpJeu(j) {
   if (!j.total_mise) return '—'
@@ -1296,6 +1315,22 @@ onMounted(async () => {
   font-size: 0.82rem;
   font-style: italic;
   color: rgba(255,255,255,0.22);
+}
+
+.stats-toolbar { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+
+.stats-explainer {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: rgba(255,255,255,0.22);
+  margin: -16px 0 28px;
+  line-height: 1.5;
+}
+.stats-explainer strong {
+  font-style: normal;
+  color: rgba(255,255,255,0.38);
+  font-weight: 400;
 }
 
 .stats-section { margin-bottom: 32px; }

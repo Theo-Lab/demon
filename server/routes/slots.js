@@ -228,35 +228,58 @@ router.patch('/admin/config', requireAuth, requireAdmin, (req, res) => {
 // ── Stats globales casino ─────────────────────────────────────────────────────
 
 router.get('/admin/stats', requireAuth, requireAdmin, (req, res) => {
-  const global = db.prepare(`
+  // ── Parties jouées ──────────────────────────────────────────────────────────
+  // gain_net = ce que le joueur gagne net (négatif = il perd)
+  // benefice_jeux = -SUM(gain_net) = ce que le casino garde sur les jeux
+  const jeux = db.prepare(`
     SELECT
-      COUNT(*)                  AS nb_parties,
-      COALESCE(SUM(mise), 0)    AS total_mise,
+      COUNT(*)                          AS nb_parties,
+      COALESCE(SUM(mise), 0)            AS total_mise,
       COALESCE(SUM(mise + gain_net), 0) AS total_redistribue,
-      COALESCE(-SUM(gain_net), 0)       AS benefice_casino,
-      COUNT(DISTINCT user_id)   AS nb_joueurs
+      COALESCE(-SUM(gain_net), 0)       AS benefice_jeux,
+      COUNT(DISTINCT user_id)           AS nb_joueurs
     FROM game_rounds
   `).get()
 
+  // ── Opérations admin (dépôts / retraits manuels) ────────────────────────────
+  // gain_net dans solde_logs = delta solde joueur
+  // → positif = casino a donné de l'argent (dépôt)
+  // → négatif = casino a récupéré (retrait)
+  const admin = db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN gain_net > 0 THEN  gain_net ELSE 0 END), 0) AS total_depots,
+      COALESCE(SUM(CASE WHEN gain_net < 0 THEN -gain_net ELSE 0 END), 0) AS total_retraits,
+      COALESCE(SUM(gain_net), 0) AS net_admin
+    FROM solde_logs
+  `).get()
+
+  // ── Position réelle du casino ───────────────────────────────────────────────
+  // = argent gagné sur les jeux  -  argent sorti via dépôts admin (net)
+  const position_nette = jeux.benefice_jeux - admin.net_admin
+
+  const global = { ...jeux, ...admin, position_nette }
+
+  // ── Par jeu ─────────────────────────────────────────────────────────────────
   const parJeu = db.prepare(`
     SELECT
       jeu,
-      COUNT(*)                  AS nb_parties,
-      COALESCE(SUM(mise), 0)    AS total_mise,
+      COUNT(*)                          AS nb_parties,
+      COALESCE(SUM(mise), 0)            AS total_mise,
       COALESCE(SUM(mise + gain_net), 0) AS total_redistribue,
-      COALESCE(-SUM(gain_net), 0)       AS benefice_casino
+      COALESCE(-SUM(gain_net), 0)       AS benefice_jeux
     FROM game_rounds
     GROUP BY jeu
     ORDER BY nb_parties DESC
   `).all()
 
+  // ── Top joueurs ─────────────────────────────────────────────────────────────
   const topJoueurs = db.prepare(`
     SELECT
       u.nom,
       u.identifiant,
       u.solde,
-      COUNT(gr.id)              AS nb_parties,
-      COALESCE(SUM(gr.mise), 0) AS total_mise,
+      COUNT(gr.id)                   AS nb_parties,
+      COALESCE(SUM(gr.mise), 0)      AS total_mise,
       COALESCE(-SUM(gr.gain_net), 0) AS pertes_nettes
     FROM game_rounds gr
     JOIN users u ON u.id = gr.user_id
@@ -265,11 +288,11 @@ router.get('/admin/stats', requireAuth, requireAdmin, (req, res) => {
     LIMIT 10
   `).all()
 
-  // Activité par jour (30 derniers jours)
+  // ── Activité par jour (30 derniers jours) ───────────────────────────────────
   const parJour = db.prepare(`
     SELECT
-      DATE(created_at) AS jour,
-      COUNT(*)         AS nb_parties,
+      DATE(created_at)               AS jour,
+      COUNT(*)                       AS nb_parties,
       COALESCE(SUM(mise), 0)         AS total_mise,
       COALESCE(-SUM(gain_net), 0)    AS benefice
     FROM game_rounds
