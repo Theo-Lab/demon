@@ -444,6 +444,13 @@ export async function updateSlotsConfig(mise_min, mise_max, nb_colonnes) {
   return data.config
 }
 
+export async function getSlotsAdminStats() {
+  const res = await apiFetch(`${BASE}/slots/admin/stats`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function getSlotsAdminLogs({ limit = 100, offset = 0, joueur = '' } = {}) {
   const params = new URLSearchParams({ limit, offset })
   if (joueur) params.set('joueur', joueur)

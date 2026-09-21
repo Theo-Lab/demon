@@ -25,11 +25,11 @@
       <!-- ── Onglets du jeu sélectionné ── -->
       <div class="onglets">
         <button
-          v-for="tab in ['symboles', 'config', 'joueurs', 'logs']"
+          v-for="tab in ['symboles', 'config', 'joueurs', 'logs', 'stats']"
           :key="tab"
           :class="['onglet', onglet === tab ? 'onglet--actif' : '']"
-          @click="onglet = tab; if(tab==='joueurs') chargerJoueurs(); if(tab==='logs') chargerLogs()"
-        >{{ { symboles: 'Symboles', config: 'Configuration', joueurs: 'Joueurs', logs: 'Logs' }[tab] }}</button>
+          @click="onglet = tab; if(tab==='joueurs') chargerJoueurs(); if(tab==='logs') chargerLogs(); if(tab==='stats') chargerStats()"
+        >{{ { symboles: 'Symboles', config: 'Configuration', joueurs: 'Joueurs', logs: 'Logs', stats: 'Statistiques' }[tab] }}</button>
       </div>
 
       <!-- ── Onglet Symboles ── -->
@@ -226,6 +226,122 @@
 
       </template>
 
+      <!-- ── Onglet Stats ── -->
+      <template v-if="onglet === 'stats'">
+        <div v-if="loadingStats" class="loading">Chargement…</div>
+        <template v-else-if="stats">
+
+          <!-- KPIs globaux -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <span class="kpi-label">Parties jouées</span>
+              <span class="kpi-val">{{ stats.global.nb_parties.toLocaleString('fr-FR') }}</span>
+              <span class="kpi-sub">{{ stats.global.nb_joueurs }} joueur{{ stats.global.nb_joueurs !== 1 ? 's' : '' }} actif{{ stats.global.nb_joueurs !== 1 ? 's' : '' }}</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Total misé</span>
+              <span class="kpi-val">{{ fmtYen(stats.global.total_mise) }}</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Redistribué</span>
+              <span class="kpi-val kpi-val--dim">{{ fmtYen(stats.global.total_redistribue) }}</span>
+              <span class="kpi-sub">RTP {{ rtp }}%</span>
+            </div>
+            <div class="kpi-card kpi-card--accent">
+              <span class="kpi-label">Bénéfice Casino</span>
+              <span class="kpi-val" :class="stats.global.benefice_casino >= 0 ? 'kpi-val--pos' : 'kpi-val--neg'">
+                {{ fmtYen(stats.global.benefice_casino) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Par jeu -->
+          <div class="stats-section">
+            <p class="stats-section-title">Par jeu</p>
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th>Jeu</th>
+                  <th>Parties</th>
+                  <th>Total misé</th>
+                  <th>Redistribué</th>
+                  <th>RTP</th>
+                  <th>Bénéfice</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="j in stats.parJeu" :key="j.jeu" class="stats-row">
+                  <td class="stats-jeu">{{ j.jeu }}</td>
+                  <td>{{ j.nb_parties.toLocaleString('fr-FR') }}</td>
+                  <td>{{ fmtYen(j.total_mise) }}</td>
+                  <td>{{ fmtYen(j.total_redistribue) }}</td>
+                  <td class="stats-rtp">{{ rtpJeu(j) }}%</td>
+                  <td :class="j.benefice_casino >= 0 ? 'gain--pos' : 'gain--neg'">
+                    {{ fmtYen(j.benefice_casino) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Top joueurs -->
+          <div class="stats-section">
+            <p class="stats-section-title">Top joueurs</p>
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Joueur</th>
+                  <th>Parties</th>
+                  <th>Total misé</th>
+                  <th>Pertes nettes</th>
+                  <th>Solde actuel</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(j, i) in stats.topJoueurs" :key="j.identifiant" class="stats-row">
+                  <td class="stats-rank">{{ i + 1 }}</td>
+                  <td>
+                    <span class="log-nom">{{ j.nom }}</span>
+                    <span class="log-id">{{ j.identifiant }}</span>
+                  </td>
+                  <td>{{ j.nb_parties.toLocaleString('fr-FR') }}</td>
+                  <td>{{ fmtYen(j.total_mise) }}</td>
+                  <td :class="j.pertes_nettes > 0 ? 'gain--pos' : j.pertes_nettes < 0 ? 'gain--neg' : ''">
+                    {{ fmtYen(j.pertes_nettes) }}
+                  </td>
+                  <td class="stats-solde">{{ fmtYen(j.solde) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Activité 30 jours -->
+          <div v-if="stats.parJour.length" class="stats-section">
+            <p class="stats-section-title">Activité — 30 derniers jours</p>
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th>Jour</th>
+                  <th>Parties</th>
+                  <th>Total misé</th>
+                  <th>Bénéfice</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="j in [...stats.parJour].reverse()" :key="j.jour" class="stats-row">
+                  <td class="col-date">{{ j.jour }}</td>
+                  <td>{{ j.nb_parties }}</td>
+                  <td>{{ fmtYen(j.total_mise) }}</td>
+                  <td :class="j.benefice >= 0 ? 'gain--pos' : 'gain--neg'">{{ fmtYen(j.benefice) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </template>
+      </template>
+
       <!-- ── Onglet Logs ── -->
       <template v-if="onglet === 'logs'">
 
@@ -306,7 +422,7 @@ import {
   getSlotsAdminSymbols, createSlotsSymbol, updateSlotsSymbol, deleteSlotsSymbol,
   getSlotsAdminConfig, updateSlotsConfig, IMG_BASE,
   getSlotsAdminJoueurs, updateJoueurSolde,
-  getSlotsAdminLogs,
+  getSlotsAdminLogs, getSlotsAdminStats,
 } from '../api.js'
 
 const onglet = ref('symboles')
@@ -445,6 +561,35 @@ async function opSolde(j, operation) {
     montants.value[j.id] = null
   } catch (e) {
     erreurs.value[j.id] = e.message
+  }
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+const stats        = ref(null)
+const loadingStats = ref(false)
+
+const rtp = computed(() => {
+  if (!stats.value || !stats.value.global.total_mise) return '—'
+  return (stats.value.global.total_redistribue / stats.value.global.total_mise * 100).toFixed(1)
+})
+
+function rtpJeu(j) {
+  if (!j.total_mise) return '—'
+  return (j.total_redistribue / j.total_mise * 100).toFixed(1)
+}
+
+function fmtYen(n) {
+  if (n == null) return '—'
+  return (n < 0 ? '-¥' : '¥') + Math.abs(n).toLocaleString('fr-FR')
+}
+
+async function chargerStats() {
+  if (stats.value) return
+  loadingStats.value = true
+  try {
+    stats.value = await getSlotsAdminStats()
+  } finally {
+    loadingStats.value = false
   }
 }
 
@@ -1102,5 +1247,117 @@ onMounted(async () => {
   font-size: 0.62rem;
   letter-spacing: 0.1em;
   color: rgba(255,255,255,0.25);
+}
+
+/* ── Stats ─────────────────────────────────────────── */
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 36px;
+}
+
+.kpi-card {
+  background: #141416;
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kpi-card--accent {
+  border-color: rgba(139,26,26,0.25);
+  background: rgba(139,26,26,0.06);
+}
+
+.kpi-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+}
+
+.kpi-val {
+  font-family: 'Cinzel', serif;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  color: #d4cfc9;
+  line-height: 1.1;
+}
+.kpi-val--dim  { color: rgba(255,255,255,0.5); }
+.kpi-val--pos  { color: #6aaa6a; }
+.kpi-val--neg  { color: #c05050; }
+
+.kpi-sub {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: rgba(255,255,255,0.22);
+}
+
+.stats-section { margin-bottom: 32px; }
+
+.stats-section-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  margin: 0 0 12px;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.95rem;
+}
+
+.stats-table th {
+  font-family: 'Cinzel', serif;
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  font-weight: 400;
+  padding: 7px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  white-space: nowrap;
+}
+
+.stats-row td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.5);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.stats-row:hover td { background: rgba(255,255,255,0.02); }
+
+.stats-jeu {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+}
+
+.stats-rtp { color: rgba(255,255,255,0.4); }
+
+.stats-rank {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.2);
+  width: 28px;
+}
+
+.stats-solde { color: #c9a84c; }
+
+@media (max-width: 640px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

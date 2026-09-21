@@ -225,4 +225,60 @@ router.patch('/admin/config', requireAuth, requireAdmin, (req, res) => {
   res.json({ config })
 })
 
+// ── Stats globales casino ─────────────────────────────────────────────────────
+
+router.get('/admin/stats', requireAuth, requireAdmin, (req, res) => {
+  const global = db.prepare(`
+    SELECT
+      COUNT(*)                  AS nb_parties,
+      COALESCE(SUM(mise), 0)    AS total_mise,
+      COALESCE(SUM(mise + gain_net), 0) AS total_redistribue,
+      COALESCE(-SUM(gain_net), 0)       AS benefice_casino,
+      COUNT(DISTINCT user_id)   AS nb_joueurs
+    FROM game_rounds
+  `).get()
+
+  const parJeu = db.prepare(`
+    SELECT
+      jeu,
+      COUNT(*)                  AS nb_parties,
+      COALESCE(SUM(mise), 0)    AS total_mise,
+      COALESCE(SUM(mise + gain_net), 0) AS total_redistribue,
+      COALESCE(-SUM(gain_net), 0)       AS benefice_casino
+    FROM game_rounds
+    GROUP BY jeu
+    ORDER BY nb_parties DESC
+  `).all()
+
+  const topJoueurs = db.prepare(`
+    SELECT
+      u.nom,
+      u.identifiant,
+      u.solde,
+      COUNT(gr.id)              AS nb_parties,
+      COALESCE(SUM(gr.mise), 0) AS total_mise,
+      COALESCE(-SUM(gr.gain_net), 0) AS pertes_nettes
+    FROM game_rounds gr
+    JOIN users u ON u.id = gr.user_id
+    GROUP BY gr.user_id
+    ORDER BY total_mise DESC
+    LIMIT 10
+  `).all()
+
+  // Activité par jour (30 derniers jours)
+  const parJour = db.prepare(`
+    SELECT
+      DATE(created_at) AS jour,
+      COUNT(*)         AS nb_parties,
+      COALESCE(SUM(mise), 0)         AS total_mise,
+      COALESCE(-SUM(gain_net), 0)    AS benefice
+    FROM game_rounds
+    WHERE created_at >= DATE('now', '-30 days')
+    GROUP BY DATE(created_at)
+    ORDER BY jour ASC
+  `).all()
+
+  res.json({ global, parJeu, topJoueurs, parJour })
+})
+
 module.exports = router
