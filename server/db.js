@@ -3,6 +3,9 @@ const bcrypt = require('bcryptjs')
 
 const db = new Database('./yugen.db')
 
+// WAL : gère la concurrence des écritures sans bloquer les lectures
+db.pragma('journal_mode = WAL')
+
 // Schéma
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -92,6 +95,86 @@ if (count.n === 0) {
   insert.run('daki',    hash('lune6'),        'Daki',    'Lune Supérieure 6', 'membre')
   insert.run('gyutaro', hash('lune6'),        'Gyutaro', 'Lune Supérieure 6', 'membre')
 }
+
+// Tables casino
+db.exec(`
+  CREATE TABLE IF NOT EXISTS game_rounds (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id),
+    jeu         TEXT NOT NULL CHECK(jeu IN ('roulette', 'slots', 'blackjack', 'expedition')),
+    mise        INTEGER NOT NULL,
+    resultat    TEXT NOT NULL DEFAULT '{}',
+    gain_net    INTEGER NOT NULL,
+    solde_avant INTEGER NOT NULL,
+    solde_apres INTEGER NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    token      TEXT UNIQUE NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`)
+
+// Nettoyer les refresh tokens expirés au démarrage
+db.prepare("DELETE FROM refresh_tokens WHERE expires_at < datetime('now')").run()
+
+// Tables slots
+db.exec(`
+  CREATE TABLE IF NOT EXISTS slots_symbols (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom        TEXT NOT NULL,
+    image_url  TEXT NOT NULL DEFAULT '',
+    poids      INTEGER NOT NULL DEFAULT 10,
+    mult_2     REAL NOT NULL DEFAULT 2,
+    mult_3     REAL NOT NULL DEFAULT 10,
+    actif      INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS slots_config (
+    id        INTEGER PRIMARY KEY CHECK(id = 1),
+    mise_min  INTEGER NOT NULL DEFAULT 10000,
+    mise_max  INTEGER NOT NULL DEFAULT 1000000
+  );
+`)
+db.prepare('INSERT OR IGNORE INTO slots_config (id, mise_min, mise_max) VALUES (1, 10000, 1000000)').run()
+
+// Table logs solde admin
+db.exec(`
+  CREATE TABLE IF NOT EXISTS solde_logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id),
+    admin_id    INTEGER NOT NULL REFERENCES users(id),
+    operation   TEXT NOT NULL CHECK(operation IN ('add','remove','set')),
+    montant     INTEGER NOT NULL,
+    gain_net    INTEGER NOT NULL,
+    solde_avant INTEGER NOT NULL,
+    solde_apres INTEGER NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`)
+
+// Table blackjack
+db.exec(`
+  CREATE TABLE IF NOT EXISTS blackjack_games (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id),
+    statut      TEXT NOT NULL DEFAULT 'en_cours' CHECK(statut IN ('en_cours', 'fini')),
+    mise        INTEGER NOT NULL,
+    mise_double INTEGER NOT NULL DEFAULT 0,
+    solde_avant INTEGER NOT NULL,
+    main_joueur TEXT NOT NULL DEFAULT '[]',
+    main_dealer TEXT NOT NULL DEFAULT '[]',
+    deck        TEXT NOT NULL DEFAULT '[]',
+    resultat    TEXT DEFAULT NULL,
+    gain_net    INTEGER DEFAULT 0,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`)
 
 // Tables paris
 db.exec(`

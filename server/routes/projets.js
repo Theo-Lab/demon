@@ -1,24 +1,12 @@
 const express = require('express')
-const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const db = require('../db')
+const { requireAuth } = require('../middleware/auth')
 
 const router = express.Router()
-const SECRET = process.env.JWT_SECRET || 'yugen_ordre_demoniaque_secret'
-
-function auth(req, res, next) {
-  const header = req.headers.authorization
-  if (!header) return res.status(401).json({ message: 'Non authentifié.' })
-  try {
-    req.user = jwt.verify(header.split(' ')[1], SECRET)
-    next()
-  } catch {
-    res.status(401).json({ message: 'Token invalide.' })
-  }
-}
 
 // GET /api/projets — liste privée de l'auteur connecté
-router.get('/', auth, (req, res) => {
+router.get('/', requireAuth, (req, res) => {
   const projets = db.prepare(`
     SELECT id, titre, doc_titre, contenu, token, created_at
     FROM projets
@@ -42,7 +30,7 @@ router.get('/:token', (req, res) => {
 })
 
 // POST /api/projets — créer
-router.post('/', auth, (req, res) => {
+router.post('/', requireAuth, (req, res) => {
   const { titre, doc_titre, contenu } = req.body
   if (!titre || !doc_titre) return res.status(400).json({ message: 'Titre requis.' })
 
@@ -61,7 +49,7 @@ router.post('/', auth, (req, res) => {
 })
 
 // PATCH /api/projets/:token — modifier (auteur seulement)
-router.patch('/:token', auth, (req, res) => {
+router.patch('/:token', requireAuth, (req, res) => {
   const projet = db.prepare('SELECT * FROM projets WHERE token = ?').get(req.params.token)
   if (!projet) return res.status(404).json({ message: 'Projet introuvable.' })
   if (projet.auteur_id !== req.user.id) return res.status(403).json({ message: 'Accès refusé.' })
@@ -75,7 +63,7 @@ router.patch('/:token', auth, (req, res) => {
 })
 
 // DELETE /api/projets/:token — auteur seulement
-router.delete('/:token', auth, (req, res) => {
+router.delete('/:token', requireAuth, (req, res) => {
   const projet = db.prepare('SELECT * FROM projets WHERE token = ?').get(req.params.token)
   if (!projet) return res.status(404).json({ message: 'Projet introuvable.' })
   if (projet.auteur_id !== req.user.id) return res.status(403).json({ message: 'Accès refusé.' })

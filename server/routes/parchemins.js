@@ -1,24 +1,12 @@
 const express = require('express')
-const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const db = require('../db')
+const { requireAuth } = require('../middleware/auth')
 
 const router = express.Router()
-const SECRET = process.env.JWT_SECRET || 'yugen_ordre_demoniaque_secret'
-
-function auth(req, res, next) {
-  const header = req.headers.authorization
-  if (!header) return res.status(401).json({ message: 'Non authentifié.' })
-  try {
-    req.user = jwt.verify(header.split(' ')[1], SECRET)
-    next()
-  } catch {
-    res.status(401).json({ message: 'Token invalide.' })
-  }
-}
 
 // GET /api/parchemins — admin : tous, membre : les siens
-router.get('/', auth, (req, res) => {
+router.get('/', requireAuth, (req, res) => {
   const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
   const parchemins = user.role === 'admin'
     ? db.prepare(`
@@ -48,7 +36,7 @@ router.get('/:token', (req, res) => {
 })
 
 // POST /api/parchemins — créer
-router.post('/', auth, (req, res) => {
+router.post('/', requireAuth, (req, res) => {
   const { titre, doc_titre, contenu } = req.body
   if (!titre || !doc_titre) return res.status(400).json({ message: 'Titre requis.' })
 
@@ -67,7 +55,7 @@ router.post('/', auth, (req, res) => {
 })
 
 // PATCH /api/parchemins/:token — modifier (auteur seulement)
-router.patch('/:token', auth, (req, res) => {
+router.patch('/:token', requireAuth, (req, res) => {
   const parchemin = db.prepare('SELECT * FROM parchemins WHERE token = ?').get(req.params.token)
   if (!parchemin) return res.status(404).json({ message: 'Parchemin introuvable.' })
   if (parchemin.auteur_id !== req.user.id) return res.status(403).json({ message: 'Accès refusé.' })
@@ -81,7 +69,7 @@ router.patch('/:token', auth, (req, res) => {
 })
 
 // DELETE /api/parchemins/:token — auteur ou admin
-router.delete('/:token', auth, (req, res) => {
+router.delete('/:token', requireAuth, (req, res) => {
   const parchemin = db.prepare('SELECT * FROM parchemins WHERE token = ?').get(req.params.token)
   if (!parchemin) return res.status(404).json({ message: 'Parchemin introuvable.' })
   const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)

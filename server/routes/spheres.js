@@ -1,20 +1,8 @@
 const express = require('express')
-const jwt = require('jsonwebtoken')
 const db = require('../db')
+const { requireAuth } = require('../middleware/auth')
 
 const router = express.Router()
-const SECRET = process.env.JWT_SECRET || 'yugen_ordre_demoniaque_secret'
-
-function auth(req, res, next) {
-  const header = req.headers.authorization
-  if (!header) return res.status(401).json({ message: 'Non authentifié.' })
-  try {
-    req.user = jwt.verify(header.split(' ')[1], SECRET)
-    next()
-  } catch {
-    res.status(401).json({ message: 'Token invalide.' })
-  }
-}
 
 function requireAdmin(req, res, next) {
   const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
@@ -64,7 +52,7 @@ router.get('/:id', (req, res) => {
 })
 
 // POST /api/spheres — admin seulement
-router.post('/', auth, requireAdmin, (req, res) => {
+router.post('/', requireAuth, requireAdmin, (req, res) => {
   const { nom, description, chef_id } = req.body
   if (!nom) return res.status(400).json({ message: 'Nom requis.' })
 
@@ -87,7 +75,7 @@ router.post('/', auth, requireAdmin, (req, res) => {
 })
 
 // PATCH /api/spheres/:id — admin ou chef
-router.patch('/:id', auth, (req, res) => {
+router.patch('/:id', requireAuth, (req, res) => {
   if (!isChefOrAdmin(req, req.params.id)) return res.status(403).json({ message: 'Accès refusé.' })
 
   const sphere = db.prepare('SELECT * FROM spheres WHERE id = ?').get(req.params.id)
@@ -111,7 +99,7 @@ router.patch('/:id', auth, (req, res) => {
 })
 
 // DELETE /api/spheres/:id — admin seulement
-router.delete('/:id', auth, requireAdmin, (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
   const sphere = db.prepare('SELECT id FROM spheres WHERE id = ?').get(req.params.id)
   if (!sphere) return res.status(404).json({ message: 'Sphère introuvable.' })
 
@@ -128,7 +116,7 @@ router.get('/:id/grades', (req, res) => {
 })
 
 // POST /api/spheres/:id/grades — admin ou chef
-router.post('/:id/grades', auth, (req, res) => {
+router.post('/:id/grades', requireAuth, (req, res) => {
   if (!isChefOrAdmin(req, req.params.id)) return res.status(403).json({ message: 'Accès refusé.' })
 
   const { nom, ordre } = req.body
@@ -140,7 +128,7 @@ router.post('/:id/grades', auth, (req, res) => {
 })
 
 // DELETE /api/spheres/:id/grades/:gradeId — admin ou chef
-router.delete('/:id/grades/:gradeId', auth, (req, res) => {
+router.delete('/:id/grades/:gradeId', requireAuth, (req, res) => {
   if (!isChefOrAdmin(req, req.params.id)) return res.status(403).json({ message: 'Accès refusé.' })
 
   db.prepare('DELETE FROM sphere_grades WHERE id = ? AND sphere_id = ?').run(req.params.gradeId, req.params.id)
@@ -148,7 +136,7 @@ router.delete('/:id/grades/:gradeId', auth, (req, res) => {
 })
 
 // POST /api/spheres/:id/membres — ajouter un membre (admin ou chef)
-router.post('/:id/membres', auth, (req, res) => {
+router.post('/:id/membres', requireAuth, (req, res) => {
   if (!isChefOrAdmin(req, req.params.id)) return res.status(403).json({ message: 'Accès refusé.' })
 
   const { user_id, grade } = req.body
@@ -166,7 +154,7 @@ router.post('/:id/membres', auth, (req, res) => {
 })
 
 // PATCH /api/spheres/:id/membres/:userId — modifier le grade (admin ou chef)
-router.patch('/:id/membres/:userId', auth, (req, res) => {
+router.patch('/:id/membres/:userId', requireAuth, (req, res) => {
   if (!isChefOrAdmin(req, req.params.id)) return res.status(403).json({ message: 'Accès refusé.' })
 
   const { grade } = req.body
@@ -175,7 +163,7 @@ router.patch('/:id/membres/:userId', auth, (req, res) => {
 })
 
 // DELETE /api/spheres/:id/membres/:userId — retirer un membre (admin ou chef)
-router.delete('/:id/membres/:userId', auth, (req, res) => {
+router.delete('/:id/membres/:userId', requireAuth, (req, res) => {
   if (!isChefOrAdmin(req, req.params.id)) return res.status(403).json({ message: 'Accès refusé.' })
 
   db.prepare('DELETE FROM user_spheres WHERE user_id = ? AND sphere_id = ?').run(req.params.userId, req.params.id)

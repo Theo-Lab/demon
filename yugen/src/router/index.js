@@ -11,6 +11,11 @@ import ProjetDetailPage from '../components/ProjetDetailPage.vue'
 import ParisPage from '../components/ParisPage.vue'
 import ParcheminsPage from '../components/ParcheminsPage.vue'
 import ParcheminDetailPage from '../components/ParcheminDetailPage.vue'
+import SlotsPage from '../components/SlotsPage.vue'
+import CasinoPage from '../components/CasinoPage.vue'
+import RoulettePage from '../components/RoulettePage.vue'
+import BlackjackPage from '../components/BlackjackPage.vue'
+import CasinoAdminPage from '../components/SlotsAdminPage.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -25,6 +30,12 @@ const routes = [
   { path: '/paris',           component: ParisPage          },
   { path: '/parchemins',        component: ParcheminsPage      },
   { path: '/parchemins/:token', component: ParcheminDetailPage },
+  { path: '/casino',            component: CasinoPage         },
+  { path: '/roulette',          component: RoulettePage       },
+  { path: '/blackjack',         component: BlackjackPage      },
+  { path: '/casino/admin',      component: CasinoAdminPage    },
+  { path: '/slots',             component: SlotsPage          },
+  { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 

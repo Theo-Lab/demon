@@ -1,24 +1,12 @@
 const express = require('express')
-const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const db = require('../db')
+const { requireAuth } = require('../middleware/auth')
 
 const router = express.Router()
-const SECRET = process.env.JWT_SECRET || 'yugen_ordre_demoniaque_secret'
 
 function newToken() {
   return crypto.randomBytes(6).toString('hex')
-}
-
-function auth(req, res, next) {
-  const header = req.headers.authorization
-  if (!header) return res.status(401).json({ message: 'Non authentifié.' })
-  try {
-    req.user = jwt.verify(header.split(' ')[1], SECRET)
-    next()
-  } catch {
-    res.status(401).json({ message: 'Token invalide.' })
-  }
 }
 
 function requireAdmin(req, res, next) {
@@ -30,7 +18,7 @@ function requireAdmin(req, res, next) {
 // GET /api/rapports
 // Admin : tous les rapports publiés + ses propres brouillons
 // Membre : tous ses propres rapports (publiés + brouillons)
-router.get('/', auth, (req, res) => {
+router.get('/', requireAuth, (req, res) => {
   const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
 
   let rapports
@@ -74,7 +62,7 @@ router.get('/:token', (req, res) => {
 })
 
 // POST /api/rapports
-router.post('/', auth, (req, res) => {
+router.post('/', requireAuth, (req, res) => {
   const { type, titre, contenu, brouillon } = req.body
   if (!type || !titre) return res.status(400).json({ message: 'Champs manquants.' })
 
@@ -94,7 +82,7 @@ router.post('/', auth, (req, res) => {
 })
 
 // PATCH /api/rapports/:token — édition contenu (auteur seulement)
-router.patch('/:token', auth, (req, res) => {
+router.patch('/:token', requireAuth, (req, res) => {
   const rapport = db.prepare('SELECT * FROM rapports WHERE token = ?').get(req.params.token)
   if (!rapport) return res.status(404).json({ message: 'Rapport introuvable.' })
   if (rapport.auteur_id !== req.user.id) return res.status(403).json({ message: 'Accès refusé.' })
@@ -123,7 +111,7 @@ router.patch('/:token', auth, (req, res) => {
 })
 
 // PATCH /api/rapports/:token/statut — admin seulement
-router.patch('/:token/statut', auth, requireAdmin, (req, res) => {
+router.patch('/:token/statut', requireAuth, requireAdmin, (req, res) => {
   const { statut } = req.body
   if (!['en_attente', 'valide', 'refuse'].includes(statut)) {
     return res.status(400).json({ message: 'Statut invalide.' })
@@ -137,7 +125,7 @@ router.patch('/:token/statut', auth, requireAdmin, (req, res) => {
 })
 
 // DELETE /api/rapports/:token — auteur ou admin
-router.delete('/:token', auth, (req, res) => {
+router.delete('/:token', requireAuth, (req, res) => {
   const rapport = db.prepare('SELECT * FROM rapports WHERE token = ?').get(req.params.token)
   if (!rapport) return res.status(404).json({ message: 'Rapport introuvable.' })
 

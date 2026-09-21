@@ -2,21 +2,9 @@ const express = require('express')
 const multer = require('multer')
 const path = require('path')
 const crypto = require('crypto')
-const jwt = require('jsonwebtoken')
+const { requireAuth } = require('../middleware/auth')
 
 const router = express.Router()
-const SECRET = process.env.JWT_SECRET || 'yugen_ordre_demoniaque_secret'
-
-function auth(req, res, next) {
-  const header = req.headers.authorization
-  if (!header) return res.status(401).json({ message: 'Non authentifié.' })
-  try {
-    req.user = jwt.verify(header.split(' ')[1], SECRET)
-    next()
-  } catch {
-    res.status(401).json({ message: 'Token invalide.' })
-  }
-}
 
 const storage = multer.diskStorage({
   destination: './uploads/',
@@ -37,7 +25,7 @@ const upload = multer({
   },
 })
 
-router.post('/', auth, upload.single('image'), (req, res) => {
+router.post('/', requireAuth, upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'Aucun fichier reçu.' })
   res.json({ url: `/uploads/${req.file.filename}` })
 })

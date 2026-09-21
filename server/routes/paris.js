@@ -1,20 +1,8 @@
 const express = require('express')
-const jwt = require('jsonwebtoken')
 const db = require('../db')
+const { requireAuth } = require('../middleware/auth')
 
 const router = express.Router()
-const SECRET = process.env.JWT_SECRET || 'yugen_ordre_demoniaque_secret'
-
-function auth(req, res, next) {
-  const header = req.headers.authorization
-  if (!header) return res.status(401).json({ message: 'Non authentifié.' })
-  try {
-    req.user = jwt.verify(header.split(' ')[1], SECRET)
-    next()
-  } catch {
-    res.status(401).json({ message: 'Token invalide.' })
-  }
-}
 
 function requireAdmin(req, res, next) {
   const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
@@ -36,14 +24,14 @@ function getPariComplet(id) {
 }
 
 // GET /api/paris
-router.get('/', auth, (req, res) => {
+router.get('/', requireAuth, (req, res) => {
   const rows = db.prepare('SELECT id FROM paris ORDER BY created_at DESC').all()
   const paris = rows.map(r => getPariComplet(r.id))
   res.json({ paris })
 })
 
 // POST /api/paris — créer un pari
-router.post('/', auth, requireAdmin, (req, res) => {
+router.post('/', requireAuth, requireAdmin, (req, res) => {
   const { titre, description = '', issues = [] } = req.body
   if (!titre) return res.status(400).json({ message: 'Titre requis.' })
   if (!issues.length) return res.status(400).json({ message: 'Au moins une issue requise.' })
@@ -64,7 +52,7 @@ router.post('/', auth, requireAdmin, (req, res) => {
 })
 
 // DELETE /api/paris/:id
-router.delete('/:id', auth, requireAdmin, (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
   const pari = db.prepare('SELECT id FROM paris WHERE id = ?').get(req.params.id)
   if (!pari) return res.status(404).json({ message: 'Pari introuvable.' })
   db.prepare('DELETE FROM paris_mises WHERE pari_id = ?').run(pari.id)
@@ -74,7 +62,7 @@ router.delete('/:id', auth, requireAdmin, (req, res) => {
 })
 
 // POST /api/paris/:id/mises — ajouter une mise
-router.post('/:id/mises', auth, requireAdmin, (req, res) => {
+router.post('/:id/mises', requireAuth, requireAdmin, (req, res) => {
   const pari = db.prepare('SELECT * FROM paris WHERE id = ?').get(req.params.id)
   if (!pari) return res.status(404).json({ message: 'Pari introuvable.' })
   if (pari.statut === 'resolu') return res.status(400).json({ message: 'Le pari est déjà résolu.' })
@@ -94,7 +82,7 @@ router.post('/:id/mises', auth, requireAdmin, (req, res) => {
 })
 
 // DELETE /api/paris/:id/mises/:miseId — supprimer une mise
-router.delete('/:id/mises/:miseId', auth, requireAdmin, (req, res) => {
+router.delete('/:id/mises/:miseId', requireAuth, requireAdmin, (req, res) => {
   const mise = db.prepare('SELECT * FROM paris_mises WHERE id = ? AND pari_id = ?').get(req.params.miseId, req.params.id)
   if (!mise) return res.status(404).json({ message: 'Mise introuvable.' })
 
@@ -104,7 +92,7 @@ router.delete('/:id/mises/:miseId', auth, requireAdmin, (req, res) => {
 })
 
 // POST /api/paris/:id/resoudre — résoudre le pari
-router.post('/:id/resoudre', auth, requireAdmin, (req, res) => {
+router.post('/:id/resoudre', requireAuth, requireAdmin, (req, res) => {
   const pari = db.prepare('SELECT * FROM paris WHERE id = ?').get(req.params.id)
   if (!pari) return res.status(404).json({ message: 'Pari introuvable.' })
   if (pari.statut === 'resolu') return res.status(400).json({ message: 'Pari déjà résolu.' })
