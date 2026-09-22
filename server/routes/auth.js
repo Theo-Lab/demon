@@ -172,4 +172,19 @@ router.get('/users', requireAuth, (req, res) => {
   res.json({ users })
 })
 
+// PATCH /api/auth/users/:id/role — réservé aux admins
+router.patch('/users/:id/role', requireAuth, (req, res) => {
+  const caller = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
+  if (!caller || caller.role !== 'admin') return res.status(403).json({ message: 'Accès refusé.' })
+
+  const { role } = req.body
+  if (!['admin', 'membre'].includes(role)) return res.status(400).json({ message: 'Rôle invalide.' })
+
+  const target = db.prepare('SELECT id, nom FROM users WHERE id = ?').get(req.params.id)
+  if (!target) return res.status(404).json({ message: 'Utilisateur introuvable.' })
+
+  db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, target.id)
+  res.json({ ok: true, id: target.id, role })
+})
+
 module.exports = router

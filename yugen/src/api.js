@@ -164,6 +164,16 @@ export async function removeMembreSphere(sphereId, userId) {
   return data
 }
 
+export async function setUserRole(id, role) {
+  const res = await apiFetch(`${BASE}/auth/users/${id}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function getUsers() {
   const res = await apiFetch(`${BASE}/auth/users`)
   const data = await res.json()

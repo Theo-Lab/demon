@@ -197,7 +197,10 @@
           <div v-for="j in joueursFiltres" :key="j.id" class="joueur-row">
 
             <div class="joueur-info">
-              <span class="joueur-nom">{{ j.nom }}</span>
+              <div class="joueur-nom-row">
+                <span class="joueur-nom">{{ j.nom }}</span>
+                <span v-if="j.role === 'admin'" class="badge-role badge-role--admin">Admin</span>
+              </div>
               <span class="joueur-id">{{ j.identifiant }}</span>
             </div>
 
@@ -217,6 +220,11 @@
               <button class="btn-op btn-add"    @click="opSolde(j, 'add')">+</button>
               <button class="btn-op btn-remove" @click="opSolde(j, 'remove')">−</button>
               <button class="btn-op btn-set"    @click="opSolde(j, 'set')">= Définir</button>
+              <button
+                class="btn-op btn-role"
+                :class="j.role === 'admin' ? 'btn-role--retro' : 'btn-role--promo'"
+                @click="toggleRole(j)"
+              >{{ j.role === 'admin' ? '↓ Membre' : '↑ Admin' }}</button>
             </div>
 
             <div v-if="erreurs[j.id]" class="joueur-err">{{ erreurs[j.id] }}</div>
@@ -439,7 +447,7 @@ import {
   getSlotsAdminSymbols, createSlotsSymbol, updateSlotsSymbol, deleteSlotsSymbol,
   getSlotsAdminConfig, updateSlotsConfig, IMG_BASE,
   getSlotsAdminJoueurs, updateJoueurSolde,
-  getSlotsAdminLogs, getSlotsAdminStats, wipeStats,
+  getSlotsAdminLogs, getSlotsAdminStats, wipeStats, setUserRole,
 } from '../api.js'
 
 const onglet = ref('symboles')
@@ -561,6 +569,21 @@ async function chargerJoueurs() {
     joueurs.value = await getSlotsAdminJoueurs()
   } finally {
     loadingJoueurs.value = false
+  }
+}
+
+async function toggleRole(j) {
+  const nouveau = j.role === 'admin' ? 'membre' : 'admin'
+  const msg = nouveau === 'admin'
+    ? `Promouvoir ${j.nom} en admin ?`
+    : `Rétrograder ${j.nom} en membre ?`
+  if (!confirm(msg)) return
+  try {
+    await setUserRole(j.id, nouveau)
+    const idx = joueurs.value.findIndex(x => x.id === j.id)
+    if (idx !== -1) joueurs.value[idx] = { ...joueurs.value[idx], role: nouveau }
+  } catch (e) {
+    erreurs.value[j.id] = e.message
   }
 }
 
@@ -1110,11 +1133,28 @@ onMounted(async () => {
   min-width: 160px;
 }
 
+.joueur-nom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .joueur-nom {
   font-family: 'Cinzel', serif;
   font-size: 0.82rem;
   letter-spacing: 0.06em;
   color: #d4cfc9;
+}
+
+.badge-role--admin {
+  font-family: 'Cinzel', serif;
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c9a84c;
+  background: rgba(201,168,76,0.1);
+  border: 1px solid rgba(201,168,76,0.25);
+  padding: 2px 6px;
 }
 
 .joueur-id {
@@ -1168,6 +1208,12 @@ onMounted(async () => {
 .btn-add:hover    { background: rgba(58,122,58,0.4); }
 .btn-remove:hover { background: rgba(139,26,26,0.4); }
 .btn-set:hover    { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); }
+
+.btn-role { font-size: 0.58rem; white-space: nowrap; }
+.btn-role--promo { background: rgba(201,168,76,0.12); color: #c9a84c; }
+.btn-role--promo:hover { background: rgba(201,168,76,0.25); }
+.btn-role--retro { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.35); }
+.btn-role--retro:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); }
 
 .joueur-err {
   width: 100%;
