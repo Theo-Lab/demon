@@ -282,15 +282,17 @@ function doQuitterSiege(tableId) {
 // ── Mount ─────────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
-  const me = await getMe()
-  if (me) {
-    solde.value = me.solde
-    currentUserId.value = me.id
-  }
+  try {
+    const me = await getMe()
+    if (me) {
+      solde.value = me.solde
+      currentUserId.value = me.id
+    }
+  } catch {}
   try {
     tables.value = await getBlackjackTables()
   } catch (e) {
-    erreur.value = e.message
+    erreur.value = 'Impossible de joindre le serveur.'
   }
   initSocket()
 })
