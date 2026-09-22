@@ -18,13 +18,49 @@
         </div>
       </Transition>
 
-      <!-- Statut table -->
-      <div v-if="tableStatut === 'attente'" class="attente-msg">
-        <p>En attente des joueurs…</p>
-        <RouterLink to="/blackjack/lobby" class="btn btn--ghost">Retourner au lobby</RouterLink>
+      <!-- ── Phase attente : sièges à prendre ── -->
+      <div v-if="tableStatut === 'attente'" class="attente-wrap">
+
+        <div class="casino-table">
+          <div class="felt-top">
+            <span class="dealer-lbl">Croupier</span>
+            <div class="felt-inner"><span class="bj-lbl">Blackjack</span></div>
+          </div>
+          <div class="sieges-arc">
+            <div
+              v-for="siege in sieges"
+              :key="siege.numero"
+              class="siege-arc-slot"
+              :class="{
+                'siege-arc-slot--free':    siege.statut === 'vide',
+                'siege-arc-slot--taken':   siege.statut !== 'vide',
+                'siege-arc-slot--moi':     siege.user_id === currentUserId,
+                'siege-arc-slot--clickable': siege.statut === 'vide' && !dejaAssis,
+              }"
+              @click="siege.statut === 'vide' && !dejaAssis && ouvrirModale(siege.numero)"
+            >
+              <template v-if="siege.statut === 'vide'">
+                <span class="arc-plus">+</span>
+                <span class="arc-num">{{ siege.numero }}</span>
+              </template>
+              <template v-else>
+                <span class="arc-avatar">{{ siege.user_nom?.[0]?.toUpperCase() }}</span>
+                <span class="arc-nom">{{ siege.user_nom }}</span>
+                <span class="arc-mise">{{ fmtYen(siege.mise) }}</span>
+                <button
+                  v-if="siege.user_id === currentUserId"
+                  class="btn-quitter"
+                  @click.stop="socket.emit('quitter_siege', { tableId })"
+                >✕</button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <p class="attente-hint">Cliquez sur un siège libre pour vous asseoir</p>
       </div>
 
-      <!-- Table de jeu -->
+      <!-- ── Phase jeu ── -->
       <div v-else class="tapis">
 
         <!-- Dealer -->
@@ -136,6 +172,25 @@
 
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
     </div>
+
+    <!-- Modale mise -->
+    <Transition name="modal-fade">
+      <div v-if="modale.ouverte" class="modal-overlay" @click.self="fermerModale">
+        <div class="modal">
+          <h2 class="modal-title">Siège {{ modale.siegeNumero }}</h2>
+          <p class="modal-sub">Solde : {{ fmtYen(solde) }}</p>
+          <div class="modal-field">
+            <label class="modal-label">Mise</label>
+            <input v-model.number="modale.mise" type="number" class="modal-input" :min="100" :max="solde" step="100" @keydown.enter="confirmerSiege" />
+          </div>
+          <p v-if="modale.erreur" class="modal-erreur">{{ modale.erreur }}</p>
+          <div class="modal-btns">
+            <button class="btn btn--primary" @click="confirmerSiege">S'asseoir</button>
+            <button class="btn btn--ghost"   @click="fermerModale">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -166,6 +221,21 @@ const countdown     = ref(null)
 const dealerFini    = ref(false)
 const erreur        = ref('')
 const actionLoading = ref(false)
+
+// Modale prise de siège
+const modale = ref({ ouverte: false, siegeNumero: null, mise: 1000, erreur: '' })
+const dejaAssis = computed(() => sieges.value.some(s => s.user_id === currentUserId.value && s.statut !== 'vide'))
+
+function ouvrirModale(num) {
+  modale.value = { ouverte: true, siegeNumero: num, mise: Math.min(1000, solde.value), erreur: '' }
+}
+function fermerModale() { modale.value.ouverte = false }
+function confirmerSiege() {
+  if (!modale.value.mise || modale.value.mise <= 0) { modale.value.erreur = 'Mise invalide.'; return }
+  if (modale.value.mise > solde.value) { modale.value.erreur = 'Solde insuffisant.'; return }
+  socket.emit('prendre_siege', { tableId, siegeNumero: modale.value.siegeNumero, mise: modale.value.mise })
+  fermerModale()
+}
 
 // Tour timer
 const TOUR_DURATION   = 20
@@ -729,4 +799,218 @@ onUnmounted(() => {
 @media (max-width: 700px) {
   .sieges-row { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Phase attente ───────────────────────────────────────── */
+
+.attente-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.attente-hint {
+  font-family: 'Crimson Text', serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.25);
+  margin: 0;
+}
+
+.casino-table {
+  width: 100%;
+  max-width: 580px;
+  background: #0b1f0e;
+  border: 3px solid #1a4020;
+  border-radius: 120px;
+  padding: 20px 28px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: inset 0 0 50px rgba(0,0,0,0.4), 0 0 0 5px #0d0d0d, 0 0 0 7px rgba(255,255,255,0.04);
+}
+
+.felt-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 14px;
+  width: 100%;
+}
+
+.dealer-lbl {
+  font-family: 'Cinzel', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.18);
+}
+
+.felt-inner {
+  width: 140px;
+  height: 44px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bj-lbl {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  color: rgba(255,255,255,0.1);
+}
+
+.sieges-arc {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  position: relative;
+  bottom: -24px;
+}
+
+.siege-arc-slot {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  position: relative;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  padding: 8px;
+}
+
+.siege-arc-slot--clickable {
+  cursor: pointer;
+  border-color: rgba(255,255,255,0.2);
+}
+.siege-arc-slot--clickable:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.4);
+  transform: translateY(-4px);
+}
+
+.siege-arc-slot--taken {
+  border-style: solid;
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(10,30,10,0.7);
+}
+
+.siege-arc-slot--moi {
+  border-color: rgba(201,168,76,0.5);
+  background: rgba(201,168,76,0.06);
+}
+
+.arc-plus { font-size: 1.3rem; color: rgba(255,255,255,0.18); line-height: 1; }
+.arc-num  { font-family: 'Cinzel', serif; font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(255,255,255,0.15); }
+
+.arc-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(139,26,26,0.3);
+  border: 1px solid rgba(139,26,26,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.7);
+}
+
+.arc-nom  { font-family: 'Cinzel', serif; font-size: 0.5rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.6); text-align: center; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arc-mise { font-family: 'Cinzel', serif; font-size: 0.48rem; color: #c9a84c; }
+
+.btn-quitter {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(139,26,26,0.4);
+  border: none;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.48rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-quitter:hover { background: rgba(139,26,26,0.8); color: #fff; }
+
+/* ── Modale ──────────────────────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal {
+  background: #111;
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 36px 40px;
+  min-width: 300px;
+  max-width: 380px;
+  width: 100%;
+}
+
+.modal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: #fff;
+  margin: 0 0 6px;
+}
+
+.modal-sub {
+  font-family: 'Crimson Text', serif;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.35);
+  margin: 0 0 22px;
+}
+
+.modal-field { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+
+.modal-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  white-space: nowrap;
+}
+
+.modal-input {
+  background: #0d0d0d;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #d4cfc9;
+  font-family: 'Cinzel', serif;
+  font-size: 0.88rem;
+  padding: 8px 12px;
+  flex: 1;
+  outline: none;
+}
+.modal-input:focus { border-color: rgba(201,168,76,0.4); }
+
+.modal-erreur { font-family: 'Crimson Text', serif; font-style: italic; color: #c0392b; font-size: 0.88rem; margin: 0 0 12px; }
+.modal-btns { display: flex; gap: 10px; }
+
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.18s; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 </style>
