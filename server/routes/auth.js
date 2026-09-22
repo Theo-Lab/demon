@@ -172,6 +172,49 @@ router.get('/users', requireAuth, (req, res) => {
   res.json({ users })
 })
 
+// PATCH /api/auth/users/:id — édition complète par un admin
+router.patch('/users/:id', requireAuth, (req, res) => {
+  const caller = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
+  if (!caller || caller.role !== 'admin') return res.status(403).json({ message: 'Accès refusé.' })
+
+  const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id)
+  if (!target) return res.status(404).json({ message: 'Utilisateur introuvable.' })
+
+  const { nom, identifiant, mot_de_passe, grade, pouvoir_nom, role, signature } = req.body
+
+  if (role && !['admin', 'membre'].includes(role))
+    return res.status(400).json({ message: 'Rôle invalide.' })
+
+  let password_hash = target.mot_de_passe
+  if (mot_de_passe && mot_de_passe.trim()) {
+    password_hash = bcrypt.hashSync(mot_de_passe.trim(), 10)
+  }
+
+  db.prepare(`
+    UPDATE users SET
+      nom         = ?,
+      identifiant = ?,
+      mot_de_passe = ?,
+      grade       = ?,
+      pouvoir_nom = ?,
+      role        = ?,
+      signature   = ?
+    WHERE id = ?
+  `).run(
+    nom         !== undefined ? nom         : target.nom,
+    identifiant !== undefined ? identifiant : target.identifiant,
+    password_hash,
+    grade       !== undefined ? grade       : target.grade,
+    pouvoir_nom !== undefined ? pouvoir_nom : target.pouvoir_nom,
+    role        !== undefined ? role        : target.role,
+    signature   !== undefined ? signature   : target.signature,
+    target.id
+  )
+
+  const updated = db.prepare('SELECT id, nom, identifiant, grade, pouvoir_nom, role, signature, COALESCE(solde,0) as solde FROM users WHERE id = ?').get(target.id)
+  res.json({ user: updated })
+})
+
 // PATCH /api/auth/users/:id/role — réservé aux admins
 router.patch('/users/:id/role', requireAuth, (req, res) => {
   const caller = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)

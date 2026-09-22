@@ -194,40 +194,88 @@
         <div v-else-if="joueursFiltres.length === 0" class="vide">{{ recherche ? 'Aucun joueur trouvé.' : 'Aucun joueur.' }}</div>
 
         <div v-else class="joueurs-list">
-          <div v-for="j in joueursFiltres" :key="j.id" class="joueur-row">
+          <div v-for="j in joueursFiltres" :key="j.id" class="joueur-block">
 
-            <div class="joueur-info">
-              <div class="joueur-nom-row">
-                <span class="joueur-nom">{{ j.nom }}</span>
-                <span v-if="j.role === 'admin'" class="badge-role badge-role--admin">Admin</span>
+            <!-- Ligne résumé -->
+            <div class="joueur-row" :class="{ 'joueur-row--open': editJoueurId === j.id }" @click="toggleEdit(j)">
+              <div class="joueur-info">
+                <div class="joueur-nom-row">
+                  <span class="joueur-nom">{{ j.nom }}</span>
+                  <span v-if="j.role === 'admin'" class="badge-role badge-role--admin">Admin</span>
+                </div>
+                <span class="joueur-id">{{ j.identifiant }}</span>
               </div>
-              <span class="joueur-id">{{ j.identifiant }}</span>
+              <div class="joueur-solde">
+                <span class="solde-val">{{ (j.solde ?? 0).toLocaleString('fr-FR') }} ¥</span>
+              </div>
+              <span class="joueur-chevron">{{ editJoueurId === j.id ? '▲' : '▼' }}</span>
             </div>
 
-            <div class="joueur-solde">
-              <span class="solde-val">{{ (j.solde ?? 0).toLocaleString('fr-FR') }} ¥</span>
-            </div>
+            <!-- Panneau d'édition -->
+            <div v-if="editJoueurId === j.id" class="joueur-edit-panel">
 
-            <div class="joueur-actions">
-              <input
-                v-model.number="montants[j.id]"
-                class="field-input solde-input"
-                type="number"
-                min="0"
-                step="10000"
-                placeholder="Montant"
-              />
-              <button class="btn-op btn-add"    @click="opSolde(j, 'add')">+</button>
-              <button class="btn-op btn-remove" @click="opSolde(j, 'remove')">−</button>
-              <button class="btn-op btn-set"    @click="opSolde(j, 'set')">= Définir</button>
-              <button
-                class="btn-op btn-role"
-                :class="j.role === 'admin' ? 'btn-role--retro' : 'btn-role--promo'"
-                @click="toggleRole(j)"
-              >{{ j.role === 'admin' ? '↓ Membre' : '↑ Admin' }}</button>
-            </div>
+              <!-- Profil -->
+              <p class="edit-section-title">Profil</p>
+              <div class="edit-grid">
+                <div class="field">
+                  <label class="field-label">Nom affiché</label>
+                  <input v-model="editForm.nom" class="field-input" type="text" />
+                </div>
+                <div class="field">
+                  <label class="field-label">Identifiant (login)</label>
+                  <input v-model="editForm.identifiant" class="field-input" type="text" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label class="field-label">Nouveau mot de passe</label>
+                  <input v-model="editForm.mot_de_passe" class="field-input" type="password" placeholder="Laisser vide pour ne pas changer" autocomplete="new-password" />
+                </div>
+                <div class="field">
+                  <label class="field-label">Grade</label>
+                  <input v-model="editForm.grade" class="field-input" type="text" />
+                </div>
+                <div class="field">
+                  <label class="field-label">Nom de pouvoir</label>
+                  <input v-model="editForm.pouvoir_nom" class="field-input" type="text" />
+                </div>
+                <div class="field">
+                  <label class="field-label">Rôle</label>
+                  <select v-model="editForm.role" class="field-input field-select">
+                    <option value="membre">Membre</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div class="field field--full">
+                  <label class="field-label">Signature</label>
+                  <textarea v-model="editForm.signature" class="field-input field-textarea" rows="2" />
+                </div>
+              </div>
 
-            <div v-if="erreurs[j.id]" class="joueur-err">{{ erreurs[j.id] }}</div>
+              <div v-if="erreurs[j.id + '_profil']" class="joueur-err">{{ erreurs[j.id + '_profil'] }}</div>
+
+              <div class="edit-actions">
+                <button class="btn-submit" :disabled="loadingEdit[j.id]" @click="sauvegarderProfil(j)">
+                  {{ loadingEdit[j.id] ? '…' : 'Enregistrer le profil' }}
+                </button>
+              </div>
+
+              <!-- Solde -->
+              <p class="edit-section-title" style="margin-top:20px">Solde</p>
+              <div class="joueur-actions">
+                <input
+                  v-model.number="montants[j.id]"
+                  class="field-input solde-input"
+                  type="number"
+                  min="0"
+                  step="10000"
+                  placeholder="Montant"
+                />
+                <button class="btn-op btn-add"    @click="opSolde(j, 'add')">+ Ajouter</button>
+                <button class="btn-op btn-remove" @click="opSolde(j, 'remove')">− Retirer</button>
+                <button class="btn-op btn-set"    @click="opSolde(j, 'set')">= Définir</button>
+              </div>
+              <div v-if="erreurs[j.id]" class="joueur-err">{{ erreurs[j.id] }}</div>
+
+            </div>
 
           </div>
         </div>
@@ -447,7 +495,7 @@ import {
   getSlotsAdminSymbols, createSlotsSymbol, updateSlotsSymbol, deleteSlotsSymbol,
   getSlotsAdminConfig, updateSlotsConfig, IMG_BASE,
   getSlotsAdminJoueurs, updateJoueurSolde,
-  getSlotsAdminLogs, getSlotsAdminStats, wipeStats, setUserRole,
+  getSlotsAdminLogs, getSlotsAdminStats, wipeStats, adminUpdateUser,
 } from '../api.js'
 
 const onglet = ref('symboles')
@@ -553,6 +601,9 @@ const loadingJoueurs = ref(false)
 const montants       = ref({})
 const erreurs        = ref({})
 const recherche      = ref('')
+const editJoueurId   = ref(null)
+const editForm       = ref({})
+const loadingEdit    = ref({})
 
 const joueursFiltres = computed(() => {
   const q = recherche.value.trim().toLowerCase()
@@ -569,6 +620,40 @@ async function chargerJoueurs() {
     joueurs.value = await getSlotsAdminJoueurs()
   } finally {
     loadingJoueurs.value = false
+  }
+}
+
+function toggleEdit(j) {
+  if (editJoueurId.value === j.id) {
+    editJoueurId.value = null
+    return
+  }
+  editJoueurId.value = j.id
+  editForm.value = {
+    nom:         j.nom         ?? '',
+    identifiant: j.identifiant ?? '',
+    mot_de_passe: '',
+    grade:       j.grade       ?? '',
+    pouvoir_nom: j.pouvoir_nom ?? '',
+    role:        j.role        ?? 'membre',
+    signature:   j.signature   ?? '',
+  }
+}
+
+async function sauvegarderProfil(j) {
+  erreurs.value[j.id + '_profil'] = ''
+  loadingEdit.value[j.id] = true
+  try {
+    const fields = { ...editForm.value }
+    if (!fields.mot_de_passe) delete fields.mot_de_passe
+    const updated = await adminUpdateUser(j.id, fields)
+    const idx = joueurs.value.findIndex(x => x.id === j.id)
+    if (idx !== -1) joueurs.value[idx] = { ...joueurs.value[idx], ...updated }
+    editForm.value.mot_de_passe = ''
+  } catch (e) {
+    erreurs.value[j.id + '_profil'] = e.message
+  } finally {
+    loadingEdit.value[j.id] = false
   }
 }
 
@@ -1116,15 +1201,73 @@ onMounted(async () => {
 
 .joueurs-list { display: flex; flex-direction: column; gap: 8px; }
 
+.joueur-block { display: flex; flex-direction: column; }
+
 .joueur-row {
   background: #141416;
   border: 1px solid rgba(255,255,255,0.05);
   padding: 14px 16px;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
 }
+.joueur-row:hover { background: #17171a; }
+.joueur-row--open {
+  border-color: rgba(139,26,26,0.3);
+  background: #171214;
+}
+
+.joueur-chevron {
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.18);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.joueur-edit-panel {
+  background: #111113;
+  border: 1px solid rgba(139,26,26,0.2);
+  border-top: none;
+  padding: 20px 20px 16px;
+}
+
+.edit-section-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  margin: 0 0 14px;
+}
+
+.edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
+  margin-bottom: 14px;
+}
+
+.field--full { grid-column: 1 / -1; }
+
+.field-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.25)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 52px;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.edit-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
 
 .joueur-info {
   display: flex;
