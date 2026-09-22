@@ -118,7 +118,7 @@ router.delete('/admin/symbols/:id', requireAuth, requireAdmin, (req, res) => {
 // GET /api/slots/admin/joueurs
 router.get('/admin/joueurs', requireAuth, requireAdmin, (req, res) => {
   const joueurs = db.prepare(`
-    SELECT id, nom, identifiant, grade, role, COALESCE(solde, 0) as solde
+    SELECT id, nom, identifiant, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde
     FROM users ORDER BY nom ASC
   `).all()
   res.json({ joueurs })
