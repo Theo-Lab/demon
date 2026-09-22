@@ -25,7 +25,7 @@
       <!-- ── Onglets du jeu sélectionné ── -->
       <div class="onglets">
         <button
-          v-for="tab in ['symboles', 'config', 'joueurs', 'logs', 'stats']"
+          v-for="tab in ongletsDispo"
           :key="tab"
           :class="['onglet', onglet === tab ? 'onglet--actif' : '']"
           @click="onglet = tab; if(tab==='joueurs') chargerJoueurs(); if(tab==='logs') chargerLogs(); if(tab==='stats') chargerStats()"
@@ -33,7 +33,7 @@
       </div>
 
       <!-- ── Onglet Symboles ── -->
-      <template v-if="onglet === 'symboles'">
+      <template v-if="onglet === 'symboles' && isAdmin">
 
         <!-- Formulaire création / édition -->
         <div class="form-card">
@@ -141,7 +141,7 @@
       </template>
 
       <!-- ── Onglet Config ── -->
-      <template v-if="onglet === 'config'">
+      <template v-if="onglet === 'config' && isAdmin">
 
         <div class="form-card">
           <h2 class="form-title">Configuration de la machine</h2>
@@ -236,7 +236,7 @@
         <template v-else-if="stats">
           <div class="stats-toolbar">
             <button class="btn-secondary" @click="rafraichirStats">↺ Actualiser</button>
-            <button class="btn-wipe" @click="doWipe">⚠ Réinitialiser les stats</button>
+            <button v-if="isAdmin" class="btn-wipe" @click="doWipe">⚠ Réinitialiser les stats</button>
           </div>
 
           <!-- KPIs globaux -->
@@ -439,6 +439,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
+import { currentUser } from '../auth.js'
 import {
   getSlotsAdminSymbols, createSlotsSymbol, updateSlotsSymbol, deleteSlotsSymbol,
   getSlotsAdminConfig, updateSlotsConfig, IMG_BASE,
@@ -446,8 +447,15 @@ import {
   getSlotsAdminLogs, getSlotsAdminStats, wipeStats,
 } from '../api.js'
 
-const onglet = ref('symboles')
+const isAdmin = computed(() => currentUser.value?.role === 'admin')
+const ongletsDispo = computed(() =>
+  isAdmin.value
+    ? ['symboles', 'config', 'joueurs', 'logs', 'stats']
+    : ['joueurs', 'logs', 'stats']
+)
+
 const jeu    = ref('slots')
+const onglet = ref(isAdmin.value ? 'symboles' : 'joueurs')
 
 // ── Symboles ────────────────────────────────────────────────────────────────
 const symboles       = ref([])

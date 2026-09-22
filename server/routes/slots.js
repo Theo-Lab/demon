@@ -14,6 +14,12 @@ function requireAdmin(req, res, next) {
   next()
 }
 
+function requireCasino(req, res, next) {
+  const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
+  if (!user || !['admin', 'groupier'].includes(user.role)) return res.status(403).json({ message: 'Accès refusé.' })
+  next()
+}
+
 const storage = multer.diskStorage({
   destination: './uploads/',
   filename: (req, file, cb) => {
@@ -116,7 +122,7 @@ router.delete('/admin/symbols/:id', requireAuth, requireAdmin, (req, res) => {
 })
 
 // GET /api/slots/admin/joueurs
-router.get('/admin/joueurs', requireAuth, requireAdmin, (req, res) => {
+router.get('/admin/joueurs', requireAuth, requireCasino, (req, res) => {
   const joueurs = db.prepare(`
     SELECT id, nom, identifiant, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde
     FROM users ORDER BY nom ASC
@@ -126,7 +132,7 @@ router.get('/admin/joueurs', requireAuth, requireAdmin, (req, res) => {
 
 // PATCH /api/slots/admin/joueurs/:id/solde
 // body: { montant, operation: 'add' | 'remove' | 'set' }
-router.patch('/admin/joueurs/:id/solde', requireAuth, requireAdmin, (req, res) => {
+router.patch('/admin/joueurs/:id/solde', requireAuth, requireCasino, (req, res) => {
   const user = db.prepare('SELECT id, nom, COALESCE(solde, 0) as solde FROM users WHERE id = ?').get(req.params.id)
   if (!user) return res.status(404).json({ message: 'Joueur introuvable.' })
 
@@ -149,7 +155,7 @@ router.patch('/admin/joueurs/:id/solde', requireAuth, requireAdmin, (req, res) =
 })
 
 // GET /api/slots/admin/logs?limit=100&offset=0&joueur=
-router.get('/admin/logs', requireAuth, requireAdmin, (req, res) => {
+router.get('/admin/logs', requireAuth, requireCasino, (req, res) => {
   const limit  = Math.min(parseInt(req.query.limit)  || 100, 500)
   const offset = parseInt(req.query.offset) || 0
   const joueur = req.query.joueur ? `%${req.query.joueur}%` : null
@@ -227,7 +233,7 @@ router.patch('/admin/config', requireAuth, requireAdmin, (req, res) => {
 
 // ── Stats globales casino ─────────────────────────────────────────────────────
 
-router.get('/admin/stats', requireAuth, requireAdmin, (req, res) => {
+router.get('/admin/stats', requireAuth, requireCasino, (req, res) => {
   // ── Parties jouées ──────────────────────────────────────────────────────────
   // gain_net = ce que le joueur gagne net (négatif = il perd)
   // benefice_jeux = -SUM(gain_net) = ce que le casino garde sur les jeux

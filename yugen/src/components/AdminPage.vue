@@ -78,6 +78,7 @@
                 <label class="field-label">Rôle</label>
                 <select v-model="form.role" class="field-input field-select">
                   <option value="membre">Membre</option>
+                  <option value="groupier">Groupier</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>

@@ -182,7 +182,7 @@ router.patch('/users/:id', requireAuth, (req, res) => {
 
   const { nom, identifiant, mot_de_passe, grade, pouvoir_nom, role, signature } = req.body
 
-  if (role && !['admin', 'membre'].includes(role))
+  if (role && !['admin', 'groupier', 'membre'].includes(role))
     return res.status(400).json({ message: 'Rôle invalide.' })
 
   let password_hash = target.mot_de_passe
@@ -221,7 +221,7 @@ router.patch('/users/:id/role', requireAuth, (req, res) => {
   if (!caller || caller.role !== 'admin') return res.status(403).json({ message: 'Accès refusé.' })
 
   const { role } = req.body
-  if (!['admin', 'membre'].includes(role)) return res.status(400).json({ message: 'Rôle invalide.' })
+  if (!['admin', 'groupier', 'membre'].includes(role)) return res.status(400).json({ message: 'Rôle invalide.' })
 
   const target = db.prepare('SELECT id, nom FROM users WHERE id = ?').get(req.params.id)
   if (!target) return res.status(404).json({ message: 'Utilisateur introuvable.' })

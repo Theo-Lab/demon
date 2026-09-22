@@ -35,7 +35,7 @@ const routes = [
   { path: '/casino',            component: CasinoPage         },
   { path: '/roulette',          component: RoulettePage       },
   { path: '/blackjack',         component: BlackjackPage      },
-  { path: '/admin',              component: AdminPage,           meta: { adminOnly: true } },
+  { path: '/admin',              component: AdminPage,           meta: { superAdminOnly: true } },
   { path: '/casino/admin',      component: CasinoAdminPage,    meta: { adminOnly: true } },
   { path: '/slots',             component: SlotsPage          },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
@@ -48,7 +48,10 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (to.meta.adminOnly && currentUser.value?.role !== 'admin') {
+  if (to.meta.adminOnly && !['admin', 'groupier'].includes(currentUser.value?.role)) {
+    return '/'
+  }
+  if (to.meta.superAdminOnly && currentUser.value?.role !== 'admin') {
     return '/'
   }
 })

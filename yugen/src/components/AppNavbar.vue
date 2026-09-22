@@ -24,9 +24,9 @@
       <div v-if="menuOpen" class="dropdown">
         <button class="dropdown-item" @click="$router.push('/profil'); menuOpen = false">Mon profil</button>
         <button class="dropdown-item" @click="$router.push('/projets'); menuOpen = false">Mes projets</button>
-        <div v-if="currentUser?.role === 'admin'" class="dropdown-sep"></div>
+        <div v-if="['admin','groupier'].includes(currentUser?.role)" class="dropdown-sep"></div>
         <button v-if="currentUser?.role === 'admin'" class="dropdown-item" @click="$router.push('/admin'); menuOpen = false">Gestion membres</button>
-        <button v-if="currentUser?.role === 'admin'" class="dropdown-item" @click="$router.push('/casino/admin'); menuOpen = false">Admin Casino</button>
+        <button v-if="['admin','groupier'].includes(currentUser?.role)" class="dropdown-item" @click="$router.push('/casino/admin'); menuOpen = false">Admin Casino</button>
         <div class="dropdown-sep"></div>
         <button class="dropdown-item dropdown-item--danger" @click.stop="logout">Déconnexion</button>
       </div>
