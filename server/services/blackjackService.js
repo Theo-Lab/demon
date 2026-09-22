@@ -244,4 +244,4 @@ function hit(userId)           { return _hit(userId) }
 function stand(userId)         { return _stand(userId) }
 function doubleDown(userId)    { return _double(userId) }
 
-module.exports = { newGame, hit, stand, double: doubleDown }
+module.exports = { newGame, hit, stand, double: doubleDown, createDeck, handTotal, isSoft17, dealerPlay }

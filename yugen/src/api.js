@@ -511,6 +511,15 @@ export async function updateJoueurSolde(id, montant, operation) {
   return data.joueur
 }
 
+// ── Blackjack Lobby ────────────────────────────────────────────────────────
+
+export async function getBlackjackTables() {
+  const res = await apiFetch(`${BASE}/blackjack-lobby/tables`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.tables
+}
+
 // ── Roulette ───────────────────────────────────────────────────────────────
 
 // ── Blackjack ──────────────────────────────────────────────────────────────────

@@ -158,6 +158,43 @@ db.exec(`
   );
 `)
 
+// Tables blackjack lobby multijoueur
+db.exec(`
+  CREATE TABLE IF NOT EXISTS bj_tables (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    statut TEXT DEFAULT 'attente',
+    siege_actif INTEGER DEFAULT NULL,
+    deck TEXT DEFAULT '[]',
+    main_dealer TEXT DEFAULT '[]',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS bj_sieges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_id INTEGER NOT NULL REFERENCES bj_tables(id),
+    numero INTEGER NOT NULL,
+    user_id INTEGER REFERENCES users(id),
+    user_nom TEXT DEFAULT NULL,
+    mise INTEGER DEFAULT 0,
+    main TEXT DEFAULT '[]',
+    statut TEXT DEFAULT 'vide',
+    resultat TEXT DEFAULT NULL,
+    gain_net INTEGER DEFAULT 0,
+    UNIQUE(table_id, numero)
+  );
+`)
+
+// Seed des 3 tables et leurs 4 sièges
+const bjTableCount = db.prepare('SELECT COUNT(*) as n FROM bj_tables').get()
+if (bjTableCount.n === 0) {
+  for (let t = 1; t <= 3; t++) {
+    const tableId = db.prepare('INSERT INTO bj_tables DEFAULT VALUES').run().lastInsertRowid
+    for (let s = 1; s <= 4; s++) {
+      db.prepare('INSERT OR IGNORE INTO bj_sieges (table_id, numero) VALUES (?, ?)').run(tableId, s)
+    }
+  }
+}
+
 // Table blackjack
 db.exec(`
   CREATE TABLE IF NOT EXISTS blackjack_games (

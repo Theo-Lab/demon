@@ -18,6 +18,8 @@ import RoulettePage from '../components/RoulettePage.vue'
 import BlackjackPage from '../components/BlackjackPage.vue'
 import CasinoAdminPage from '../components/SlotsAdminPage.vue'
 import AdminPage from '../components/AdminPage.vue'
+import BlackjackLobbyPage from '../components/BlackjackLobbyPage.vue'
+import BlackjackTablePage from '../components/BlackjackTablePage.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -35,6 +37,8 @@ const routes = [
   { path: '/casino',            component: CasinoPage         },
   { path: '/roulette',          component: RoulettePage       },
   { path: '/blackjack',         component: BlackjackPage      },
+  { path: '/blackjack/lobby',   component: BlackjackLobbyPage },
+  { path: '/blackjack/table/:id', component: BlackjackTablePage },
   { path: '/admin',              component: AdminPage,           meta: { superAdminOnly: true } },
   { path: '/casino/admin',      component: CasinoAdminPage,    meta: { adminOnly: true } },
   { path: '/slots',             component: SlotsPage          },
