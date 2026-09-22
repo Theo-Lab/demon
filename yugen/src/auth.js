@@ -3,6 +3,7 @@ import { getMe, logout as apiLogout } from './api.js'
 
 export const isLoggedIn = ref(false)
 export const currentUser = ref(null)
+export const showLoginModal = ref(false)
 
 // Restaurer la session au démarrage (via cookie httpOnly, pas de localStorage)
 export async function initAuth() {

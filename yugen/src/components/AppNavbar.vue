@@ -8,7 +8,7 @@
     </div>
 
     <!-- Non connecté -->
-    <button v-if="!isLoggedIn" class="connect-btn" @click="emit('open-login')">
+    <button v-if="!isLoggedIn" class="connect-btn" @click="showLoginModal = true">
       Se connecter
     </button>
 
@@ -38,9 +38,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
-import { isLoggedIn, currentUser, logout as doLogout } from '../auth.js'
-
-const emit = defineEmits(['open-login'])
+import { isLoggedIn, currentUser, showLoginModal, logout as doLogout } from '../auth.js'
 
 const menuOpen = ref(false)
 const profileRef = ref(null)
