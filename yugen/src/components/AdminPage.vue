@@ -92,10 +92,13 @@
             <div v-if="ok" class="edit-ok">Modifications enregistrées.</div>
 
             <div class="edit-actions">
-              <button class="btn-secondary" @click="ouvert = null">Annuler</button>
-              <button class="btn-submit" :disabled="loading_save" @click="sauvegarder(m)">
-                {{ loading_save ? '…' : 'Enregistrer' }}
-              </button>
+              <button class="btn-delete" @click="supprimer(m)">Supprimer</button>
+              <div class="edit-actions-right">
+                <button class="btn-secondary" @click="ouvert = null">Annuler</button>
+                <button class="btn-submit" :disabled="loading_save" @click="sauvegarder(m)">
+                  {{ loading_save ? '…' : 'Enregistrer' }}
+                </button>
+              </div>
             </div>
 
           </div>
@@ -110,7 +113,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
-import { adminUpdateUser, getSlotsAdminJoueurs } from '../api.js'
+import { adminUpdateUser, deleteUser, getSlotsAdminJoueurs } from '../api.js'
 
 const membres     = ref([])
 const loading     = ref(true)
@@ -153,6 +156,17 @@ function toggleOuvrir(m) {
     pouvoir_nom:  m.pouvoir_nom ?? '',
     role:         m.role        ?? 'membre',
     signature:    m.signature   ?? '',
+  }
+}
+
+async function supprimer(m) {
+  if (!confirm(`Supprimer définitivement ${m.nom} ? Cette action est irréversible.`)) return
+  try {
+    await deleteUser(m.id)
+    membres.value = membres.value.filter(x => x.id !== m.id)
+    ouvert.value = null
+  } catch (e) {
+    erreur.value = e.message
   }
 }
 
@@ -385,9 +399,29 @@ async function sauvegarder(m) {
 
 .edit-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
 }
+
+.edit-actions-right {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-delete {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid rgba(139,26,26,0.35);
+  color: rgba(192,57,43,0.7);
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-delete:hover { background: rgba(139,26,26,0.12); color: #c0392b; border-color: rgba(139,26,26,0.6); }
 
 .btn-submit {
   font-family: 'Cinzel', serif;

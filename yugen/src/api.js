@@ -164,6 +164,13 @@ export async function removeMembreSphere(sphereId, userId) {
   return data
 }
 
+export async function deleteUser(id) {
+  const res = await apiFetch(`${BASE}/auth/users/${id}`, { method: 'DELETE' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function adminUpdateUser(id, fields) {
   const res = await apiFetch(`${BASE}/auth/users/${id}`, {
     method: 'PATCH',

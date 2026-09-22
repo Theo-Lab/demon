@@ -215,6 +215,20 @@ router.patch('/users/:id', requireAuth, (req, res) => {
   res.json({ user: updated })
 })
 
+// DELETE /api/auth/users/:id — réservé aux admins
+router.delete('/users/:id', requireAuth, (req, res) => {
+  const caller = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
+  if (!caller || caller.role !== 'admin') return res.status(403).json({ message: 'Accès refusé.' })
+  if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ message: 'Impossible de se supprimer soi-même.' })
+
+  const target = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.id)
+  if (!target) return res.status(404).json({ message: 'Utilisateur introuvable.' })
+
+  db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').run(target.id)
+  db.prepare('DELETE FROM users WHERE id = ?').run(target.id)
+  res.json({ ok: true })
+})
+
 // PATCH /api/auth/users/:id/role — réservé aux admins
 router.patch('/users/:id/role', requireAuth, (req, res) => {
   const caller = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
