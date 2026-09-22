@@ -259,10 +259,16 @@ io.on('connection', (socket) => {
   socket.on('action', ({ tableId, action }) => {
     tableId = parseInt(tableId)
     try {
-      jouerAction(tableId, userId, action)
+      const result = jouerAction(tableId, userId, action)
       clearTourTimer(tableId)
       broadcastTableState(tableId)
-      processNextTour(tableId)
+      if (result.done) {
+        // Siège terminé (stand, double, bust ou 21) → passer au suivant
+        processNextTour(tableId)
+      } else {
+        // Hit sans bust → le joueur peut encore jouer, relancer le timer
+        startTourTimer(tableId)
+      }
     } catch (e) {
       socket.emit('error', { message: e.message })
     }
