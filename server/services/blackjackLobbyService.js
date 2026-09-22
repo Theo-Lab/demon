@@ -312,7 +312,8 @@ function resoudrePartie(tableId) {
 // ── resetTable ────────────────────────────────────────────────────────────────
 
 const _resetTable = db.transaction((tableId) => {
-  db.prepare("UPDATE bj_sieges SET user_id = NULL, user_nom = NULL, mise = 0, statut = 'vide', main = '[]', resultat = NULL, gain_net = 0 WHERE table_id = ?").run(tableId)
+  // Garder les joueurs assis avec leur mise, juste remettre les mains à zéro
+  db.prepare("UPDATE bj_sieges SET statut = 'assis', main = '[]', resultat = NULL, gain_net = 0 WHERE table_id = ? AND statut != 'vide'").run(tableId)
   db.prepare("UPDATE bj_tables SET statut = 'attente', deck = '[]', main_dealer = '[]', siege_actif = NULL WHERE id = ?").run(tableId)
 })
 

@@ -160,6 +160,11 @@ function processNextTour(tableId) {
           resetTable(tableId)
           broadcastTableState(tableId)
           io.to(`table_${tableId}`).emit('table_reset', { tableId })
+          // Relancer le countdown si des joueurs sont encore assis
+          const nb = nbJoueursAssis(tableId)
+          if (nb > 0 && !countdowns.has(tableId)) {
+            startCountdown(tableId)
+          }
         } catch (e) {
           console.error('resetTable error:', e.message)
         }
@@ -190,7 +195,9 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   const userId = socket.user.id
-  const userNom = socket.user.nom
+  const db = require('./db')
+  const userRow = db.prepare('SELECT nom FROM users WHERE id = ?').get(userId)
+  const userNom = userRow?.nom ?? socket.user.identifiant
 
   // join_table
   socket.on('join_table', (tableId) => {
