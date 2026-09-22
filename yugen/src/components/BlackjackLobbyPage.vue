@@ -9,64 +9,64 @@
       </div>
 
       <h1 class="page-title">Blackjack Multijoueur</h1>
-
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
 
-      <div class="tables-grid">
-        <div
-          v-for="table in tables"
-          :key="table.id"
-          class="table-card"
-          :class="`table-card--${table.statut}`"
-        >
-          <div class="table-header">
+      <div class="tables-list">
+        <div v-for="table in tables" :key="table.id" class="table-wrap">
+
+          <div class="table-meta">
             <span class="table-label">Table {{ table.id }}</span>
-            <span class="table-statut" :class="`statut--${table.statut}`">
-              {{ statutLabel(table.statut) }}
-            </span>
+            <span class="table-statut" :class="`statut--${table.statut}`">{{ statutLabel(table.statut) }}</span>
           </div>
 
-          <!-- Countdown si actif -->
+          <!-- Countdown -->
           <div v-if="countdowns[table.id] != null" class="countdown">
             <span class="countdown-num">{{ countdowns[table.id] }}</span>
             <span class="countdown-txt">secondes avant le début</span>
           </div>
 
-          <div class="sieges-grid">
-            <div
-              v-for="siege in table.sieges"
-              :key="siege.numero"
-              class="siege"
-              :class="{
-                'siege--vide': siege.statut === 'vide',
-                'siege--occupe': siege.statut !== 'vide',
-                'siege--moi': siege.user_id === currentUserId,
-              }"
-            >
-              <template v-if="siege.statut === 'vide'">
-                <button
-                  class="siege-btn"
-                  :disabled="table.statut !== 'attente' || dejaAssis"
-                  @click="ouvrirModale(table.id, siege.numero)"
-                >
-                  Siège {{ siege.numero }}
-                </button>
-              </template>
-              <template v-else>
-                <div class="siege-info">
+          <!-- Table visuelle -->
+          <div class="casino-table" :class="`casino-table--${table.statut}`">
+
+            <!-- Tapis -->
+            <div class="tapis">
+              <span class="dealer-label">Croupier</span>
+              <div class="tapis-inner">
+                <span class="bj-label">Blackjack</span>
+              </div>
+            </div>
+
+            <!-- Sièges en arc en bas -->
+            <div class="sieges-arc">
+              <div
+                v-for="siege in table.sieges"
+                :key="siege.numero"
+                class="siege-slot"
+                :class="{
+                  'siege-slot--vide': siege.statut === 'vide',
+                  'siege-slot--occupe': siege.statut !== 'vide',
+                  'siege-slot--moi': siege.user_id === currentUserId,
+                  'siege-slot--clickable': siege.statut === 'vide' && table.statut === 'attente' && !dejaAssis,
+                }"
+                @click="siege.statut === 'vide' && table.statut === 'attente' && !dejaAssis && ouvrirModale(table.id, siege.numero)"
+              >
+                <template v-if="siege.statut === 'vide'">
+                  <span class="siege-plus">+</span>
+                  <span class="siege-num">{{ siege.numero }}</span>
+                </template>
+                <template v-else>
+                  <span class="siege-avatar">{{ siege.user_nom?.[0]?.toUpperCase() }}</span>
                   <span class="siege-nom">{{ siege.user_nom }}</span>
                   <span class="siege-mise">{{ fmtYen(siege.mise) }}</span>
-                  <span v-if="siege.user_id === currentUserId && table.statut === 'attente'" class="siege-moi-badge">Vous</span>
-                </div>
-                <button
-                  v-if="siege.user_id === currentUserId && table.statut === 'attente'"
-                  class="btn-quitter"
-                  @click="doQuitterSiege(table.id)"
-                >
-                  Quitter
-                </button>
-              </template>
+                  <button
+                    v-if="siege.user_id === currentUserId && table.statut === 'attente'"
+                    class="btn-quitter"
+                    @click.stop="doQuitterSiege(table.id)"
+                  >✕</button>
+                </template>
+              </div>
             </div>
+
           </div>
 
           <button
@@ -76,6 +76,7 @@
           >
             Rejoindre la partie →
           </button>
+
         </div>
       </div>
     </div>
@@ -300,10 +301,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #090909; }
+.page { min-height: 100vh; background: #090909; color: #fff; }
 
 .page-inner {
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 3rem 2rem 6rem;
 }
@@ -346,51 +347,49 @@ onUnmounted(() => {
   text-align: center;
 }
 
-/* ── Tables ──────────────────────────────────────────────── */
+.erreur {
+  font-family: 'Crimson Text', serif;
+  font-style: italic;
+  color: #c0392b;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
 
-.tables-grid {
+/* ── Liste de tables ─────────────────────────────────────── */
+
+.tables-list {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 3rem;
 }
 
-.table-card {
-  background: #0d0d0d;
-  border: 1px solid rgba(255,255,255,0.07);
-  padding: 24px;
-}
+.table-wrap { display: flex; flex-direction: column; gap: 10px; }
 
-.table-card--en_cours {
-  border-color: rgba(139,26,26,0.4);
-}
-
-.table-header {
+.table-meta {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 18px;
+  gap: 12px;
 }
 
 .table-label {
   font-family: 'Cinzel', serif;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.3);
 }
 
 .table-statut {
   font-family: 'Cinzel', serif;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border: 1px solid;
 }
-
-.statut--attente { color: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.1); }
-.statut--en_cours { color: #8b1a1a; border-color: rgba(139,26,26,0.4); }
-.statut--fini { color: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.06); }
+.statut--attente  { color: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.1); }
+.statut--en_cours { color: #c9a84c; border-color: rgba(201,168,76,0.35); }
+.statut--fini     { color: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.06); }
 
 /* ── Countdown ───────────────────────────────────────────── */
 
@@ -398,130 +397,199 @@ onUnmounted(() => {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin-bottom: 16px;
-  padding: 10px 14px;
+  padding: 8px 14px;
   background: rgba(139,26,26,0.08);
   border: 1px solid rgba(139,26,26,0.25);
 }
-
 .countdown-num {
   font-family: 'Cinzel', serif;
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   color: #8b1a1a;
   font-weight: 700;
-  min-width: 2.5ch;
+  min-width: 2ch;
 }
-
 .countdown-txt {
   font-family: 'Crimson Text', serif;
   font-style: italic;
-  font-size: 0.9rem;
-  color: rgba(255,255,255,0.35);
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.3);
 }
 
-/* ── Sièges ──────────────────────────────────────────────── */
+/* ── Table casino ────────────────────────────────────────── */
 
-.sieges-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+.casino-table {
+  position: relative;
+  background: #0b1f0e;
+  border: 3px solid #1a4020;
+  border-radius: 120px;
+  padding: 24px 32px 0;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.5), 0 0 0 6px #0d0d0d, 0 0 0 8px rgba(255,255,255,0.04);
+  overflow: visible;
 }
 
-.siege {
-  padding: 14px 10px;
-  min-height: 80px;
+.casino-table--en_cours {
+  border-color: rgba(201,168,76,0.4);
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.5), 0 0 0 6px #0d0d0d, 0 0 0 8px rgba(201,168,76,0.1);
+}
+
+.tapis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 16px;
+  width: 100%;
+}
+
+.dealer-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+}
+
+.tapis-inner {
+  width: 160px;
+  height: 50px;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bj-label {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.12);
+  text-transform: uppercase;
+}
+
+/* ── Sièges en arc ───────────────────────────────────────── */
+
+.sieges-arc {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  position: relative;
+  bottom: -24px;
+  padding: 0 12px;
+}
+
+.siege-slot {
+  width: 90px;
+  min-height: 90px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.4);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  border: 1px solid rgba(255,255,255,0.06);
-}
-
-.siege--vide {
-  background: #111;
-}
-
-.siege--occupe {
-  background: #0a150a;
-  border-color: rgba(255,255,255,0.1);
-}
-
-.siege--moi {
-  border-color: rgba(201,168,76,0.35);
-  background: rgba(201,168,76,0.04);
-}
-
-.siege-btn {
-  font-family: 'Cinzel', serif;
-  font-size: 0.58rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.25);
-  background: none;
-  border: 1px dashed rgba(255,255,255,0.12);
-  padding: 10px 8px;
-  width: 100%;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-.siege-btn:hover:not(:disabled) {
-  color: rgba(255,255,255,0.55);
-  border-color: rgba(255,255,255,0.25);
-}
-.siege-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-.siege-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   gap: 3px;
-  width: 100%;
+  position: relative;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  padding: 8px;
+}
+
+.siege-slot--clickable {
+  cursor: pointer;
+  border-style: dashed;
+  border-color: rgba(255,255,255,0.22);
+}
+.siege-slot--clickable:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.4);
+  transform: translateY(-4px);
+}
+
+.siege-slot--occupe {
+  border-style: solid;
+  border-color: rgba(255,255,255,0.15);
+  background: rgba(10,30,10,0.7);
+}
+
+.siege-slot--moi {
+  border-color: rgba(201,168,76,0.5);
+  background: rgba(201,168,76,0.06);
+}
+
+.siege-plus {
+  font-size: 1.4rem;
+  color: rgba(255,255,255,0.2);
+  line-height: 1;
+}
+
+.siege-num {
+  font-family: 'Cinzel', serif;
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.18);
+}
+
+.siege-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(139,26,26,0.3);
+  border: 1px solid rgba(139,26,26,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.7);
+  flex-shrink: 0;
 }
 
 .siege-nom {
   font-family: 'Cinzel', serif;
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
-  color: rgba(255,255,255,0.7);
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.65);
   text-align: center;
   word-break: break-all;
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .siege-mise {
   font-family: 'Cinzel', serif;
-  font-size: 0.62rem;
-  color: #c9a84c;
-  letter-spacing: 0.05em;
-}
-
-.siege-moi-badge {
-  font-family: 'Cinzel', serif;
   font-size: 0.5rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: #c9a84c;
-  border: 1px solid rgba(201,168,76,0.3);
-  padding: 1px 5px;
 }
 
 .btn-quitter {
-  font-family: 'Cinzel', serif;
-  font-size: 0.52rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.25);
-  background: none;
-  border: 1px solid rgba(255,255,255,0.08);
-  padding: 4px 8px;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(139,26,26,0.4);
+  border: none;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.5rem;
   cursor: pointer;
-  transition: color 0.15s;
-  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
 }
-.btn-quitter:hover { color: #8b1a1a; border-color: rgba(139,26,26,0.4); }
+.btn-quitter:hover { background: rgba(139,26,26,0.8); color: #fff; }
+
+/* ── Bouton rejoindre ────────────────────────────────────── */
 
 .btn-jouer {
-  margin-top: 16px;
+  margin-top: 36px;
   font-family: 'Cinzel', serif;
   font-size: 0.62rem;
   letter-spacing: 0.14em;
@@ -529,30 +597,19 @@ onUnmounted(() => {
   color: #c9a84c;
   background: rgba(201,168,76,0.08);
   border: 1px solid rgba(201,168,76,0.3);
-  padding: 10px 20px;
+  padding: 10px 24px;
   cursor: pointer;
   transition: background 0.15s;
-  width: 100%;
+  align-self: center;
 }
-.btn-jouer:hover { background: rgba(201,168,76,0.15); }
-
-/* ── Erreur ──────────────────────────────────────────────── */
-
-.erreur {
-  font-family: 'Crimson Text', serif;
-  font-style: italic;
-  color: #c0392b;
-  text-align: center;
-  margin-bottom: 1.5rem;
-  font-size: 0.95rem;
-}
+.btn-jouer:hover { background: rgba(201,168,76,0.16); }
 
 /* ── Modale ──────────────────────────────────────────────── */
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.75);
+  background: rgba(0,0,0,0.78);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -564,7 +621,7 @@ onUnmounted(() => {
   border: 1px solid rgba(255,255,255,0.1);
   padding: 36px 40px;
   min-width: 320px;
-  max-width: 420px;
+  max-width: 400px;
   width: 100%;
 }
 
@@ -612,7 +669,6 @@ onUnmounted(() => {
   transition: border-color 0.15s;
 }
 .modal-input:focus { border-color: rgba(201,168,76,0.4); }
-.modal-input::-webkit-inner-spin-button { opacity: 0.3; }
 
 .modal-erreur {
   font-family: 'Crimson Text', serif;
@@ -622,11 +678,7 @@ onUnmounted(() => {
   margin: 0 0 14px;
 }
 
-.modal-btns {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-}
+.modal-btns { display: flex; gap: 10px; margin-top: 8px; }
 
 .btn {
   font-family: 'Cinzel', serif;
@@ -639,23 +691,17 @@ onUnmounted(() => {
   transition: opacity 0.15s, background 0.15s;
 }
 .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
 .btn--primary { background: #8b1a1a; color: #e8ddd0; flex: 1; }
 .btn--primary:hover:not(:disabled) { background: #a01f1f; }
-
 .btn--ghost { background: transparent; color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.1); }
 .btn--ghost:hover { color: rgba(255,255,255,0.55); }
 
-/* ── Transitions ─────────────────────────────────────────── */
-
-.modal-fade-enter-active, .modal-fade-leave-active {
-  transition: opacity 0.2s;
-}
-.modal-fade-enter-from, .modal-fade-leave-to {
-  opacity: 0;
-}
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 
 @media (max-width: 640px) {
-  .sieges-grid { grid-template-columns: repeat(2, 1fr); }
+  .sieges-arc { gap: 8px; }
+  .siege-slot { width: 72px; min-height: 72px; }
+  .casino-table { border-radius: 80px; }
 }
 </style>
