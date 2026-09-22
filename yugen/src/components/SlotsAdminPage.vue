@@ -197,15 +197,17 @@
           <div v-for="j in joueursFiltres" :key="j.id" class="joueur-block">
 
             <div class="joueur-row">
-              <div class="joueur-info">
-                <div class="joueur-nom-row">
-                  <span class="joueur-nom">{{ j.nom }}</span>
-                  <span v-if="j.role === 'admin'" class="badge-role badge-role--admin">Admin</span>
+              <div class="joueur-top">
+                <div class="joueur-info">
+                  <div class="joueur-nom-row">
+                    <span class="joueur-nom">{{ j.nom }}</span>
+                    <span v-if="j.role === 'admin'" class="badge-role badge-role--admin">Admin</span>
+                  </div>
+                  <span class="joueur-id">{{ j.identifiant }}</span>
                 </div>
-                <span class="joueur-id">{{ j.identifiant }}</span>
-              </div>
-              <div class="joueur-solde">
-                <span class="solde-val">{{ (j.solde ?? 0).toLocaleString('fr-FR') }} ¥</span>
+                <div class="joueur-solde">
+                  <span class="solde-val">{{ (j.solde ?? 0).toLocaleString('fr-FR') }} ¥</span>
+                </div>
               </div>
               <div class="joueur-actions">
                 <input
@@ -1102,15 +1104,14 @@ onMounted(async () => {
   border: 1px solid rgba(255,255,255,0.05);
   padding: 14px 16px;
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.joueur-top {
+  display: flex;
   align-items: center;
   gap: 12px;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-.joueur-row:hover { background: #17171a; }
-.joueur-row--open {
-  border-color: rgba(139,26,26,0.3);
-  background: #171214;
 }
 
 .joueur-chevron {
