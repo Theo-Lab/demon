@@ -232,6 +232,7 @@
         <template v-else-if="stats">
           <div class="stats-toolbar">
             <button class="btn-secondary" @click="rafraichirStats">↺ Actualiser</button>
+            <button class="btn-wipe" @click="doWipe">⚠ Réinitialiser les stats</button>
           </div>
 
           <!-- KPIs globaux -->
@@ -438,7 +439,7 @@ import {
   getSlotsAdminSymbols, createSlotsSymbol, updateSlotsSymbol, deleteSlotsSymbol,
   getSlotsAdminConfig, updateSlotsConfig, IMG_BASE,
   getSlotsAdminJoueurs, updateJoueurSolde,
-  getSlotsAdminLogs, getSlotsAdminStats,
+  getSlotsAdminLogs, getSlotsAdminStats, wipeStats,
 } from '../api.js'
 
 const onglet = ref('symboles')
@@ -600,6 +601,12 @@ function rtpJeu(j) {
 function fmtYen(n) {
   if (n == null) return '—'
   return (n < 0 ? '-¥' : '¥') + Math.abs(n).toLocaleString('fr-FR')
+}
+
+async function doWipe() {
+  if (!confirm('Supprimer TOUTES les stats (parties jouées + logs admin) ? Cette action est irréversible.')) return
+  await wipeStats()
+  rafraichirStats()
 }
 
 async function chargerStats() {
@@ -1317,7 +1324,21 @@ onMounted(async () => {
   color: rgba(255,255,255,0.22);
 }
 
-.stats-toolbar { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+.stats-toolbar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 16px; }
+
+.btn-wipe {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid rgba(139,26,26,0.35);
+  color: rgba(192,57,43,0.7);
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-wipe:hover { background: rgba(139,26,26,0.12); color: #c0392b; border-color: rgba(139,26,26,0.6); }
 
 .stats-explainer {
   font-family: 'Crimson Text', Georgia, serif;

@@ -444,6 +444,13 @@ export async function updateSlotsConfig(mise_min, mise_max, nb_colonnes) {
   return data.config
 }
 
+export async function wipeStats() {
+  const res = await apiFetch(`${BASE}/slots/admin/stats`, { method: 'DELETE' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function getSlotsAdminStats() {
   const res = await apiFetch(`${BASE}/slots/admin/stats`)
   const data = await res.json()

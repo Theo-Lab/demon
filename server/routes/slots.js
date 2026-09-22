@@ -304,4 +304,10 @@ router.get('/admin/stats', requireAuth, requireAdmin, (req, res) => {
   res.json({ global, parJeu, topJoueurs, parJour })
 })
 
+router.delete('/admin/stats', requireAuth, requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM game_rounds').run()
+  db.prepare('DELETE FROM solde_logs').run()
+  res.json({ ok: true })
+})
+
 module.exports = router
