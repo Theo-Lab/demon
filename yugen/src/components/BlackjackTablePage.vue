@@ -46,11 +46,12 @@
               <template v-else>
                 <span class="arc-avatar">{{ siege.user_nom?.[0]?.toUpperCase() }}</span>
                 <span class="arc-nom">{{ siege.user_nom }}</span>
-                <span
-                  class="arc-mise"
-                  :class="{ 'arc-mise--moi': siege.user_id === currentUserId }"
-                  @click.stop="siege.user_id === currentUserId && ouvrirModaleModif(siege.mise)"
-                >{{ fmtYen(siege.mise) }} <span v-if="siege.user_id === currentUserId" class="arc-edit">✎</span></span>
+                <span class="arc-mise">{{ fmtYen(siege.mise) }}</span>
+                <button
+                  v-if="siege.user_id === currentUserId"
+                  class="btn-modifier-mise"
+                  @click.stop="ouvrirModaleModif(siege.mise)"
+                >✎</button>
                 <button
                   v-if="siege.user_id === currentUserId"
                   class="btn-quitter"
@@ -1004,9 +1005,26 @@ onUnmounted(() => {
 
 .arc-nom  { font-family: 'Cinzel', serif; font-size: 0.5rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.6); text-align: center; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .arc-mise { font-family: 'Cinzel', serif; font-size: 0.48rem; color: #c9a84c; }
-.arc-mise--moi { cursor: pointer; }
-.arc-mise--moi:hover { color: #e2c97e; }
-.arc-edit { opacity: 0.5; font-size: 0.42rem; }
+
+.btn-modifier-mise {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(201,168,76,0.12);
+  border: 1px solid rgba(201,168,76,0.3);
+  color: #c9a84c;
+  font-size: 0.62rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.btn-modifier-mise:hover { background: rgba(201,168,76,0.25); }
 
 .btn-quitter {
   position: absolute;
