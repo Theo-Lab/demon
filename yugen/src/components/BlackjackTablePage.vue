@@ -206,6 +206,9 @@ import { io } from 'socket.io-client'
 import AppNavbar from './AppNavbar.vue'
 import PlayingCard from './PlayingCard.vue'
 import { getMe } from '../api.js'
+import {
+  playDeal, playBust, playLose, playWin, playBlackjack, playChip, resumeAudio,
+} from '../blackjack-audio.js'
 
 const route  = useRoute()
 const router = useRouter()
@@ -242,6 +245,7 @@ function ouvrirModaleModif(miseCourante) {
 function fermerModale() { modale.value.ouverte = false }
 function confirmerSiege() {
   if (!modale.value.mise || modale.value.mise <= 0) { modale.value.erreur = 'Mise invalide.'; return }
+  resumeAudio()
   if (modale.value.modif) {
     const monSiegeActuel = sieges.value.find(s => s.user_id === currentUserId.value)
     const diff = modale.value.mise - (monSiegeActuel?.mise ?? 0)
@@ -249,6 +253,7 @@ function confirmerSiege() {
     socket.emit('modifier_mise', { tableId, mise: modale.value.mise })
   } else {
     if (modale.value.mise > solde.value) { modale.value.erreur = 'Solde insuffisant.'; return }
+    playChip()
     socket.emit('prendre_siege', { tableId, siegeNumero: modale.value.siegeNumero, mise: modale.value.mise })
   }
   fermerModale()
@@ -297,8 +302,10 @@ function resultatLabel(r) {
   return { victoire: 'Victoire !', defaite: 'Défaite', egalite: 'Égalité', blackjack: 'Blackjack !' }[r] ?? r
 }
 
-function applyState(state) {
+function applyState(state, playSounds = false) {
   const t = state.table
+  const prevSieges = sieges.value
+
   tableStatut.value = t.statut
   siegeActif.value  = t.siege_actif
 
@@ -314,10 +321,23 @@ function applyState(state) {
     }
   }
 
-  sieges.value = (state.sieges || []).map(s => ({
-    ...s,
-    main: s.main || [],
-  }))
+  const newSieges = (state.sieges || []).map(s => ({ ...s, main: s.main || [] }))
+  sieges.value = newSieges
+
+  // Sons : détecter les nouvelles cartes tirées
+  if (playSounds && t.statut === 'en_cours') {
+    for (const newS of newSieges) {
+      const prevS = prevSieges.find(s => s.numero === newS.numero)
+      const prevLen = prevS?.main?.filter(c => !c.hidden).length ?? 0
+      const newLen  = newS.main.filter(c => !c.hidden).length
+      if (newLen > prevLen) {
+        playDeal()
+        if (newS.user_id === currentUserId.value && handTotalFor(newS.main) > 21) {
+          setTimeout(playBust, 150)
+        }
+      }
+    }
+  }
 }
 
 // ── Timer de tour ─────────────────────────────────────────────────────────────
@@ -351,13 +371,17 @@ function initSocket() {
   })
 
   socket.on('table_update', (state) => {
-    applyState(state)
+    applyState(state, true)
     actionLoading.value = false
   })
 
   socket.on('game_start', () => {
     dealerFini.value = false
     countdown.value  = null
+    // Son de deal pour chaque carte distribuée (joueurs × 2 + dealer × 2)
+    const nbJoueurs = sieges.value.filter(s => s.statut !== 'vide').length || 1
+    const nbCartes  = (nbJoueurs + 1) * 2
+    for (let i = 0; i < nbCartes; i++) setTimeout(playDeal, i * 130)
   })
 
   socket.on('game_end', (resolution) => {
@@ -375,10 +399,15 @@ function initSocket() {
       mainDealer.value = resolution.mainDealer
       dTotal.value = resolution.dTotal
     }
-    // Mettre à jour le solde si on est dans les résultats
+    // Son de résultat + mise à jour solde
     const monRes = resolution.resultats?.find(r => r.user_id === currentUserId.value)
     if (monRes) {
       solde.value = monRes.solde
+      const wasBust = handTotalFor(monSiege.value?.main || []) > 21
+      if      (monRes.resultat === 'blackjack')              playBlackjack()
+      else if (monRes.resultat === 'victoire')               playWin()
+      else if (monRes.resultat === 'defaite' && !wasBust)    playLose()
+      // bust : déjà joué pendant le hit
     }
   })
 
@@ -390,8 +419,14 @@ function initSocket() {
     clearInterval(finInterval)
   })
 
+  // Son quand le dealer révèle sa carte cachée
+  watch(dealerFini, (val) => {
+    if (val) playDeal()
+  })
+
   socket.on('mise_modifiee', ({ solde: s }) => {
     solde.value = s
+    playChip()
   })
 
   socket.on('countdown_tick', ({ secondsLeft }) => {
@@ -416,6 +451,7 @@ function doAction(action) {
   if (actionLoading.value) return
   actionLoading.value = true
   erreur.value = ''
+  resumeAudio()
   socket.emit('action', { tableId, action })
 }
 
