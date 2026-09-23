@@ -21,48 +21,49 @@
       <!-- ── Phase attente : sièges à prendre ── -->
       <div v-if="tableStatut === 'attente'" class="attente-wrap">
 
-        <div class="casino-table">
-          <div class="felt-top">
-            <span class="dealer-lbl">Croupier</span>
-            <div class="felt-inner"><span class="bj-lbl">Blackjack</span></div>
-          </div>
-          <div class="sieges-arc">
-            <div
-              v-for="siege in sieges"
-              :key="siege.numero"
-              class="siege-arc-slot"
-              :class="{
-                'siege-arc-slot--free':    siege.statut === 'vide',
-                'siege-arc-slot--taken':   siege.statut !== 'vide',
-                'siege-arc-slot--moi':     siege.user_id === currentUserId,
-                'siege-arc-slot--clickable': siege.statut === 'vide' && !dejaAssis,
-              }"
-              @click="siege.statut === 'vide' && !dejaAssis && ouvrirModale(siege.numero)"
-            >
-              <template v-if="siege.statut === 'vide'">
-                <span class="arc-plus">+</span>
-                <span class="arc-num">{{ siege.numero }}</span>
-              </template>
+        <!-- Tapis -->
+        <div class="felt-table">
+          <span class="felt-dealer-lbl">Croupier</span>
+          <span class="felt-bj-lbl">Blackjack</span>
+        </div>
+
+        <!-- Sièges en cartes -->
+        <div class="seats-grid">
+          <div
+            v-for="siege in sieges"
+            :key="siege.numero"
+            class="seat-card"
+            :class="{
+              'seat-card--clickable': siege.statut === 'vide' && !dejaAssis,
+              'seat-card--pris':      siege.statut !== 'vide',
+              'seat-card--moi':       siege.user_id === currentUserId,
+            }"
+            @click="siege.statut === 'vide' && !dejaAssis && ouvrirModale(siege.numero)"
+          >
+            <!-- Avatar -->
+            <div class="seat-avatar" :class="siege.statut === 'vide' ? 'seat-avatar--libre' : ''">
+              {{ siege.statut === 'vide' ? '+' : siege.user_nom?.[0]?.toUpperCase() }}
+            </div>
+
+            <!-- Infos -->
+            <div class="seat-body">
+              <span v-if="siege.statut === 'vide'" class="seat-num">Siège {{ siege.numero }}</span>
               <template v-else>
-                <span class="arc-avatar">{{ siege.user_nom?.[0]?.toUpperCase() }}</span>
-                <span class="arc-nom">{{ siege.user_nom }}</span>
-                <span class="arc-mise">{{ fmtYen(siege.mise) }}</span>
-                <button
-                  v-if="siege.user_id === currentUserId"
-                  class="btn-modifier-mise"
-                  @click.stop="ouvrirModaleModif(siege.mise)"
-                >✎</button>
-                <button
-                  v-if="siege.user_id === currentUserId"
-                  class="btn-quitter"
-                  @click.stop="socket.emit('quitter_siege', { tableId })"
-                >✕</button>
+                <span class="seat-nom">{{ siege.user_nom }}</span>
+                <span class="seat-mise-val">{{ fmtYen(siege.mise) }}</span>
               </template>
             </div>
+
+            <!-- Actions (siège du joueur) -->
+            <div v-if="siege.user_id === currentUserId" class="seat-actions">
+              <button class="seat-btn seat-btn--edit" @click.stop="ouvrirModaleModif(siege.mise)">Modifier la mise</button>
+              <button class="seat-btn seat-btn--quit" @click.stop="socket.emit('quitter_siege', { tableId })">Quitter</button>
+            </div>
+
+            <span v-else-if="siege.statut === 'vide' && !dejaAssis" class="seat-rejoin">Rejoindre</span>
           </div>
         </div>
 
-        <p class="attente-hint">Cliquez sur un siège libre pour vous asseoir</p>
       </div>
 
       <!-- ── Phase jeu ── -->
@@ -191,7 +192,7 @@
           </div>
           <p v-if="modale.erreur" class="modal-erreur">{{ modale.erreur }}</p>
           <div class="modal-btns">
-            <button class="btn btn--primary" @click="confirmerSiege">S'asseoir</button>
+            <button class="btn btn--primary" @click="confirmerSiege">{{ modale.modif ? 'Confirmer' : "S'asseoir" }}</button>
             <button class="btn btn--ghost"   @click="fermerModale">Annuler</button>
           </div>
         </div>
@@ -882,149 +883,174 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  margin-top: 8px;
+  gap: 16px;
 }
 
-.attente-hint {
-  font-family: 'Crimson Text', serif;
-  font-style: italic;
-  font-size: 0.9rem;
-  color: rgba(255,255,255,0.25);
-  margin: 0;
-}
-
-.casino-table {
+/* Tapis vert */
+.felt-table {
   width: 100%;
-  max-width: 580px;
-  background: #0b1f0e;
-  border: 3px solid #1a4020;
-  border-radius: 120px;
-  padding: 20px 28px 0;
+  max-width: 600px;
+  height: 110px;
+  background: linear-gradient(170deg, #0d2812 0%, #091a0b 100%);
+  border: 3px solid #1e4a24;
+  border-radius: 110px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: inset 0 0 50px rgba(0,0,0,0.4), 0 0 0 5px #0d0d0d, 0 0 0 7px rgba(255,255,255,0.04);
+  justify-content: center;
+  gap: 8px;
+  box-shadow:
+    inset 0 0 60px rgba(0,0,0,0.5),
+    0 0 0 5px #0c0c0e,
+    0 0 0 7px rgba(255,255,255,0.03);
 }
 
-.felt-top {
+.felt-dealer-lbl {
+  font-family: 'Cinzel', serif;
+  font-size: 0.48rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.12);
+}
+
+.felt-bj-lbl {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.07);
+  text-transform: uppercase;
+}
+
+/* Grille de sièges */
+.seats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.seat-card {
+  background: #0e0e11;
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 18px 12px 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding-bottom: 14px;
-  width: 100%;
+  transition: border-color 0.15s, transform 0.15s;
+  min-height: 155px;
 }
 
-.dealer-lbl {
+.seat-card--clickable { cursor: pointer; }
+.seat-card--clickable:hover {
+  border-color: rgba(255,255,255,0.18);
+  transform: translateY(-3px);
+}
+.seat-card--pris  { border-color: rgba(255,255,255,0.08); }
+.seat-card--moi   { border-color: rgba(201,168,76,0.35); background: rgba(201,168,76,0.02); }
+
+.seat-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(139,26,26,0.2);
+  border: 1px solid rgba(139,26,26,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: 'Cinzel', serif;
-  font-size: 0.55rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  font-size: 1rem;
+  color: rgba(255,255,255,0.65);
+  flex-shrink: 0;
+}
+.seat-avatar--libre {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.1);
+  font-size: 1.4rem;
   color: rgba(255,255,255,0.18);
 }
 
-.felt-inner {
-  width: 140px;
-  height: 44px;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.bj-lbl {
-  font-family: 'Cinzel Decorative', 'Cinzel', serif;
-  font-size: 0.58rem;
-  letter-spacing: 0.16em;
-  color: rgba(255,255,255,0.1);
-}
-
-.sieges-arc {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  position: relative;
-  bottom: -24px;
-}
-
-.siege-arc-slot {
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  border: 2px dashed rgba(255,255,255,0.1);
-  background: rgba(0,0,0,0.35);
+.seat-body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 3px;
-  position: relative;
-  transition: border-color 0.15s, background 0.15s, transform 0.15s;
-  padding: 8px;
+  width: 100%;
 }
 
-.siege-arc-slot--clickable {
-  cursor: pointer;
-  border-color: rgba(255,255,255,0.2);
-}
-.siege-arc-slot--clickable:hover {
-  background: rgba(255,255,255,0.05);
-  border-color: rgba(255,255,255,0.4);
-  transform: translateY(-4px);
+.seat-num {
+  font-family: 'Cinzel', serif;
+  font-size: 0.52rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.15);
 }
 
-.siege-arc-slot--taken {
-  border-style: solid;
-  border-color: rgba(255,255,255,0.12);
-  background: rgba(10,30,10,0.7);
+.seat-nom {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.7);
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.siege-arc-slot--moi {
-  border-color: rgba(201,168,76,0.5);
-  background: rgba(201,168,76,0.06);
-}
-
-.arc-plus { font-size: 1.3rem; color: rgba(255,255,255,0.18); line-height: 1; }
-.arc-num  { font-family: 'Cinzel', serif; font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(255,255,255,0.15); }
-
-.arc-avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: rgba(139,26,26,0.3);
-  border: 1px solid rgba(139,26,26,0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.seat-mise-val {
   font-family: 'Cinzel', serif;
   font-size: 0.72rem;
-  color: rgba(255,255,255,0.7);
-}
-
-.arc-nom  { font-family: 'Cinzel', serif; font-size: 0.5rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.6); text-align: center; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.arc-mise { font-family: 'Cinzel', serif; font-size: 0.48rem; color: #c9a84c; }
-
-.btn-modifier-mise {
-  position: absolute;
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(201,168,76,0.12);
-  border: 1px solid rgba(201,168,76,0.3);
   color: #c9a84c;
-  font-size: 0.62rem;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
+  letter-spacing: 0.05em;
 }
-.btn-modifier-mise:hover { background: rgba(201,168,76,0.25); }
+
+.seat-rejoin {
+  font-family: 'Cinzel', serif;
+  font-size: 0.45rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.12);
+  margin-top: auto;
+}
+
+.seat-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  margin-top: auto;
+}
+
+.seat-btn {
+  width: 100%;
+  font-family: 'Cinzel', serif;
+  font-size: 0.48rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 4px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  background: none;
+}
+
+.seat-btn--edit {
+  border-color: rgba(201,168,76,0.3);
+  color: #c9a84c;
+}
+.seat-btn--edit:hover { background: rgba(201,168,76,0.1); }
+
+.seat-btn--quit {
+  border-color: rgba(139,26,26,0.25);
+  color: rgba(180,40,40,0.7);
+}
+.seat-btn--quit:hover { background: rgba(139,26,26,0.1); color: #c0392b; }
+
+@media (max-width: 560px) {
+  .seats-grid { grid-template-columns: repeat(2, 1fr); }
+}
 
 .btn-quitter {
   position: absolute;
