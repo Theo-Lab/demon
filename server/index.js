@@ -106,10 +106,14 @@ function startCountdown(tableId) {
     if (n === 0) return
 
     try {
-      demarrerPartie(tableId)
+      const bjResult = demarrerPartie(tableId)
       io.to(`table_${tableId}`).emit('game_start', { tableId })
       broadcastTableState(tableId)
-      startTourTimer(tableId)
+      if (bjResult?.allBlackjack) {
+        processNextTour(tableId)
+      } else {
+        startTourTimer(tableId)
+      }
     } catch (e) {
       io.to(`table_${tableId}`).emit('error', { message: e.message })
     }
@@ -221,6 +225,7 @@ io.on('connection', (socket) => {
     tableId = parseInt(tableId)
     siegeNumero = parseInt(siegeNumero)
     mise = parseInt(mise)
+    console.log(`[prendre_siege] userId=${userId} userNom="${userNom}" table=${tableId} siege=${siegeNumero}`)
     try {
       const result = prendreSiege(tableId, siegeNumero, userId, userNom, mise)
       socket.emit('siege_pris', { solde: result.solde })

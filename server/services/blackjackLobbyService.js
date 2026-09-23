@@ -116,18 +116,26 @@ const _demarrerPartie = db.transaction((tableId) => {
   // Distribuer 2 cartes à chaque joueur assis + 2 au dealer
   const mainDealer = [deck.pop(), deck.pop()]
 
+  let premierEnJeu = null
   for (const siege of siegesOccupes) {
     const main = [deck.pop(), deck.pop()]
+    const total = handTotal(main)
+    const isBlackjack = main.length === 2 && total === 21
+    const statut = isBlackjack ? 'fini' : 'en_jeu'
     db.prepare(
-      "UPDATE bj_sieges SET main = ?, statut = 'en_jeu' WHERE id = ?"
-    ).run(JSON.stringify(main), siege.id)
+      'UPDATE bj_sieges SET main = ?, statut = ? WHERE id = ?'
+    ).run(JSON.stringify(main), statut, siege.id)
+    if (!isBlackjack && premierEnJeu === null) premierEnJeu = siege
   }
 
-  const premierSiege = siegesOccupes[0]
+  // Si tous ont blackjack, siege_actif = null → le dealer joue directement
+  const siegeActifNumero = premierEnJeu ? premierEnJeu.numero : null
 
   db.prepare(
     "UPDATE bj_tables SET statut = 'en_cours', deck = ?, main_dealer = ?, siege_actif = ? WHERE id = ?"
-  ).run(JSON.stringify(deck), JSON.stringify(mainDealer), premierSiege.numero, tableId)
+  ).run(JSON.stringify(deck), JSON.stringify(mainDealer), siegeActifNumero, tableId)
+
+  return { allBlackjack: premierEnJeu === null }
 })
 
 function demarrerPartie(tableId) {
