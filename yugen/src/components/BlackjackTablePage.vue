@@ -166,6 +166,7 @@
       <Transition name="result-pop">
         <div v-if="tableStatut === 'fini'" class="fin-banner">
           <p class="fin-titre">Partie terminée</p>
+          <p v-if="finCountdown > 0" class="fin-relance">Nouvelle partie dans {{ finCountdown }}…</p>
           <RouterLink to="/blackjack/lobby" class="btn btn--primary">Retour au lobby</RouterLink>
         </div>
       </Transition>
@@ -221,6 +222,8 @@ const countdown     = ref(null)
 const dealerFini    = ref(false)
 const erreur        = ref('')
 const actionLoading = ref(false)
+const finCountdown  = ref(0)
+let finInterval     = null
 
 // Modale prise de siège
 const modale = ref({ ouverte: false, siegeNumero: null, mise: 1000, erreur: '' })
@@ -346,6 +349,13 @@ function initSocket() {
   socket.on('game_end', (resolution) => {
     dealerFini.value = true
     clearInterval(timerInterval)
+    // Compte à rebours avant relance
+    finCountdown.value = 5
+    clearInterval(finInterval)
+    finInterval = setInterval(() => {
+      finCountdown.value--
+      if (finCountdown.value <= 0) clearInterval(finInterval)
+    }, 1000)
     // Mise à jour des totaux dealer
     if (resolution.mainDealer) {
       mainDealer.value = resolution.mainDealer
@@ -362,6 +372,8 @@ function initSocket() {
     dealerFini.value = false
     dTotal.value = null
     countdown.value = null
+    finCountdown.value = 0
+    clearInterval(finInterval)
   })
 
   socket.on('countdown_tick', ({ secondsLeft }) => {
@@ -402,6 +414,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   clearInterval(timerInterval)
+  clearInterval(finInterval)
   if (socket) socket.disconnect()
 })
 </script>
@@ -759,6 +772,14 @@ onUnmounted(() => {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.4);
+  margin: 0;
+}
+
+.fin-relance {
+  font-family: 'Crimson Text', serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.25);
   margin: 0;
 }
 
