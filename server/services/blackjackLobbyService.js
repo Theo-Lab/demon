@@ -75,6 +75,32 @@ function prendreSiege(tableId, siegeNumero, userId, userNom, mise) {
   return _prendreSiege(tableId, siegeNumero, userId, userNom, mise)
 }
 
+// ── modifierMise ──────────────────────────────────────────────────────────────
+
+const _modifierMise = db.transaction((tableId, userId, nouvelleMise) => {
+  const table = db.prepare('SELECT * FROM bj_tables WHERE id = ?').get(tableId)
+  if (!table) throw new Error('Table introuvable.')
+  if (table.statut !== 'attente') throw new Error('Impossible de modifier la mise pendant une partie.')
+
+  const siege = db.prepare("SELECT * FROM bj_sieges WHERE table_id = ? AND user_id = ? AND statut = 'assis'").get(tableId, userId)
+  if (!siege) throw new Error('Vous n\'êtes pas assis à cette table.')
+
+  if (nouvelleMise <= 0) throw new Error('Mise invalide.')
+
+  const diff = nouvelleMise - siege.mise
+  const user = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId)
+  if (diff > 0 && user.solde < diff) throw new Error('Solde insuffisant.')
+
+  db.prepare('UPDATE users SET solde = solde - ? WHERE id = ?').run(diff, userId)
+  db.prepare('UPDATE bj_sieges SET mise = ? WHERE table_id = ? AND user_id = ?').run(nouvelleMise, tableId, userId)
+
+  return { solde: db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde }
+})
+
+function modifierMise(tableId, userId, nouvelleMise) {
+  return _modifierMise(tableId, userId, nouvelleMise)
+}
+
 // ── quitterSiege ──────────────────────────────────────────────────────────────
 
 const _quitterSiege = db.transaction((tableId, userId) => {
@@ -340,6 +366,7 @@ module.exports = {
   getTableState,
   getAllTables,
   prendreSiege,
+  modifierMise,
   quitterSiege,
   demarrerPartie,
   jouerAction,

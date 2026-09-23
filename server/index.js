@@ -40,6 +40,7 @@ const io = new Server(httpServer, {
 const {
   getTableState,
   prendreSiege,
+  modifierMise,
   quitterSiege,
   demarrerPartie,
   jouerAction,
@@ -236,6 +237,19 @@ io.on('connection', (socket) => {
       if (n === 1 && !countdowns.has(tableId)) {
         startCountdown(tableId)
       }
+    } catch (e) {
+      socket.emit('error', { message: e.message })
+    }
+  })
+
+  // modifier_mise
+  socket.on('modifier_mise', ({ tableId, mise }) => {
+    tableId = parseInt(tableId)
+    mise = parseInt(mise)
+    try {
+      const result = modifierMise(tableId, userId, mise)
+      socket.emit('mise_modifiee', { solde: result.solde })
+      broadcastTableState(tableId)
     } catch (e) {
       socket.emit('error', { message: e.message })
     }

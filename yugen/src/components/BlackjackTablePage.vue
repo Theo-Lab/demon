@@ -46,7 +46,11 @@
               <template v-else>
                 <span class="arc-avatar">{{ siege.user_nom?.[0]?.toUpperCase() }}</span>
                 <span class="arc-nom">{{ siege.user_nom }}</span>
-                <span class="arc-mise">{{ fmtYen(siege.mise) }}</span>
+                <span
+                  class="arc-mise"
+                  :class="{ 'arc-mise--moi': siege.user_id === currentUserId }"
+                  @click.stop="siege.user_id === currentUserId && ouvrirModaleModif(siege.mise)"
+                >{{ fmtYen(siege.mise) }} <span v-if="siege.user_id === currentUserId" class="arc-edit">✎</span></span>
                 <button
                   v-if="siege.user_id === currentUserId"
                   class="btn-quitter"
@@ -178,7 +182,7 @@
     <Transition name="modal-fade">
       <div v-if="modale.ouverte" class="modal-overlay" @click.self="fermerModale">
         <div class="modal">
-          <h2 class="modal-title">Siège {{ modale.siegeNumero }}</h2>
+          <h2 class="modal-title">{{ modale.modif ? 'Modifier la mise' : 'Siège ' + modale.siegeNumero }}</h2>
           <p class="modal-sub">Solde : {{ fmtYen(solde) }}</p>
           <div class="modal-field">
             <label class="modal-label">Mise</label>
@@ -225,18 +229,28 @@ const actionLoading = ref(false)
 const finCountdown  = ref(0)
 let finInterval     = null
 
-// Modale prise de siège
-const modale = ref({ ouverte: false, siegeNumero: null, mise: 1000, erreur: '' })
+// Modale prise de siège / modification mise
+const modale = ref({ ouverte: false, siegeNumero: null, mise: 1000, erreur: '', modif: false })
 const dejaAssis = computed(() => sieges.value.some(s => s.user_id === currentUserId.value && s.statut !== 'vide'))
 
 function ouvrirModale(num) {
-  modale.value = { ouverte: true, siegeNumero: num, mise: Math.min(1000, solde.value), erreur: '' }
+  modale.value = { ouverte: true, siegeNumero: num, mise: Math.min(1000, solde.value), erreur: '', modif: false }
+}
+function ouvrirModaleModif(miseCourante) {
+  modale.value = { ouverte: true, siegeNumero: null, mise: miseCourante, erreur: '', modif: true }
 }
 function fermerModale() { modale.value.ouverte = false }
 function confirmerSiege() {
   if (!modale.value.mise || modale.value.mise <= 0) { modale.value.erreur = 'Mise invalide.'; return }
-  if (modale.value.mise > solde.value) { modale.value.erreur = 'Solde insuffisant.'; return }
-  socket.emit('prendre_siege', { tableId, siegeNumero: modale.value.siegeNumero, mise: modale.value.mise })
+  if (modale.value.modif) {
+    const monSiegeActuel = sieges.value.find(s => s.user_id === currentUserId.value)
+    const diff = modale.value.mise - (monSiegeActuel?.mise ?? 0)
+    if (diff > solde.value) { modale.value.erreur = 'Solde insuffisant.'; return }
+    socket.emit('modifier_mise', { tableId, mise: modale.value.mise })
+  } else {
+    if (modale.value.mise > solde.value) { modale.value.erreur = 'Solde insuffisant.'; return }
+    socket.emit('prendre_siege', { tableId, siegeNumero: modale.value.siegeNumero, mise: modale.value.mise })
+  }
   fermerModale()
 }
 
@@ -374,6 +388,10 @@ function initSocket() {
     countdown.value = null
     finCountdown.value = 0
     clearInterval(finInterval)
+  })
+
+  socket.on('mise_modifiee', ({ solde: s }) => {
+    solde.value = s
   })
 
   socket.on('countdown_tick', ({ secondsLeft }) => {
@@ -950,6 +968,9 @@ onUnmounted(() => {
 
 .arc-nom  { font-family: 'Cinzel', serif; font-size: 0.5rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.6); text-align: center; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .arc-mise { font-family: 'Cinzel', serif; font-size: 0.48rem; color: #c9a84c; }
+.arc-mise--moi { cursor: pointer; }
+.arc-mise--moi:hover { color: #e2c97e; }
+.arc-edit { opacity: 0.5; font-size: 0.42rem; }
 
 .btn-quitter {
   position: absolute;
