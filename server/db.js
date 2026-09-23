@@ -143,6 +143,9 @@ db.exec(`
 `)
 db.prepare('INSERT OR IGNORE INTO slots_config (id, mise_min, mise_max) VALUES (1, 10000, 1000000)').run()
 
+// Migration : is_wild (ajout non-destructif)
+try { db.prepare('ALTER TABLE slots_symbols ADD COLUMN is_wild INTEGER NOT NULL DEFAULT 0').run() } catch {}
+
 // Table logs solde admin
 db.exec(`
   CREATE TABLE IF NOT EXISTS solde_logs (

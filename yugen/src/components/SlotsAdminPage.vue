@@ -84,6 +84,15 @@
               </label>
             </div>
 
+            <div class="field field--actif">
+              <label class="field-label">Wild</label>
+              <label class="toggle">
+                <input type="checkbox" v-model="form.is_wild" />
+                <span class="toggle-track toggle-track--gold"></span>
+              </label>
+              <p class="field-hint">Substitue n'importe quel symbole.</p>
+            </div>
+
           </div>
 
           <div v-if="erreurForm" class="form-erreur">{{ erreurForm }}</div>
@@ -128,6 +137,7 @@
                 <span class="stat-k">×3</span>
                 <span class="stat-v">{{ s.mult_3 }}</span>
               </span>
+              <span v-if="s.is_wild" class="stat-item stat-wild">Wild</span>
             </div>
 
             <div class="symbol-actions">
@@ -470,7 +480,7 @@ const previewUrl          = ref('')
 const form = ref({ nom: '', imageFile: null, poids: 10, mult_2: 2, mult_3: 10, actif: true })
 
 function resetForm() {
-  form.value  = { nom: '', imageFile: null, poids: 10, mult_2: 2, mult_3: 10, actif: true }
+  form.value  = { nom: '', imageFile: null, poids: 10, mult_2: 2, mult_3: 10, actif: true, is_wild: false }
   previewUrl.value = ''
   editId.value    = null
   erreurForm.value = ''
@@ -485,7 +495,7 @@ function onImageChange(e) {
 
 function editer(s) {
   editId.value = s.id
-  form.value = { nom: s.nom, imageFile: null, poids: s.poids, mult_2: s.mult_2, mult_3: s.mult_3, actif: !!s.actif }
+  form.value = { nom: s.nom, imageFile: null, poids: s.poids, mult_2: s.mult_2, mult_3: s.mult_3, actif: !!s.actif, is_wild: !!s.is_wild }
   previewUrl.value = s.image_url ? IMG_BASE + s.image_url : ''
   erreurForm.value = ''
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -502,7 +512,8 @@ async function soumettre() {
   fd.append('poids',  form.value.poids)
   fd.append('mult_2', form.value.mult_2)
   fd.append('mult_3', form.value.mult_3)
-  fd.append('actif',  form.value.actif ? '1' : '0')
+  fd.append('actif',   form.value.actif   ? '1' : '0')
+  fd.append('is_wild', form.value.is_wild ? '1' : '0')
   if (form.value.imageFile) fd.append('image', form.value.imageFile)
 
   try {
@@ -919,6 +930,8 @@ onMounted(async () => {
 }
 .toggle input:checked ~ .toggle-track { background: rgba(139,26,26,0.6); }
 .toggle input:checked ~ .toggle-track::after { transform: translateX(16px); background: #c05050; }
+.toggle input:checked ~ .toggle-track--gold { background: rgba(160,120,20,0.6); }
+.toggle input:checked ~ .toggle-track--gold::after { transform: translateX(16px); background: #c8a030; }
 
 .form-erreur {
   color: #c05050;
@@ -1042,6 +1055,17 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.stat-wild {
+  font-family: 'Cinzel', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(200, 165, 40, 0.75);
+  border: 1px solid rgba(200, 165, 40, 0.3);
+  padding: 2px 6px;
+  align-self: flex-start;
 }
 
 .stat-k {

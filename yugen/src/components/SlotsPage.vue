@@ -1,5 +1,5 @@
 <template>
-  <div class="page">
+  <div :class="['page', screenShake ? 'page--shake' : '']">
     <AppNavbar />
 
     <div class="page-inner">
@@ -39,7 +39,11 @@
               class="slot-grid"
               :style="{ gridTemplateColumns: `repeat(${nbCols}, 1fr)` }"
             >
-              <div v-for="col in nbCols" :key="col" class="reel-wrapper">
+              <div
+                v-for="col in nbCols"
+                :key="col"
+                :class="['reel-wrapper', nearMiss ? 'reel-wrapper--nearmiss' : '']"
+              >
                 <div
                   class="reel-strip"
                   :style="{
@@ -50,7 +54,11 @@
                   <div
                     v-for="(sym, idx) in reelStrips[col - 1]"
                     :key="idx"
-                    class="reel-cell"
+                    :class="[
+                      'reel-cell',
+                      sym && sym.is_wild ? 'reel-cell--wild' : '',
+                      winningCols.has(col - 1) && idx === paylineIdx[col - 1] && !spinning && resultat ? 'reel-cell--win' : '',
+                    ]"
                   >
                     <img
                       v-if="sym && sym.image_url"
@@ -59,6 +67,7 @@
                     />
                     <span v-else-if="sym" class="cell-nom">{{ sym.nom }}</span>
                     <span v-else class="cell-vide">?</span>
+                    <span v-if="sym && sym.is_wild" class="wild-badge">W</span>
                   </div>
                 </div>
               </div>
@@ -116,15 +125,41 @@
 
             <div v-if="erreur" class="erreur">{{ erreur }}</div>
 
+            <!-- Bouton Lancer -->
             <button
               class="btn-spin"
-              :disabled="spinning || !mise"
+              :disabled="spinning || !mise || autoSpinning"
               @click="lancerSpin"
             >
-              <span v-if="spinning" class="spin-dots">
+              <span v-if="spinning && !autoSpinning" class="spin-dots">
                 <span></span><span></span><span></span>
               </span>
               <span v-else>Lancer</span>
+            </button>
+
+            <!-- Série automatique -->
+            <div v-if="!autoSpinning" class="auto-row">
+              <span class="auto-label">Série</span>
+              <div class="auto-counts">
+                <button
+                  v-for="n in [5, 10, 20]"
+                  :key="n"
+                  :class="['auto-count-btn', autoSpinCount === n ? 'auto-count-btn--on' : '']"
+                  :disabled="spinning"
+                  @click="autoSpinCount = autoSpinCount === n ? 0 : n"
+                >×{{ n }}</button>
+              </div>
+              <button
+                class="auto-go"
+                :disabled="spinning || !mise || !autoSpinCount"
+                @click="demarrerAutoSpin"
+              >Démarrer</button>
+            </div>
+
+            <!-- En cours d'auto-spin -->
+            <button v-else class="auto-stop-bar" @click="arreterAutoSpin">
+              <span class="auto-stop-remaining">{{ autoSpinRemaining }} lancer{{ autoSpinRemaining > 1 ? 's' : '' }} restant{{ autoSpinRemaining > 1 ? 's' : '' }}</span>
+              <span class="auto-stop-cta">Arrêter</span>
             </button>
 
           </div>
@@ -165,6 +200,46 @@
 
     </div>
   </div>
+
+  <!-- Flash de victoire -->
+  <div v-if="winFlash" :class="['win-flash', `win-flash--${winFlash}`]"></div>
+
+  <!-- Rayons lumineux (jackpot) -->
+  <div v-if="showRays" class="rays-container" aria-hidden="true">
+    <div v-for="i in 8" :key="i" class="ray" :style="{ '--rot': (i - 1) * 45 + 'deg', '--delay': (i - 1) * 0.08 + 's' }"></div>
+  </div>
+
+  <!-- Particules de victoire -->
+  <div class="particles-container" aria-hidden="true">
+    <div
+      v-for="p in particles"
+      :key="p.id"
+      class="particle"
+      :style="{
+        left: p.x + 'px',
+        top:  p.y + 'px',
+        width:  p.size + 'px',
+        height: p.size + 'px',
+        background: p.color,
+        '--dx': p.dx + 'px',
+        '--dy': p.dy + 'px',
+        animationDuration: p.dur + 'ms',
+        animationDelay:    p.delay + 'ms',
+      }"
+    ></div>
+  </div>
+
+  <!-- Overlay Jackpot -->
+  <Transition name="jackpot-fade">
+    <div v-if="isJackpot" class="jackpot-overlay" @click="isJackpot = false">
+      <div class="jackpot-inner">
+        <p class="jackpot-eyebrow">Jackpot</p>
+        <p class="jackpot-gain">+{{ resultat?.gain.toLocaleString() }} ¥</p>
+        <p class="jackpot-mult">×{{ resultat?.multiplicateur }}</p>
+        <p class="jackpot-dismiss">Appuyez pour continuer</p>
+      </div>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
@@ -172,16 +247,17 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { currentUser } from '../auth.js'
 import { getSlotsConfig, spinSlots, IMG_BASE } from '../api.js'
-import { playTick, playStop, playWin, resumeAudio } from '../slots-audio.js'
+import { playTick, playStop, playSmallWin, playBigWin, playJackpot, playNearMiss, resumeAudio } from '../slots-audio.js'
 
 // ── Constantes animation ──────────────────────────────────────────────────
 const CELL_H = 110 // hauteur d'une cellule en px
 
 // Durée du scroll rapide par step (ms)
-const STEP_MS = 65
+const STEP_MS = 80
 
 // Transition de décélération à l'arrêt de chaque rouleau
-const STOP_TRANSITION = 'transform 0.5s cubic-bezier(0.215, 0.61, 0.355, 1)'
+// cubic-bezier avec léger overshoot → effet "claquement" mécanique
+const STOP_TRANSITION = 'transform 0.85s cubic-bezier(0.34, 1.3, 0.64, 1)'
 
 // ── État ──────────────────────────────────────────────────────────────────
 const loading    = ref(true)
@@ -199,6 +275,97 @@ const reelTransitions = ref(['none', 'none', 'none'])
 
 let reelIntervals = [null, null, null]
 const reglesOuvertes = ref(false)
+
+const winningCols = ref(new Set())
+const nearMiss    = ref(false)
+const isJackpot   = ref(false)
+
+// Auto-spin
+const autoSpinCount     = ref(0)   // 0 = non sélectionné
+const autoSpinRemaining = ref(0)
+const autoSpinning      = ref(false)
+
+function demarrerAutoSpin() {
+  if (!autoSpinCount.value || spinning.value) return
+  autoSpinning.value      = true
+  autoSpinRemaining.value = autoSpinCount.value
+  lancerSpin()
+}
+
+function arreterAutoSpin() {
+  autoSpinning.value      = false
+  autoSpinRemaining.value = 0
+}
+const winFlash    = ref(null)    // null | 'small' | 'big' | 'jackpot'
+const screenShake = ref(false)
+const showRays    = ref(false)
+const particles   = ref([])
+let   _particleId = 0
+let   _shakeTimer = null
+
+function spawnParticles(count, colors, originBias = 0.5) {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const batch = Array.from({ length: count }, () => {
+    const angle = Math.random() * Math.PI * 2
+    const force = 120 + Math.random() * 320
+    return {
+      id:    ++_particleId,
+      x:     vw * (0.15 + Math.random() * 0.7),
+      y:     vh * (0.2  + Math.random() * originBias),
+      size:  2 + Math.random() * 7,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      dx:    Math.cos(angle) * force,
+      dy:    Math.sin(angle) * force - 80,
+      dur:   1800 + Math.random() * 1600,
+      delay: Math.random() * 600,
+    }
+  })
+  particles.value = [...particles.value, ...batch]
+  const maxLife = Math.max(...batch.map(p => p.dur + p.delay)) + 80
+  setTimeout(() => {
+    const ids = new Set(batch.map(p => p.id))
+    particles.value = particles.value.filter(p => !ids.has(p.id))
+  }, maxLife)
+}
+
+function triggerWinEffects(type) {
+  if (type === 'jackpot') {
+    // Vague 1 — immédiate
+    winFlash.value = 'jackpot'
+    spawnParticles(70, ['#c87070', '#e8a0a0', '#fff', '#f0d080', '#ffcccc'])
+    // Vague 2 — 500ms
+    setTimeout(() => spawnParticles(50, ['#fff', '#f0d080', '#c87070', '#ffaaaa']), 500)
+    // Vague 3 — 1100ms
+    setTimeout(() => spawnParticles(40, ['#c87070', '#e8a0a0', '#f0d080']), 1100)
+    // Rayons lumineux
+    showRays.value = true
+    setTimeout(() => { showRays.value = false }, 4000)
+    // Shake
+    screenShake.value = true
+    clearTimeout(_shakeTimer)
+    _shakeTimer = setTimeout(() => { screenShake.value = false }, 600)
+    setTimeout(() => { winFlash.value = null }, 2500)
+
+  } else if (type.startsWith('three')) {
+    winFlash.value = 'big'
+    spawnParticles(45, ['#c87070', '#e8a0a0', '#fff'])
+    setTimeout(() => spawnParticles(30, ['#c87070', '#fff', '#e8a0a0']), 500)
+    // Shake léger
+    screenShake.value = true
+    clearTimeout(_shakeTimer)
+    _shakeTimer = setTimeout(() => { screenShake.value = false }, 400)
+    setTimeout(() => { winFlash.value = null }, 2000)
+
+  } else {
+    winFlash.value = 'small'
+    spawnParticles(20, ['#c87070', '#e8a0a0'])
+    setTimeout(() => { winFlash.value = null }, 1400)
+  }
+}
+
+// Index de la cellule payline (rangée centrale) dans le strip de chaque colonne
+const paylineIdx = computed(() => colSpinCounts.value.map(sc => sc + 1))
 
 const nbCols = computed(() => config.value?.nb_colonnes ?? 3)
 
@@ -244,14 +411,19 @@ async function lancerSpin() {
   resultat.value   = null
   miseDerniere.value = mise.value
   spinning.value   = true
+  winningCols.value = new Set()
+  nearMiss.value    = false
+  isJackpot.value   = false
 
   // Récupérer le résultat côté serveur en premier
   let res
   try {
     res = await spinSlots(mise.value)
   } catch (e) {
-    spinning.value = false
-    erreur.value   = e.message
+    spinning.value          = false
+    autoSpinning.value      = false
+    autoSpinRemaining.value = 0
+    erreur.value            = e.message
     return
   }
 
@@ -311,8 +483,40 @@ async function lancerSpin() {
             if (currentUser.value) {
               currentUser.value = { ...currentUser.value, solde: res.solde }
             }
-            if (res.type !== 'none') playWin()
-          }, 550)
+
+            // Sons et effets selon le résultat
+            if (res.type === 'none') {
+              if (res.near_miss) {
+                nearMiss.value = true
+                playNearMiss()
+                setTimeout(() => { nearMiss.value = false }, 650)
+              }
+            } else {
+              winningCols.value = new Set(res.winning_cols)
+              triggerWinEffects(res.type)
+              if (res.is_jackpot) {
+                isJackpot.value = true
+                playJackpot()
+                setTimeout(() => { isJackpot.value = false }, 9000)
+              } else if (res.type.startsWith('three')) {
+                playBigWin()
+              } else {
+                playSmallWin()
+              }
+            }
+
+            // Auto-spin : lancer le suivant
+            if (autoSpinning.value) {
+              autoSpinRemaining.value--
+              if (autoSpinRemaining.value > 0 && solde.value >= mise.value) {
+                const delay = res.type !== 'none' ? 1800 : 600
+                setTimeout(() => { if (autoSpinning.value) lancerSpin() }, delay)
+              } else {
+                autoSpinning.value      = false
+                autoSpinRemaining.value = 0
+              }
+            }
+          }, 900)
         }
       }
     }, STEP_MS)
@@ -476,6 +680,50 @@ onMounted(async () => {
   height: 88%;
   object-fit: contain;
   display: block;
+}
+
+/* Cellule Wild */
+.reel-cell--wild {
+  position: relative;
+  border: 1px solid rgba(200, 165, 40, 0.35);
+  background: rgba(180, 140, 20, 0.06);
+}
+
+.wild-badge {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  color: rgba(220, 180, 50, 0.75);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Cellule gagnante */
+.reel-cell--win {
+  animation: cellWin 0.7s ease-out forwards;
+}
+
+@keyframes cellWin {
+  0%   { background: #111113; box-shadow: none; }
+  25%  { background: rgba(139,26,26,0.28); box-shadow: inset 0 0 22px rgba(200,80,80,0.45); }
+  100% { background: rgba(139,26,26,0.12); box-shadow: inset 0 0 12px rgba(200,80,80,0.2); }
+}
+
+/* Near miss — vibration horizontale */
+.reel-wrapper--nearmiss {
+  animation: nearMissShake 0.55s ease-out;
+}
+
+@keyframes nearMissShake {
+  0%, 100% { transform: translateX(0); }
+  15%  { transform: translateX(-4px); }
+  35%  { transform: translateX(4px); }
+  55%  { transform: translateX(-3px); }
+  75%  { transform: translateX(2px); }
+  90%  { transform: translateX(-1px); }
 }
 
 .cell-nom {
@@ -671,6 +919,94 @@ onMounted(async () => {
 .btn-spin:hover:not(:disabled) { background: #a82020; }
 .btn-spin:disabled { opacity: 0.45; cursor: default; }
 
+/* ── Série automatique ───────────────────────────────────────────────────── */
+.auto-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,0.05);
+  background: #0d0d0e;
+}
+
+.auto-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+
+.auto-counts {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+}
+
+.auto-count-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.25);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.auto-count-btn:hover:not(:disabled) { border-color: rgba(255,255,255,0.18); color: rgba(255,255,255,0.55); }
+.auto-count-btn--on { border-color: rgba(139,26,26,0.4); color: #c05050; background: rgba(139,26,26,0.08); }
+.auto-count-btn:disabled { opacity: 0.2; cursor: default; }
+
+.auto-go {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: transparent;
+  border: none;
+  color: rgba(200,80,80,0.5);
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.12s;
+  flex-shrink: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(139,26,26,0.3);
+}
+.auto-go:hover:not(:disabled) { color: #c87070; }
+.auto-go:disabled { opacity: 0.2; cursor: default; text-decoration: none; }
+
+/* Barre d'arrêt auto-spin */
+.auto-stop-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  background: rgba(139,26,26,0.06);
+  border: 1px solid rgba(139,26,26,0.22);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.auto-stop-bar:hover { background: rgba(139,26,26,0.12); }
+
+.auto-stop-remaining {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: rgba(255,255,255,0.35);
+}
+
+.auto-stop-cta {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(200,80,80,0.6);
+}
+
 /* Points de chargement */
 .spin-dots { display: flex; gap: 7px; align-items: center; }
 .spin-dots span {
@@ -750,4 +1086,179 @@ onMounted(async () => {
   color: rgba(255,255,255,0.7);
   font-weight: 600;
 }
+
+/* ── Jackpot Overlay ─────────────────────────────────────────────────────── */
+.jackpot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.jackpot-inner {
+  text-align: center;
+  padding: 48px 40px;
+  border: 1px solid rgba(139,26,26,0.35);
+  background: rgba(10, 5, 5, 0.95);
+  animation: jackpotPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes jackpotPulse {
+  0%, 100% { box-shadow: 0 0 40px rgba(139,26,26,0.2); }
+  50%       { box-shadow: 0 0 80px rgba(139,26,26,0.45), 0 0 160px rgba(139,26,26,0.15); }
+}
+
+.jackpot-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(200,80,80,0.7);
+  margin: 0 0 18px;
+}
+
+.jackpot-gain {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-size: 2.8rem;
+  color: #c87070;
+  margin: 0 0 8px;
+  letter-spacing: 0.04em;
+  animation: jackpotGlowText 1.6s ease-in-out infinite;
+}
+
+@keyframes jackpotGlowText {
+  0%, 100% { text-shadow: 0 0 20px rgba(200,80,80,0.4); }
+  50%       { text-shadow: 0 0 40px rgba(200,80,80,0.8), 0 0 80px rgba(200,80,80,0.3); }
+}
+
+.jackpot-mult {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  color: rgba(200,80,80,0.5);
+  margin: 0 0 32px;
+}
+
+.jackpot-dismiss {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: rgba(255,255,255,0.18);
+  margin: 0;
+}
+
+/* ── Shake écran ─────────────────────────────────────────────────────────── */
+.page--shake { animation: pageShake 0.45s ease-out; }
+
+@keyframes pageShake {
+  0%, 100% { transform: translate(0, 0); }
+  15%  { transform: translate(-6px, -3px); }
+  30%  { transform: translate(6px, 3px); }
+  45%  { transform: translate(-4px, 2px); }
+  60%  { transform: translate(4px, -2px); }
+  75%  { transform: translate(-2px, 1px); }
+  90%  { transform: translate(2px, -1px); }
+}
+
+/* ── Flash de victoire ───────────────────────────────────────────────────── */
+.win-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  pointer-events: none;
+}
+
+.win-flash--small {
+  background: radial-gradient(ellipse at center, rgba(139,26,26,0.22) 0%, transparent 70%);
+  animation: flashPulse 1.4s ease-out forwards;
+}
+.win-flash--big {
+  background: radial-gradient(ellipse at center, rgba(180,50,50,0.35) 0%, transparent 65%);
+  animation: flashPulse 2s ease-out forwards;
+}
+.win-flash--jackpot {
+  background: radial-gradient(ellipse at center, rgba(220,80,80,0.45) 0%, rgba(139,26,26,0.2) 50%, transparent 75%);
+  animation: flashPulseJackpot 2.5s ease-out forwards;
+}
+
+@keyframes flashPulse {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  40%  { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+@keyframes flashPulseJackpot {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  30%  { opacity: 0.9; }
+  55%  { opacity: 0.7; }
+  75%  { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+
+/* ── Rayons lumineux (jackpot) ───────────────────────────────────────────── */
+.rays-container {
+  position: fixed;
+  inset: 0;
+  z-index: 490;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ray {
+  position: absolute;
+  width: 3px;
+  height: 100vh;
+  background: linear-gradient(to top, transparent 0%, rgba(200,80,80,0.18) 40%, rgba(220,100,100,0.35) 50%, rgba(200,80,80,0.18) 60%, transparent 100%);
+  transform-origin: center center;
+  transform: rotate(var(--rot));
+  animation: rayPulse 3.8s ease-in-out forwards;
+  animation-delay: var(--delay);
+  opacity: 0;
+}
+
+@keyframes rayPulse {
+  0%   { opacity: 0;    transform: rotate(var(--rot)) scaleX(1); }
+  15%  { opacity: 1;    transform: rotate(var(--rot)) scaleX(2.5); }
+  50%  { opacity: 0.6;  transform: rotate(calc(var(--rot) + 8deg)) scaleX(1.8); }
+  80%  { opacity: 0.3;  transform: rotate(calc(var(--rot) + 15deg)) scaleX(1); }
+  100% { opacity: 0; }
+}
+
+/* ── Particules ──────────────────────────────────────────────────────────── */
+.particles-container {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleFly linear forwards;
+}
+
+@keyframes particleFly {
+  0%   { transform: translate(0, 0) scale(1);   opacity: 1; }
+  60%  { opacity: 0.7; }
+  85%  { opacity: 0.3; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+}
+
+/* Transition jackpot */
+.jackpot-fade-enter-active { transition: opacity 0.35s ease; }
+.jackpot-fade-leave-active { transition: opacity 0.25s ease; }
+.jackpot-fade-enter-from,
+.jackpot-fade-leave-to     { opacity: 0; }
 </style>

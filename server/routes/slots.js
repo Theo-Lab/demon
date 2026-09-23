@@ -41,7 +41,7 @@ const upload = multer({
 // GET /api/slots/config — config + symboles actifs (pour l'UI du jeu)
 router.get('/config', (req, res) => {
   const config   = db.prepare('SELECT * FROM slots_config WHERE id = 1').get()
-  const symboles = db.prepare('SELECT id, nom, image_url FROM slots_symbols WHERE actif = 1').all()
+  const symboles = db.prepare('SELECT id, nom, image_url, is_wild FROM slots_symbols WHERE actif = 1').all()
   res.json({ config, symboles })
 })
 
@@ -68,20 +68,21 @@ router.get('/admin/symbols', requireAuth, requireAdmin, (req, res) => {
 
 // POST /api/slots/admin/symbols
 router.post('/admin/symbols', requireAuth, requireAdmin, upload.single('image'), (req, res) => {
-  const { nom, poids, mult_2, mult_3, actif } = req.body
+  const { nom, poids, mult_2, mult_3, actif, is_wild } = req.body
   if (!nom) return res.status(400).json({ message: 'Nom requis.' })
 
   const image_url = req.file ? `/uploads/${req.file.filename}` : ''
   const result = db.prepare(`
-    INSERT INTO slots_symbols (nom, image_url, poids, mult_2, mult_3, actif)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO slots_symbols (nom, image_url, poids, mult_2, mult_3, actif, is_wild)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
     nom.trim(),
     image_url,
     parseInt(poids) || 10,
     parseFloat(mult_2) || 2,
     parseFloat(mult_3) || 10,
-    actif === '0' ? 0 : 1
+    actif === '0' ? 0 : 1,
+    is_wild === '1' ? 1 : 0
   )
 
   const symbol = db.prepare('SELECT * FROM slots_symbols WHERE id = ?').get(result.lastInsertRowid)
@@ -93,11 +94,11 @@ router.patch('/admin/symbols/:id', requireAuth, requireAdmin, upload.single('ima
   const symbol = db.prepare('SELECT * FROM slots_symbols WHERE id = ?').get(req.params.id)
   if (!symbol) return res.status(404).json({ message: 'Symbole introuvable.' })
 
-  const { nom, poids, mult_2, mult_3, actif } = req.body
+  const { nom, poids, mult_2, mult_3, actif, is_wild } = req.body
   const image_url = req.file ? `/uploads/${req.file.filename}` : symbol.image_url
 
   db.prepare(`
-    UPDATE slots_symbols SET nom = ?, image_url = ?, poids = ?, mult_2 = ?, mult_3 = ?, actif = ?
+    UPDATE slots_symbols SET nom = ?, image_url = ?, poids = ?, mult_2 = ?, mult_3 = ?, actif = ?, is_wild = ?
     WHERE id = ?
   `).run(
     nom       !== undefined ? nom.trim()          : symbol.nom,
@@ -106,6 +107,7 @@ router.patch('/admin/symbols/:id', requireAuth, requireAdmin, upload.single('ima
     mult_2    !== undefined ? parseFloat(mult_2)  : symbol.mult_2,
     mult_3    !== undefined ? parseFloat(mult_3)  : symbol.mult_3,
     actif     !== undefined ? (actif === '0' ? 0 : 1) : symbol.actif,
+    is_wild   !== undefined ? (is_wild === '1' ? 1 : 0) : symbol.is_wild,
     req.params.id
   )
 
