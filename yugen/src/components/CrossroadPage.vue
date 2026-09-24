@@ -426,8 +426,8 @@ function drawDemon(x, y, f, state) {
 
   // Sourcils (expressifs)
   ctx.strokeStyle = '#1a0303'; ctx.lineWidth = 1.8; ctx.lineCap = 'round'
-  ctx.beginPath(); ctx.moveTo(-7.5, -13.5); ctx.quadraticCurveTo(-5, -16), (-2, -13.5); ctx.stroke()
-  ctx.beginPath(); ctx.moveTo(7.5, -13.5);  ctx.quadraticCurveTo(5, -16),  (2, -13.5);  ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(-7.5, -13.5); ctx.quadraticCurveTo(-5, -16, -2, -13.5); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(7.5, -13.5);  ctx.quadraticCurveTo(5, -16, 2, -13.5);  ctx.stroke()
 
   // Yeux — lueur intense
   ctx.shadowBlur = 18; ctx.shadowColor = '#ff2200'
@@ -466,9 +466,9 @@ function drawDemon(x, y, f, state) {
   const walk = state === 'walk' ? Math.sin(f * 0.28) * 5 : 0
   ctx.fillStyle = '#7a1212'
   ctx.save(); ctx.translate(-4, 16); ctx.rotate(walk * Math.PI / 180)
-  ctx.beginPath(); ctx.roundRect(-3, 0, 6, 8, 2); ctx.fill(); ctx.restore()
+  ctx.fillRect(-3, 0, 6, 8); ctx.restore()
   ctx.save(); ctx.translate(4, 16); ctx.rotate(-walk * Math.PI / 180)
-  ctx.beginPath(); ctx.roundRect(-3, 0, 6, 8, 2); ctx.fill(); ctx.restore()
+  ctx.fillRect(-3, 0, 6, 8); ctx.restore()
 
   ctx.restore()
 }
@@ -547,6 +547,12 @@ function updateSparks() {
 
 function draw() {
   if (!ctx) return
+  try { _draw() } catch (e) { console.error('[CrossroadCanvas]', e) }
+  frame++
+  raf = requestAnimationFrame(draw)
+}
+
+function _draw() {
   ctx.clearRect(0, 0, CW, CH)
 
   // Fond global gradient
@@ -616,8 +622,6 @@ function draw() {
     }
   }
 
-  frame++
-  raf = requestAnimationFrame(draw)
 }
 
 // ── Logic ─────────────────────────────────────────────────────────────────────
@@ -719,6 +723,9 @@ onMounted(async () => {
 
   demonY       = laneY(0)
   demonTargetY = laneY(0)
+
+  // Attendre les fonts custom avant de démarrer le canvas
+  await document.fonts.ready
   draw()
 })
 
