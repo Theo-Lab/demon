@@ -579,6 +579,25 @@ export async function blackjackDouble() {
   return data
 }
 
+export async function crossroadNew(mise) {
+  const res = await apiFetch(`${BASE}/crossroad/new`, { method: 'POST', body: JSON.stringify({ mise }) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+export async function crossroadAvancer() {
+  const res = await apiFetch(`${BASE}/crossroad/avancer`, { method: 'POST' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+export async function crossroadEncaisser() {
+  const res = await apiFetch(`${BASE}/crossroad/encaisser`, { method: 'POST' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function spinRoulette(mises) {
   const res = await apiFetch(`${BASE}/roulette/spin`, {
     method: 'POST',

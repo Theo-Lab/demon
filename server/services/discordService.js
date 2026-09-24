@@ -80,8 +80,8 @@ function logSolde({ playerName, playerIdentifiant, operation, montant, soldeBefo
 function logGameWin(jeu, { playerName, playerIdentifiant, gain_net, mise, solde, detail, resultat }) {
   if (gain_net <= 0) return
 
-  const icons   = { blackjack: '🃏', roulette: '🎡', slots: '🎰' }
-  const colors  = { blackjack: 0x9B59B6, roulette: 0x3498DB, slots: 0xC87070 }
+  const icons   = { blackjack: '🃏', roulette: '🎡', slots: '🎰', crossroad: '😈' }
+  const colors  = { blackjack: 0x9B59B6, roulette: 0x3498DB, slots: 0xC87070, crossroad: 0x8B1A1A }
   const nomJeu  = jeu.charAt(0).toUpperCase() + jeu.slice(1)
   const icon    = icons[jeu] || '🎲'
   const isBlackjack = resultat === 'blackjack'

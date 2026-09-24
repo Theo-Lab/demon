@@ -245,6 +245,21 @@ db.exec(`
   );
 `)
 
+// Table traversée démoniaque
+db.exec(`
+  CREATE TABLE IF NOT EXISTS crossroad_games (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        INTEGER NOT NULL REFERENCES users(id),
+    statut         TEXT    NOT NULL DEFAULT 'en_cours',
+    mise           INTEGER NOT NULL,
+    lane_actuelle  INTEGER NOT NULL DEFAULT 0,
+    lane_mort      INTEGER,
+    solde_avant    INTEGER NOT NULL,
+    gain_net       INTEGER NOT NULL DEFAULT 0,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
+
 // Migration bj_sieges : colonne user_nom (ajoutée après création initiale de la table)
 try { db.exec(`ALTER TABLE bj_sieges ADD COLUMN user_nom TEXT DEFAULT NULL`) } catch {}
 

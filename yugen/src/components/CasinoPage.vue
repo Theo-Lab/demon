@@ -46,6 +46,14 @@
               </div>
               <span class="game-item-cta">Jouer →</span>
             </RouterLink>
+            <RouterLink to="/crossroad" class="game-item">
+              <span class="game-item-icon">😈</span>
+              <div class="game-item-body">
+                <span class="game-item-name">Traversée Démoniaque</span>
+                <span class="game-item-desc">Traversez les ruelles, encaissez avant d'être brûlé</span>
+              </div>
+              <span class="game-item-cta">Jouer →</span>
+            </RouterLink>
           </nav>
         </div>
 
