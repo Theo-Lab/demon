@@ -1,5 +1,6 @@
-const db = require('../db')
+const db      = require('../db')
 const { createDeck, handTotal, isSoft17, dealerPlay } = require('./blackjackService')
+const discord = require('./discordService')
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -330,6 +331,18 @@ const _resoudrePartie = db.transaction((tableId) => {
 
     db.prepare('UPDATE bj_sieges SET resultat = ?, gain_net = ? WHERE id = ?')
       .run(resultat, gain_net, siege.id)
+
+    if (gain_net > 0) {
+      const user = db.prepare('SELECT nom, identifiant FROM users WHERE id = ?').get(siege.user_id)
+      discord.logGameWin('blackjack', {
+        playerName:        user?.nom || siege.user_nom || '?',
+        playerIdentifiant: user?.identifiant || '',
+        gain_net,
+        solde:             solde_apres,
+        resultat,
+        detail:            `Joueur **${pTotal}** — Dealer **${dTotal}** (table multijoueur)`,
+      })
+    }
 
     resultats.push({ siegeNumero: siege.numero, user_id: siege.user_id, resultat, gain_net, pTotal, solde: solde_apres })
   }

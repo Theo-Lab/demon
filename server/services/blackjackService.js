@@ -1,4 +1,5 @@
-const db = require('../db')
+const db      = require('../db')
+const discord = require('./discordService')
 
 const SUITS  = ['S','H','D','C']
 const VALUES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']
@@ -239,9 +240,22 @@ const _double = db.transaction((userId) => {
   return _resoudrePartie({ ...game, mise_double: game.mise }, mainJoueur, finalDealer, miseTotale)
 })
 
-function newGame(userId, mise) { return _newGame(userId, mise) }
-function hit(userId)           { return _hit(userId) }
-function stand(userId)         { return _stand(userId) }
-function doubleDown(userId)    { return _double(userId) }
+function _notifyBj(userId, result) {
+  if (result.statut !== 'fini' || result.gain_net <= 0) return
+  const user = db.prepare('SELECT nom, identifiant FROM users WHERE id = ?').get(userId)
+  discord.logGameWin('blackjack', {
+    playerName:        user?.nom || '?',
+    playerIdentifiant: user?.identifiant || '',
+    gain_net:          result.gain_net,
+    solde:             result.solde,
+    resultat:          result.resultat,
+    detail:            `Joueur **${result.pTotal}** — Dealer **${result.dTotal}**`,
+  })
+}
+
+function newGame(userId, mise)  { const r = _newGame(userId, mise);  _notifyBj(userId, r); return r }
+function hit(userId)            { const r = _hit(userId);            _notifyBj(userId, r); return r }
+function stand(userId)          { const r = _stand(userId);          _notifyBj(userId, r); return r }
+function doubleDown(userId)     { const r = _double(userId);         _notifyBj(userId, r); return r }
 
 module.exports = { newGame, hit, stand, double: doubleDown, createDeck, handTotal, isSoft17, dealerPlay }

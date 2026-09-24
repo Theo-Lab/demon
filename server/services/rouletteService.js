@@ -1,4 +1,5 @@
-const db = require('../db')
+const db      = require('../db')
+const discord = require('./discordService')
 
 // Roulette européenne : 0–36
 const ROUGE = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36])
@@ -67,7 +68,23 @@ const _jouer = db.transaction((userId, mises) => {
 })
 
 function jouer(userId, mises) {
-  return _jouer(userId, mises)
+  const result = _jouer(userId, mises)
+  if (result.gain_net > 0) {
+    const user = db.prepare('SELECT nom, identifiant FROM users WHERE id = ?').get(userId)
+    const misesDesc = result.mises
+      .filter(m => m.gain > 0)
+      .map(m => m.type + (m.valeur ? ` ${m.valeur}` : ''))
+      .join(', ')
+    discord.logGameWin('roulette', {
+      playerName:        user?.nom || '?',
+      playerIdentifiant: user?.identifiant || '',
+      gain_net:          result.gain_net,
+      mise:              result.mise_totale,
+      solde:             result.solde,
+      detail:            `Numéro **${result.numero}** (${result.couleur}) — ${misesDesc}`,
+    })
+  }
+  return result
 }
 
 module.exports = { jouer, ROUGE }

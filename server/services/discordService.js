@@ -76,6 +76,38 @@ function logSolde({ playerName, playerIdentifiant, operation, montant, soldeBefo
   })
 }
 
+// Log générique pour tous les jeux (blackjack, roulette…)
+function logGameWin(jeu, { playerName, playerIdentifiant, gain_net, mise, solde, detail, resultat }) {
+  if (gain_net <= 0) return
+
+  const icons   = { blackjack: '🃏', roulette: '🎡', slots: '🎰' }
+  const colors  = { blackjack: 0x9B59B6, roulette: 0x3498DB, slots: 0xC87070 }
+  const nomJeu  = jeu.charAt(0).toUpperCase() + jeu.slice(1)
+  const icon    = icons[jeu] || '🎲'
+  const isBlackjack = resultat === 'blackjack'
+  const title   = isBlackjack ? `${icon}  Blackjack naturel !` : `${icon}  Victoire — ${nomJeu}`
+  const color   = isBlackjack ? 0xFFD700 : (colors[jeu] || 0xC87070)
+
+  const joueurVal = playerIdentifiant
+    ? `${playerName} · \`${playerIdentifiant}\``
+    : playerName
+
+  const fields = [
+    { name: 'Joueur',      value: joueurVal,        inline: false },
+    { name: 'Gain net',    value: '+' + fmt(gain_net), inline: true },
+    { name: 'Solde après', value: fmt(solde),        inline: true },
+  ]
+  if (detail) fields.push({ name: 'Détail', value: detail, inline: false })
+
+  post({
+    embeds: [{
+      title, color, fields,
+      footer:    { text: `Casino de l'Ordre — ${nomJeu}` },
+      timestamp: new Date().toISOString(),
+    }],
+  })
+}
+
 function logTest(adminName) {
   post({
     embeds: [{
@@ -89,4 +121,4 @@ function logTest(adminName) {
   })
 }
 
-module.exports = { logSpin, logSolde, logTest }
+module.exports = { logSpin, logSolde, logGameWin, logTest }
