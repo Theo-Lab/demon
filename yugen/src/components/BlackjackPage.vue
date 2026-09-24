@@ -8,6 +8,25 @@
         <div class="solde-badge">{{ fmtYen(solde) }}</div>
       </div>
 
+      <!-- ── Choix de mode ──────────────────────────── -->
+      <template v-if="mode === null">
+        <h1 class="page-title">Blackjack</h1>
+        <div class="mode-choice">
+          <button class="mode-card" @click="mode = 'solo'">
+            <span class="mode-card-icon">🃏</span>
+            <span class="mode-card-name">Solo</span>
+            <span class="mode-card-desc">Affrontez le croupier seul, à votre rythme</span>
+          </button>
+          <button class="mode-card" @click="router.push('/blackjack/lobby')">
+            <span class="mode-card-icon">🪑</span>
+            <span class="mode-card-name">Multijoueur</span>
+            <span class="mode-card-desc">Rejoignez une table et jouez avec d'autres joueurs</span>
+          </button>
+        </div>
+      </template>
+
+      <template v-else>
+
       <h1 class="page-title">Blackjack</h1>
 
       <!-- ── Table ────────────────────────────────────── -->
@@ -143,18 +162,24 @@
           </div>
         </div>
       </div>
+
+      </template><!-- fin v-else solo -->
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import AppNavbar from './AppNavbar.vue'
 import PlayingCard from './PlayingCard.vue'
 import { getMe, blackjackNew, blackjackHit, blackjackStand, blackjackDouble } from '../api.js'
 import {
   playDeal, playFlip, playBust, playLose, playWin, playBlackjack, playChip, resumeAudio,
 } from '../blackjack-audio.js'
+
+const router = useRouter()
+const mode = ref(null) // null = choix, 'solo' = solo
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -443,6 +468,58 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* ── Mode choice ─────────────────────────────────── */
+
+.mode-choice {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 2.5rem;
+  flex-wrap: wrap;
+}
+
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 36px 40px;
+  background: #0f0f11;
+  border: 1px solid rgba(255,255,255,0.07);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, transform 0.15s;
+  min-width: 200px;
+  text-align: center;
+}
+.mode-card:hover {
+  border-color: rgba(139,26,26,0.4);
+  background: #141416;
+  transform: translateY(-2px);
+}
+
+.mode-card-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.mode-card-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #d4cfc9;
+}
+
+.mode-card-desc {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.92rem;
+  font-style: italic;
+  color: rgba(255,255,255,0.28);
+  line-height: 1.5;
+  max-width: 180px;
+}
+
 .page { min-height: 100vh; background: #090909; }
 
 .page-inner {

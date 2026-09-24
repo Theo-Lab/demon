@@ -294,7 +294,26 @@ io.on('connection', (socket) => {
   })
 
   socket.on('disconnect', () => {
-    // Pas de cleanup auto — le joueur reste assis jusqu'à timeout ou fin de partie
+    // Libérer le siège si le joueur quitte pendant la phase d'attente
+    try {
+      const sieges = db.prepare(`
+        SELECT s.table_id FROM bj_sieges s
+        JOIN bj_tables t ON t.id = s.table_id
+        WHERE s.user_id = ? AND s.statut != 'vide' AND t.statut = 'attente'
+      `).all(userId)
+
+      for (const row of sieges) {
+        try {
+          quitterSiege(row.table_id, userId)
+          broadcastTableState(row.table_id)
+          const n = nbJoueursAssis(row.table_id)
+          if (n === 0) {
+            clearCountdown(row.table_id)
+            io.to(`table_${row.table_id}`).emit('countdown_cancelled', { tableId: row.table_id })
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
   })
 })
 
