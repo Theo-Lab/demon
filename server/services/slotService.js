@@ -1,4 +1,5 @@
-const db = require('../db')
+const db      = require('../db')
+const discord = require('./discordService')
 
 const JACKPOT_MULT_THRESHOLD = 30 // mult_3 >= ce seuil → jackpot visuel
 
@@ -91,7 +92,7 @@ const _jouer = db.transaction((userId, mise) => {
     throw new Error(`Mise invalide (min ${config.mise_min.toLocaleString()} ¥, max ${config.mise_max.toLocaleString()} ¥).`)
   }
 
-  const user = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId)
+  const user = db.prepare('SELECT solde, nom, identifiant FROM users WHERE id = ?').get(userId)
   if (!user) throw new Error('Utilisateur introuvable.')
   if (user.solde < mise) throw new Error('Solde insuffisant.')
 
@@ -145,11 +146,23 @@ const _jouer = db.transaction((userId, mise) => {
     gain,
     gain_net,
     solde: solde_apres,
+    _player: { nom: user.nom, identifiant: user.identifiant },
   }
 })
 
 function jouer(userId, mise) {
-  return _jouer(userId, mise)
+  const result = _jouer(userId, mise)
+  // Fire-and-forget Discord
+  discord.logSpin({
+    playerName:        result._player.nom,
+    playerIdentifiant: result._player.identifiant,
+    type:              result.type,
+    multiplicateur:    result.multiplicateur,
+    gain:              result.gain,
+    solde:             result.solde,
+  })
+  const { _player, ...clientResult } = result
+  return clientResult
 }
 
 module.exports = { jouer }

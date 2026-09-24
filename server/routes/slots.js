@@ -5,6 +5,7 @@ const crypto  = require('crypto')
 const db      = require('../db')
 const { requireAuth } = require('../middleware/auth')
 const slotService = require('../services/slotService')
+const discord     = require('../services/discordService')
 
 const router = express.Router()
 
@@ -148,11 +149,21 @@ router.patch('/admin/joueurs/:id/solde', requireAuth, requireCasino, (req, res) 
   else if (operation === 'remove') newSolde = Math.max(0, user.solde - m)
   else return res.status(400).json({ message: 'Opération invalide (add | remove | set).' })
 
+  const admin = db.prepare('SELECT nom FROM users WHERE id = ?').get(req.user.id)
   db.prepare('UPDATE users SET solde = ? WHERE id = ?').run(newSolde, user.id)
   db.prepare(`
     INSERT INTO solde_logs (user_id, admin_id, operation, montant, gain_net, solde_avant, solde_apres)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(user.id, req.user.id, operation, m, newSolde - user.solde, user.solde, newSolde)
+  discord.logSolde({
+    playerName:        user.nom,
+    playerIdentifiant: user.identifiant,
+    operation,
+    montant:    m,
+    soldeBefore: user.solde,
+    soldeAfter:  newSolde,
+    adminName:   admin?.nom || 'Inconnu',
+  })
   res.json({ joueur: { ...user, solde: newSolde } })
 })
 
@@ -231,6 +242,33 @@ router.patch('/admin/config', requireAuth, requireAdmin, (req, res) => {
   db.prepare('UPDATE slots_config SET mise_min = ?, mise_max = ?, nb_colonnes = ? WHERE id = 1').run(newMin, newMax, newCols)
   const config = db.prepare('SELECT * FROM slots_config WHERE id = 1').get()
   res.json({ config })
+})
+
+// ── Webhook Discord (accessible aux groupiers) ────────────────────────────────
+
+// GET /api/slots/admin/webhook
+router.get('/admin/webhook', requireAuth, requireCasino, (req, res) => {
+  const config = db.prepare('SELECT discord_webhook FROM slots_config WHERE id = 1').get()
+  res.json({ webhook: config?.discord_webhook || '' })
+})
+
+// PATCH /api/slots/admin/webhook
+router.patch('/admin/webhook', requireAuth, requireCasino, (req, res) => {
+  const { webhook } = req.body
+  if (webhook !== undefined && webhook !== '' && !webhook.startsWith('https://discord.com/api/webhooks/')) {
+    return res.status(400).json({ message: 'URL de webhook Discord invalide.' })
+  }
+  db.prepare('UPDATE slots_config SET discord_webhook = ? WHERE id = 1').run(webhook ?? '')
+  res.json({ ok: true })
+})
+
+// POST /api/slots/admin/webhook/test
+router.post('/admin/webhook/test', requireAuth, requireCasino, (req, res) => {
+  const config = db.prepare('SELECT discord_webhook FROM slots_config WHERE id = 1').get()
+  if (!config?.discord_webhook) return res.status(400).json({ message: 'Aucun webhook configuré.' })
+  const user = db.prepare('SELECT nom FROM users WHERE id = ?').get(req.user.id)
+  discord.logTest(user?.nom || 'Inconnu')
+  res.json({ ok: true })
 })
 
 // ── Stats globales casino ─────────────────────────────────────────────────────

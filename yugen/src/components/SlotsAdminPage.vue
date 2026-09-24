@@ -28,8 +28,8 @@
           v-for="tab in ongletsDispo"
           :key="tab"
           :class="['onglet', onglet === tab ? 'onglet--actif' : '']"
-          @click="onglet = tab; if(tab==='joueurs') chargerJoueurs(); if(tab==='logs') chargerLogs(); if(tab==='stats') chargerStats()"
-        >{{ { symboles: 'Symboles', config: 'Configuration', joueurs: 'Joueurs', logs: 'Logs', stats: 'Statistiques' }[tab] }}</button>
+          @click="onglet = tab; if(tab==='joueurs') chargerJoueurs(); if(tab==='logs') chargerLogs(); if(tab==='stats') chargerStats(); if(tab==='notifications') chargerWebhook()"
+        >{{ { symboles: 'Symboles', config: 'Configuration', joueurs: 'Joueurs', logs: 'Logs', stats: 'Statistiques', notifications: 'Notifications' }[tab] }}</button>
       </div>
 
       <!-- ── Onglet Symboles ── -->
@@ -442,6 +442,54 @@
 
       </template>
 
+      <!-- ── Onglet Notifications ── -->
+      <template v-if="onglet === 'notifications' && isCasino">
+
+        <div class="form-card">
+          <h2 class="form-title">Webhook Discord</h2>
+          <p class="form-desc">Les victoires et les opérations de solde seront envoyées automatiquement dans votre salon Discord.</p>
+
+          <div class="form-grid">
+            <div class="field field--full">
+              <label class="field-label">URL du webhook</label>
+              <input
+                v-model="webhookForm.url"
+                class="field-input"
+                type="url"
+                placeholder="https://discord.com/api/webhooks/…"
+                autocomplete="off"
+              />
+              <p class="field-hint">Créez un webhook dans les paramètres de votre salon Discord → Intégrations → Webhooks.</p>
+            </div>
+          </div>
+
+          <div v-if="webhookErreur" class="form-erreur">{{ webhookErreur }}</div>
+          <div v-if="webhookOk" class="form-ok">{{ webhookOk }}</div>
+
+          <div class="form-actions">
+            <button class="btn-secondary" :disabled="loadingWebhook || !webhookForm.url" @click="testerWebhook">
+              {{ loadingWebhook ? '…' : 'Tester' }}
+            </button>
+            <button class="btn-submit" :disabled="loadingWebhook" @click="sauvegarderWebhook">
+              {{ loadingWebhook ? '…' : 'Enregistrer' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="notif-info">
+          <p class="notif-info-title">Événements envoyés</p>
+          <ul class="notif-list">
+            <li><span class="notif-dot notif-dot--gold"></span> Jackpot</li>
+            <li><span class="notif-dot notif-dot--red"></span> Victoire ×3</li>
+            <li><span class="notif-dot notif-dot--dark"></span> Victoire ×2</li>
+            <li><span class="notif-dot notif-dot--green"></span> Dépôt de solde</li>
+            <li><span class="notif-dot notif-dot--orange"></span> Retrait de solde</li>
+            <li><span class="notif-dot notif-dot--blue"></span> Ajustement de solde</li>
+          </ul>
+        </div>
+
+      </template>
+
     </div>
   </div>
 </template>
@@ -455,17 +503,60 @@ import {
   getSlotsAdminConfig, updateSlotsConfig, IMG_BASE,
   getSlotsAdminJoueurs, updateJoueurSolde,
   getSlotsAdminLogs, getSlotsAdminStats, wipeStats,
+  getSlotsWebhook, updateSlotsWebhook, testSlotsWebhook,
 } from '../api.js'
 
-const isAdmin = computed(() => currentUser.value?.role === 'admin')
+const isAdmin  = computed(() => currentUser.value?.role === 'admin')
+const isCasino = computed(() => ['admin', 'groupier'].includes(currentUser.value?.role))
 const ongletsDispo = computed(() =>
   isAdmin.value
-    ? ['symboles', 'config', 'joueurs', 'logs', 'stats']
-    : ['joueurs', 'logs', 'stats']
+    ? ['symboles', 'config', 'joueurs', 'logs', 'stats', 'notifications']
+    : ['joueurs', 'logs', 'stats', 'notifications']
 )
 
 const jeu    = ref('slots')
 const onglet = ref(isAdmin.value ? 'symboles' : 'joueurs')
+
+// ── Webhook Discord ──────────────────────────────────────────────────────────
+const webhookForm    = ref({ url: '' })
+const loadingWebhook = ref(false)
+const webhookErreur  = ref('')
+const webhookOk      = ref('')
+
+async function chargerWebhook() {
+  try { webhookForm.value.url = await getSlotsWebhook() } catch {}
+}
+
+async function sauvegarderWebhook() {
+  loadingWebhook.value = true
+  webhookErreur.value  = ''
+  webhookOk.value      = ''
+  try {
+    await updateSlotsWebhook(webhookForm.value.url)
+    webhookOk.value = 'Webhook enregistré.'
+    setTimeout(() => { webhookOk.value = '' }, 3000)
+  } catch (e) {
+    webhookErreur.value = e.message
+  } finally {
+    loadingWebhook.value = false
+  }
+}
+
+async function testerWebhook() {
+  loadingWebhook.value = true
+  webhookErreur.value  = ''
+  webhookOk.value      = ''
+  try {
+    await updateSlotsWebhook(webhookForm.value.url)
+    await testSlotsWebhook()
+    webhookOk.value = 'Message test envoyé sur Discord.'
+    setTimeout(() => { webhookOk.value = '' }, 4000)
+  } catch (e) {
+    webhookErreur.value = e.message
+  } finally {
+    loadingWebhook.value = false
+  }
+}
 
 // ── Symboles ────────────────────────────────────────────────────────────────
 const symboles       = ref([])
@@ -1532,4 +1623,58 @@ onMounted(async () => {
 @media (max-width: 640px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
+/* ── Notifications ───────────────────────────────────────────────────────── */
+.form-desc {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.98rem;
+  font-style: italic;
+  color: rgba(255,255,255,0.35);
+  margin: -8px 0 20px;
+}
+
+.notif-info {
+  margin-top: 20px;
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 18px 20px;
+}
+
+.notif-info-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  margin: 0 0 14px;
+}
+
+.notif-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notif-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.4);
+}
+
+.notif-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.notif-dot--gold   { background: #FFD700; }
+.notif-dot--red    { background: #C87070; }
+.notif-dot--dark   { background: #8B4040; }
+.notif-dot--green  { background: #43B581; }
+.notif-dot--orange { background: #E74C3C; }
+.notif-dot--blue   { background: #7289DA; }
 </style>

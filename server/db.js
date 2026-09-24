@@ -145,6 +145,8 @@ db.prepare('INSERT OR IGNORE INTO slots_config (id, mise_min, mise_max) VALUES (
 
 // Migration : is_wild (ajout non-destructif)
 try { db.prepare('ALTER TABLE slots_symbols ADD COLUMN is_wild INTEGER NOT NULL DEFAULT 0').run() } catch {}
+// Migration : discord_webhook
+try { db.prepare("ALTER TABLE slots_config ADD COLUMN discord_webhook TEXT NOT NULL DEFAULT ''").run() } catch {}
 
 // Table logs solde admin
 db.exec(`

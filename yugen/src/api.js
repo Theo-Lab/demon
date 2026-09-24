@@ -471,6 +471,30 @@ export async function updateSlotsConfig(mise_min, mise_max, nb_colonnes) {
   return data.config
 }
 
+export async function getSlotsWebhook() {
+  const res = await apiFetch(`${BASE}/slots/admin/webhook`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.webhook
+}
+
+export async function updateSlotsWebhook(webhook) {
+  const res = await apiFetch(`${BASE}/slots/admin/webhook`, {
+    method: 'PATCH',
+    body: JSON.stringify({ webhook }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function testSlotsWebhook() {
+  const res = await apiFetch(`${BASE}/slots/admin/webhook/test`, { method: 'POST' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function wipeStats() {
   const res = await apiFetch(`${BASE}/slots/admin/stats`, { method: 'DELETE' })
   const data = await res.json()
