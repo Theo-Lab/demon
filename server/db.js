@@ -101,7 +101,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS game_rounds (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id     INTEGER NOT NULL REFERENCES users(id),
-    jeu         TEXT NOT NULL CHECK(jeu IN ('roulette', 'slots', 'blackjack', 'expedition')),
+    jeu         TEXT NOT NULL,
     mise        INTEGER NOT NULL,
     resultat    TEXT NOT NULL DEFAULT '{}',
     gain_net    INTEGER NOT NULL,
@@ -312,6 +312,32 @@ if (misesCols.includes('user_id')) {
     );
   `)
 }
+
+// Migration game_rounds : supprimer la contrainte CHECK sur jeu
+try {
+  const cols = db.prepare("PRAGMA table_info(game_rounds)").all()
+  const jeuCol = cols.find(c => c.name === 'jeu')
+  // Si la contrainte CHECK existe encore (détectable via sql de la table)
+  const tableSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='game_rounds'").get()
+  if (tableSql && tableSql.sql && tableSql.sql.includes('CHECK')) {
+    db.exec(`
+      ALTER TABLE game_rounds RENAME TO game_rounds_old;
+      CREATE TABLE game_rounds (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     INTEGER NOT NULL REFERENCES users(id),
+        jeu         TEXT NOT NULL,
+        mise        INTEGER NOT NULL,
+        resultat    TEXT NOT NULL DEFAULT '{}',
+        gain_net    INTEGER NOT NULL,
+        solde_avant INTEGER NOT NULL,
+        solde_apres INTEGER NOT NULL,
+        created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO game_rounds SELECT * FROM game_rounds_old;
+      DROP TABLE game_rounds_old;
+    `)
+  }
+} catch {}
 
 // Génère un token pour les rapports qui n'en ont pas
 const crypto = require('crypto')
