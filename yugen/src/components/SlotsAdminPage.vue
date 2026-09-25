@@ -124,7 +124,7 @@
       </template>
 
       <!-- ── Onglet Symboles ── -->
-      <template v-if="onglet === 'symboles' && isAdmin">
+      <template v-if="jeu === 'slots' && onglet === 'symboles' && isAdmin">
 
         <!-- Formulaire création / édition -->
         <div class="form-card">
@@ -242,7 +242,7 @@
       </template>
 
       <!-- ── Onglet Config ── -->
-      <template v-if="onglet === 'config' && isAdmin">
+      <template v-if="jeu === 'slots' && onglet === 'config' && isAdmin">
 
         <div class="form-card">
           <h2 class="form-title">Configuration de la machine</h2>
