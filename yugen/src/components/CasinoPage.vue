@@ -77,7 +77,7 @@
               <span class="step-num">I</span>
               <div class="step-body">
                 <span class="step-name">Créer un compte</span>
-                <span class="step-desc">Rejoignez l'Ordre en vous inscrivant sur la plateforme.</span>
+                <span class="step-desc">Rejoignez le casino en vous inscrivant sur la plateforme.</span>
               </div>
             </div>
             <div class="step-connector"></div>
