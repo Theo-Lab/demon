@@ -1,8 +1,12 @@
 <template>
   <div class="page">
     <AppNavbar />
-
-    <div class="page-inner">
+    <div v-if="jeuIndisponible" class="jeu-indispo">
+      <p class="jeu-indispo-title">Jeu indisponible</p>
+      <p class="jeu-indispo-sub">Le Blackjack est temporairement fermé.</p>
+      <RouterLink to="/casino" class="jeu-indispo-link">← Retour au casino</RouterLink>
+    </div>
+    <div v-if="!jeuIndisponible" class="page-inner">
       <div class="top-bar">
         <RouterLink to="/casino" class="back-link">← Casino</RouterLink>
         <div class="solde-badge">{{ fmtYen(solde) }}</div>
@@ -173,7 +177,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppNavbar from './AppNavbar.vue'
 import PlayingCard from './PlayingCard.vue'
-import { getMe, blackjackNew, blackjackHit, blackjackStand, blackjackDouble } from '../api.js'
+import { getMe, blackjackNew, blackjackHit, blackjackStand, blackjackDouble, getCasinoGames } from '../api.js'
 import {
   playDeal, playFlip, playBust, playLose, playWin, playBlackjack, playChip, resumeAudio,
 } from '../blackjack-audio.js'
@@ -461,7 +465,10 @@ function changerMise() {
   resultat.value   = null
 }
 
+const jeuIndisponible = ref(false)
+
 onMounted(async () => {
+  try { const g = await getCasinoGames(); if (!g.blackjack) jeuIndisponible.value = true } catch {}
   const me = await getMe()
   if (me) solde.value = me.solde
 })
@@ -823,4 +830,9 @@ onMounted(async () => {
   .regle-grid { grid-template-columns: repeat(2, 1fr); }
   .btns { gap: 8px; }
 }
+.jeu-indispo { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 60px); gap:12px; text-align:center; padding:40px; }
+.jeu-indispo-title { font-family:'Cinzel',serif; font-size:1.4rem; letter-spacing:0.06em; color:rgba(255,255,255,0.7); }
+.jeu-indispo-sub { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:rgba(255,255,255,0.3); font-size:1rem; }
+.jeu-indispo-link { margin-top:16px; font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:0.15em; text-transform:uppercase; color:rgba(139,26,26,0.7); text-decoration:none; }
+.jeu-indispo-link:hover { color:rgba(139,26,26,1); }
 </style>

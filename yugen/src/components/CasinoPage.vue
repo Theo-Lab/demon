@@ -54,6 +54,14 @@
               </div>
               <span class="game-item-cta">Jouer →</span>
             </RouterLink>
+            <RouterLink to="/mines" class="game-item">
+              <span class="game-item-icon">💣</span>
+              <div class="game-item-body">
+                <span class="game-item-name">Champ Maudit</span>
+                <span class="game-item-desc">Révélez les gemmes, évitez les mines</span>
+              </div>
+              <span class="game-item-cta">Jouer →</span>
+            </RouterLink>
           </nav>
         </div>
 

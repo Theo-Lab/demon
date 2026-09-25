@@ -597,6 +597,50 @@ export async function crossroadEncaisser() {
   if (!res.ok) throw new Error(data.message)
   return data
 }
+export async function getCrossroadConfig() {
+  const res = await apiFetch(`${BASE}/crossroad/config`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+export async function updateCrossroadConfig(bust_prob) {
+  const res = await apiFetch(`${BASE}/crossroad/config`, { method: 'POST', body: JSON.stringify({ bust_prob }) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function minesNew(mise, nb_mines) {
+  const res = await apiFetch(`${BASE}/mines/new`, { method: 'POST', body: JSON.stringify({ mise, nb_mines }) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+export async function minesReveal(position) {
+  const res = await apiFetch(`${BASE}/mines/reveal`, { method: 'POST', body: JSON.stringify({ position }) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+export async function minesCashout() {
+  const res = await apiFetch(`${BASE}/mines/cashout`, { method: 'POST' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function getCasinoGames() {
+  const res = await apiFetch(`${BASE}/casino/games`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+export async function updateCasinoGames(games) {
+  const res = await apiFetch(`${BASE}/casino/games`, { method: 'POST', body: JSON.stringify(games) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
 
 export async function spinRoulette(mises) {
   const res = await apiFetch(`${BASE}/roulette/spin`, {

@@ -1,16 +1,30 @@
 const db      = require('../db')
 const discord = require('./discordService')
 
-// Multiplicateurs par ruelle (maison ~5% d'avantage, prob bust 12%/ruelle)
-const MULT      = [1.08, 1.23, 1.39, 1.58, 1.80, 2.04, 2.32, 2.64, 3.00, 3.41]
-const MAX_LANES = MULT.length
-const BUST_PROB = 0.12
+const MAX_LANES  = 20
+const HOUSE_EDGE = 0.01  // 1% — standard casino en ligne (RTP 99%)
+
+function getBustProb() {
+  try {
+    const row = db.prepare('SELECT crossroad_bust_prob FROM slots_config WHERE id = 1').get()
+    return row?.crossroad_bust_prob ?? 0.12
+  } catch { return 0.12 }
+}
+
+// Multiplicateurs calculés dynamiquement depuis le taux configuré en admin
+function getMultArray() {
+  const p = getBustProb()
+  return Array.from({ length: MAX_LANES }, (_, i) =>
+    Math.round(Math.pow(1 / (1 - p), i + 1) * (1 - HOUSE_EDGE) * 100) / 100
+  )
+}
 
 function getBustLane() {
+  const p = getBustProb()
   for (let i = 0; i < MAX_LANES; i++) {
-    if (Math.random() < BUST_PROB) return i + 1
+    if (Math.random() < p) return i + 1
   }
-  return null // survie totale possible
+  return null
 }
 
 // ── newGame ───────────────────────────────────────────────────────────────────
@@ -21,7 +35,6 @@ const _newGame = db.transaction((userId, mise) => {
   if (mise <= 0) throw new Error('Mise invalide.')
   if (user.solde < mise) throw new Error('Solde insuffisant.')
 
-  // Terminer toute partie en cours (abandon)
   db.prepare("UPDATE crossroad_games SET statut = 'fini' WHERE user_id = ? AND statut = 'en_cours'").run(userId)
 
   const solde_avant = user.solde
@@ -45,7 +58,6 @@ const _avancer = db.transaction((userId) => {
   const nextLane = game.lane_actuelle + 1
   if (nextLane > MAX_LANES) throw new Error('Toutes les ruelles sont traversées.')
 
-  // Bust ?
   if (game.lane_mort !== null && nextLane >= game.lane_mort) {
     db.prepare("UPDATE crossroad_games SET statut = 'fini', lane_actuelle = ?, gain_net = ? WHERE id = ?")
       .run(nextLane, -game.mise, game.id)
@@ -53,12 +65,10 @@ const _avancer = db.transaction((userId) => {
     return { statut: 'bust', lane_actuelle: nextLane, gain_net: -game.mise, solde }
   }
 
-  // Survie
-  const mult = MULT[nextLane - 1]
+  const mult = getMultArray()[nextLane - 1]
   db.prepare('UPDATE crossroad_games SET lane_actuelle = ? WHERE id = ?').run(nextLane, game.id)
   const solde = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
 
-  // Dernière ruelle → victoire totale automatique
   if (nextLane === MAX_LANES) {
     const gain_brut = Math.floor(game.mise * mult)
     const gain_net  = gain_brut - game.mise
@@ -78,7 +88,7 @@ const _encaisser = db.transaction((userId) => {
   if (!game) throw new Error('Aucune partie en cours.')
   if (game.lane_actuelle === 0) throw new Error("Traversez au moins une ruelle d'abord.")
 
-  const mult     = MULT[game.lane_actuelle - 1]
+  const mult      = getMultArray()[game.lane_actuelle - 1]
   const gain_brut = Math.floor(game.mise * mult)
   const gain_net  = gain_brut - game.mise
 
@@ -118,4 +128,4 @@ function encaisser(userId) {
   return r
 }
 
-module.exports = { newGame, avancer, encaisser, MULT, MAX_LANES }
+module.exports = { newGame, avancer, encaisser, getMultArray, MAX_LANES }

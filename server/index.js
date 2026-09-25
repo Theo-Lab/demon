@@ -27,6 +27,8 @@ app.use('/api/roulette', require('./routes/roulette'))
 app.use('/api/blackjack', require('./routes/blackjack'))
 app.use('/api/blackjack-lobby', require('./routes/blackjackLobby'))
 app.use('/api/crossroad',      require('./routes/crossroad'))
+app.use('/api/mines',          require('./routes/mines'))
+app.use('/api/casino',         require('./routes/casino'))
 app.use('/uploads', require('express').static('./uploads'))
 
 // ── HTTP + Socket.io ──────────────────────────────────────────────────────────

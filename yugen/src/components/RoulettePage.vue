@@ -1,7 +1,12 @@
 <template>
   <div class="page">
     <AppNavbar />
-    <div class="page-inner">
+    <div v-if="jeuIndisponible" class="jeu-indispo">
+      <p class="jeu-indispo-title">Jeu indisponible</p>
+      <p class="jeu-indispo-sub">La Roulette est temporairement fermée.</p>
+      <RouterLink to="/casino" class="jeu-indispo-link">← Retour au casino</RouterLink>
+    </div>
+    <div v-if="!jeuIndisponible" class="page-inner">
 
       <div class="pg-header">
         <div>
@@ -205,7 +210,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { currentUser } from '../auth.js'
-import { spinRoulette, getMe } from '../api.js'
+import { spinRoulette, getMe, getCasinoGames } from '../api.js'
 import { startRoll, updateRoll, stopRoll, playTick, playLand, playWin, resumeAudio } from '../roulette-audio.js'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -630,7 +635,10 @@ async function lancerSpin() {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+const jeuIndisponible = ref(false)
+
 onMounted(async () => {
+  try { const g = await getCasinoGames(); if (!g.roulette) jeuIndisponible.value = true } catch {}
   const canvas = canvasEl.value
   const dpr = window.devicePixelRatio || 1
   canvas.width  = CS * dpr
@@ -1080,4 +1088,9 @@ onUnmounted(() => {
   .mises-side { width: 100%; }
   .rules-grid { grid-template-columns: repeat(2, 1fr); }
 }
+.jeu-indispo { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 60px); gap:12px; text-align:center; padding:40px; }
+.jeu-indispo-title { font-family:'Cinzel',serif; font-size:1.4rem; letter-spacing:0.06em; color:rgba(255,255,255,0.7); }
+.jeu-indispo-sub { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:rgba(255,255,255,0.3); font-size:1rem; }
+.jeu-indispo-link { margin-top:16px; font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:0.15em; text-transform:uppercase; color:rgba(139,26,26,0.7); text-decoration:none; }
+.jeu-indispo-link:hover { color:rgba(139,26,26,1); }
 </style>

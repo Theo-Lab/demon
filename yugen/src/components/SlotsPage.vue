@@ -1,8 +1,12 @@
 <template>
   <div :class="['page', screenShake ? 'page--shake' : '']">
     <AppNavbar />
-
-    <div class="page-inner">
+    <div v-if="jeuIndisponible" class="jeu-indispo">
+      <p class="jeu-indispo-title">Jeu indisponible</p>
+      <p class="jeu-indispo-sub">La Machine à Sous est temporairement fermée.</p>
+      <RouterLink to="/casino" class="jeu-indispo-link">← Retour au casino</RouterLink>
+    </div>
+    <div v-show="!jeuIndisponible" class="page-inner">
 
       <div class="page-header">
         <div>
@@ -246,7 +250,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { currentUser } from '../auth.js'
-import { getSlotsConfig, spinSlots, IMG_BASE } from '../api.js'
+import { getSlotsConfig, spinSlots, IMG_BASE, getCasinoGames } from '../api.js'
 import { playTick, playStop, playSmallWin, playBigWin, playJackpot, playNearMiss, resumeAudio } from '../slots-audio.js'
 
 // ── Constantes animation ──────────────────────────────────────────────────
@@ -375,6 +379,7 @@ const colSpinCounts = computed(() =>
 )
 
 const solde = computed(() => currentUser.value?.solde ?? 0)
+const jeuIndisponible = ref(false)
 
 const presets = computed(() => {
   if (!config.value) return []
@@ -524,6 +529,7 @@ async function lancerSpin() {
 }
 
 onMounted(async () => {
+  try { const g = await getCasinoGames(); if (!g.slots) jeuIndisponible.value = true } catch {}
   try {
     const data = await getSlotsConfig()
     config.value   = data.config
@@ -1261,4 +1267,22 @@ onMounted(async () => {
 .jackpot-fade-leave-active { transition: opacity 0.25s ease; }
 .jackpot-fade-enter-from,
 .jackpot-fade-leave-to     { opacity: 0; }
+
+.jeu-indispo {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: calc(100vh - 60px); gap: 12px; text-align: center; padding: 40px;
+}
+.jeu-indispo-title {
+  font-family: 'Cinzel', serif; font-size: 1.4rem; letter-spacing: 0.06em; color: rgba(255,255,255,0.7);
+}
+.jeu-indispo-sub {
+  font-family: 'Crimson Text', Georgia, serif; font-style: italic;
+  color: rgba(255,255,255,0.3); font-size: 1rem;
+}
+.jeu-indispo-link {
+  margin-top: 16px; font-family: 'Cinzel', serif; font-size: 0.65rem;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: rgba(139,26,26,0.7); text-decoration: none;
+}
+.jeu-indispo-link:hover { color: rgba(139,26,26,1); }
 </style>

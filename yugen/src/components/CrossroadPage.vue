@@ -1,7 +1,12 @@
 <template>
   <div class="page">
     <AppNavbar />
-    <div class="page-inner">
+    <div v-if="jeuIndisponible" class="jeu-indispo">
+      <p class="jeu-indispo-title">Jeu indisponible</p>
+      <p class="jeu-indispo-sub">La Traversée Démoniaque est temporairement fermée.</p>
+      <RouterLink to="/casino" class="jeu-indispo-link">← Retour au casino</RouterLink>
+    </div>
+    <div v-if="!jeuIndisponible" class="page-inner">
 
       <div class="top-bar">
         <RouterLink to="/casino" class="back-link">← Casino</RouterLink>
@@ -28,7 +33,7 @@
       <Transition name="result-pop">
         <div v-if="etat === 'fini_bust' || etat === 'fini_win'" class="resultat"
           :class="etat === 'fini_bust' ? 'resultat--bust' : 'resultat--win'">
-          <span class="r-label">{{ etat === 'fini_bust' ? '🔥 Brûlé !' : '✓ Encaissé !' }}</span>
+          <span class="r-label">{{ etat === 'fini_bust' ? 'Brûlé !' : 'Encaissé !' }}</span>
           <span class="r-gain" :class="gainNet >= 0 ? 'pos' : 'neg'">
             {{ gainNet > 0 ? '+' : '' }}{{ fmtYen(gainNet) }}
           </span>
@@ -73,7 +78,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
-import { getMe } from '../api.js'
+import { getMe, getCasinoGames } from '../api.js'
 import { playStep, playBust, playCoin, playInvoke, resumeAudio } from '../crossroad-audio.js'
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
@@ -87,10 +92,10 @@ const crossroadNew       = (mise) => apiFetch(`${BASE}/crossroad/new`,       { m
 const crossroadAvancer   = ()     => apiFetch(`${BASE}/crossroad/avancer`,   { method: 'POST' })
 const crossroadEncaisser = ()     => apiFetch(`${BASE}/crossroad/encaisser`, { method: 'POST' })
 
-// ── Constantes ────────────────────────────────────────────────────────────────
+// ── Constantes (peuplées depuis le serveur au mount) ─────────────────────────
 
-const MULT      = [1.08, 1.23, 1.39, 1.58, 1.80, 2.04, 2.32, 2.64, 3.00, 3.41]
-const MAX_LANES = MULT.length
+let MULT      = []
+let MAX_LANES = 20
 
 const CW      = 580
 const LANE_H  = 46
@@ -141,18 +146,6 @@ function spawnSparks(x, y, count = 14) {
   }
 }
 
-// Obstacles (un tableau de 10 ruelles)
-const obstacles = Array.from({ length: MAX_LANES }, (_, idx) => {
-  const lane  = idx + 1
-  const dir   = lane % 2 === 0 ? -1 : 1
-  const speed = (0.55 + lane * 0.16) * dir
-  const count = lane >= 8 ? 5 : 4
-  return Array.from({ length: count }, (_, j) => ({
-    x:     TX + (j / count) * TW + 10 + Math.random() * (TW / count * 0.4),
-    speed, phase: j * 1.1 + lane * 0.7,
-    type:  lane >= 7 ? 'skull' : 'fire',
-  }))
-})
 
 // ── Draw helpers ──────────────────────────────────────────────────────────────
 
@@ -232,13 +225,6 @@ function drawLane(lane) {
   ctx.fillText('×' + MULT[lane - 1].toFixed(2), CW - 8, y0 + LANE_H / 2)
   ctx.shadowBlur = 0
 
-  // Checkmark sur ruelles traversées
-  if (cleared) {
-    ctx.textAlign = 'center'
-    ctx.font = '12px sans-serif'
-    ctx.fillStyle = 'rgba(201,168,76,0.2)'
-    ctx.fillText('✓', TX + TW / 2, y0 + LANE_H / 2)
-  }
 }
 
 function drawStartRow() {
@@ -252,107 +238,6 @@ function drawStartRow() {
   ctx.font = '500 9px Cinzel, serif'
   ctx.fillStyle = 'rgba(255,255,255,0.1)'
   ctx.fillText('DÉPART', TX + TW / 2, y0 + LANE_H / 2)
-}
-
-// ── Flammes ───────────────────────────────────────────────────────────────────
-
-function drawFire(x, y, f, phase) {
-  const flicker = 1 + Math.sin(f * 0.14 + phase) * 0.14
-  const h = 30 * flicker
-
-  ctx.save()
-  ctx.translate(x, y)
-
-  // Halo sol
-  const glow = ctx.createRadialGradient(0, 4, 0, 0, 4, 16)
-  glow.addColorStop(0, 'rgba(255,100,0,0.45)')
-  glow.addColorStop(1, 'rgba(255,0,0,0)')
-  ctx.fillStyle = glow
-  ctx.beginPath(); ctx.ellipse(0, 4, 16, 5, 0, 0, Math.PI * 2); ctx.fill()
-
-  // Flamme externe
-  const og = ctx.createLinearGradient(0, 4, 0, -h)
-  og.addColorStop(0, 'rgba(255,70,0,0.95)')
-  og.addColorStop(0.5, 'rgba(220,30,0,0.6)')
-  og.addColorStop(1, 'rgba(180,0,0,0)')
-  ctx.fillStyle = og
-  ctx.beginPath()
-  ctx.moveTo(-8, 4)
-  ctx.bezierCurveTo(-8 * flicker, -h * 0.25, -4 * flicker, -h * 0.7, 0, -h)
-  ctx.bezierCurveTo(4 * flicker, -h * 0.7, 8 * flicker, -h * 0.25, 8, 4)
-  ctx.fill()
-
-  // Flamme milieu
-  const mh = h * 0.72
-  const mg = ctx.createLinearGradient(0, 2, 0, -mh)
-  mg.addColorStop(0, 'rgba(255,165,0,1)')
-  mg.addColorStop(0.55, 'rgba(255,80,0,0.75)')
-  mg.addColorStop(1, 'rgba(255,20,0,0)')
-  ctx.fillStyle = mg
-  ctx.beginPath()
-  ctx.moveTo(-5, 2)
-  ctx.bezierCurveTo(-4, -mh * 0.4, -2, -mh * 0.85, 0, -mh)
-  ctx.bezierCurveTo(2, -mh * 0.85, 4, -mh * 0.4, 5, 2)
-  ctx.fill()
-
-  // Cœur (jaune vif)
-  const ch2 = h * 0.42
-  ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(255,220,50,0.9)'
-  ctx.fillStyle = 'rgba(255,248,120,0.97)'
-  ctx.beginPath()
-  ctx.moveTo(-2.5, 2)
-  ctx.bezierCurveTo(-2, -ch2 * 0.5, -1, -ch2 * 0.9, 0, -ch2)
-  ctx.bezierCurveTo(1, -ch2 * 0.9, 2, -ch2 * 0.5, 2.5, 2)
-  ctx.fill()
-  ctx.shadowBlur = 0
-
-  ctx.restore()
-}
-
-// ── Crânes ────────────────────────────────────────────────────────────────────
-
-function drawSkull(x, y, f, phase) {
-  const bob = Math.sin(f * 0.05 + phase) * 2.2
-  ctx.save()
-  ctx.translate(x, y + bob)
-
-  // Halo rouge
-  ctx.shadowBlur = 14; ctx.shadowColor = 'rgba(200,0,0,0.5)'
-  ctx.fillStyle = 'rgba(210,200,195,0.88)'
-  ctx.beginPath()
-  ctx.arc(0, -7, 10, Math.PI, 0) // demi-cercle haut = crâne
-  ctx.lineTo(7, -7)
-  ctx.lineTo(7, 1)
-  ctx.arc(0, 1, 7, 0, Math.PI) // mâchoire arrondie
-  ctx.lineTo(-7, 1)
-  ctx.lineTo(-7, -7)
-  ctx.closePath()
-  ctx.fill()
-  ctx.shadowBlur = 0
-
-  // Orbites
-  ctx.fillStyle = '#0d0505'
-  ctx.beginPath(); ctx.ellipse(-3.5, -9, 2.8, 2.8, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.beginPath(); ctx.ellipse(3.5, -9, 2.8, 2.8, 0, 0, Math.PI * 2); ctx.fill()
-
-  // Lueur orbes
-  ctx.shadowBlur = 8; ctx.shadowColor = '#ff1111'
-  ctx.fillStyle = 'rgba(255,0,0,0.55)'
-  ctx.beginPath(); ctx.ellipse(-3.5, -9, 1.6, 1.6, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.beginPath(); ctx.ellipse(3.5, -9, 1.6, 1.6, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.shadowBlur = 0
-
-  // Nez (triangle)
-  ctx.fillStyle = '#0d0505'
-  ctx.beginPath(); ctx.moveTo(0, -5.5); ctx.lineTo(-1.5, -2); ctx.lineTo(1.5, -2); ctx.closePath(); ctx.fill()
-
-  // Dents
-  ctx.fillStyle = '#e8e4e0'
-  for (let i = -1; i <= 1; i++) {
-    ctx.fillRect(i * 3 - 1, -1, 2, 3.5)
-  }
-
-  ctx.restore()
 }
 
 // ── Démon ─────────────────────────────────────────────────────────────────────
@@ -507,13 +392,6 @@ function drawBust(x, y, progress) {
     ctx.shadowBlur = 0
   }
 
-  // Flammes secondaires
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2 + p * 0.5
-    const d = p * 24
-    drawFire(Math.cos(a) * d, Math.sin(a) * d, frame, i * 1.3)
-  }
-
   // Démon qui tourne + rétrécit
   if (p < 0.55) {
     ctx.save()
@@ -576,20 +454,6 @@ function _draw() {
 
   const demonX = TX + TW / 2
 
-  // Obstacles
-  for (let i = 0; i < MAX_LANES; i++) {
-    const lane    = i + 1
-    const cleared = etat.value !== 'idle' && laneActuelle.value > lane
-    const active  = etat.value !== 'idle' && laneActuelle.value === lane && demonState !== 'bust'
-    if (cleared || active) continue
-
-    for (const obs of obstacles[i]) {
-      const cy = laneTop(lane) + LANE_H / 2
-      if (obs.type === 'fire') drawFire(obs.x, cy + 8, frame, obs.phase)
-      else                     drawSkull(obs.x, cy + 4, frame, obs.phase)
-    }
-  }
-
   // Étincelles
   updateSparks()
 
@@ -612,15 +476,8 @@ function _draw() {
     ctx.restore()
   }
 
-  // Mise à jour obstacles + road scroll
+  // Road scroll
   roadScroll += 0.7
-  for (let i = 0; i < MAX_LANES; i++) {
-    for (const obs of obstacles[i]) {
-      obs.x += obs.speed
-      if (obs.speed > 0 && obs.x > TX + TW + 14) obs.x = TX - 14
-      if (obs.speed < 0 && obs.x < TX - 14)       obs.x = TX + TW + 14
-    }
-  }
 
 }
 
@@ -701,6 +558,7 @@ async function rejouer() {
   etat.value = 'idle'
   demonTargetY = laneY(0); demonY = laneY(0)
   demonState = 'idle'; bustProg = 0
+  sparks.length = 0
   await lancerPartie()
 }
 
@@ -708,11 +566,17 @@ function reset() {
   etat.value = 'idle'; laneActuelle.value = 0; gainNet.value = 0
   demonTargetY = laneY(0); demonY = laneY(0)
   demonState = 'idle'; bustProg = 0
+  sparks.length = 0
 }
 
+const jeuIndisponible = ref(false)
+
 onMounted(async () => {
-  const me = await getMe()
+  try { const g = await getCasinoGames(); if (!g.crossroad) jeuIndisponible.value = true } catch {}
+  const [me, info] = await Promise.all([getMe(), apiFetch(`${BASE}/crossroad/info`)])
   if (me) solde.value = me.solde
+  MULT      = info.MULT
+  MAX_LANES = info.MAX_LANES
 
   const canvas = gameCanvas.value
   const dpr = window.devicePixelRatio || 1
@@ -724,7 +588,6 @@ onMounted(async () => {
   demonY       = laneY(0)
   demonTargetY = laneY(0)
 
-  // Attendre les fonts custom avant de démarrer le canvas
   await document.fonts.ready
   draw()
 })
@@ -775,7 +638,7 @@ onUnmounted(() => { if (raf) cancelAnimationFrame(raf) })
 .cw--bust { animation: bust-flash 0.65s ease; }
 .game-canvas {
   display: block; width: 100%; height: auto;
-  aspect-ratio: 580 / 506; image-rendering: -webkit-optimize-contrast;
+  aspect-ratio: 580 / 966; image-rendering: -webkit-optimize-contrast;
 }
 
 /* Mult bar */
@@ -869,4 +732,9 @@ onUnmounted(() => { if (raf) cancelAnimationFrame(raf) })
   font-family: 'Crimson Text', serif; font-style: italic;
   color: #c0392b; text-align: center; margin-top: 14px; font-size: 0.95rem;
 }
+.jeu-indispo { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 60px); gap:12px; text-align:center; padding:40px; }
+.jeu-indispo-title { font-family:'Cinzel',serif; font-size:1.4rem; letter-spacing:0.06em; color:rgba(255,255,255,0.7); }
+.jeu-indispo-sub { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:rgba(255,255,255,0.3); font-size:1rem; }
+.jeu-indispo-link { margin-top:16px; font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:0.15em; text-transform:uppercase; color:rgba(139,26,26,0.7); text-decoration:none; }
+.jeu-indispo-link:hover { color:rgba(139,26,26,1); }
 </style>

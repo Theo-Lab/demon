@@ -113,7 +113,7 @@ router.post('/logout', (req, res) => {
 
 // GET /api/auth/me
 router.get('/me', requireAuth, (req, res) => {
-  const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature FROM users WHERE id = ?').get(req.user.id)
+  const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde FROM users WHERE id = ?').get(req.user.id)
   if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
 
   const spheres = db.prepare(`

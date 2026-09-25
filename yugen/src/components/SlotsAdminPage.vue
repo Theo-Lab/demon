@@ -16,14 +16,49 @@
 
       <!-- Sélecteur de jeu -->
       <div class="jeux-tabs">
+        <button :class="['jeu-tab', jeu === 'gestion' ? 'jeu-tab--actif' : '']" @click="jeu = 'gestion'; chargerGestion()">
+          Gestion des jeux
+        </button>
         <button :class="['jeu-tab', jeu === 'slots' ? 'jeu-tab--actif' : '']" @click="jeu = 'slots'">
           Machine à Sous
         </button>
-        <!-- futurs jeux ici -->
+        <button :class="['jeu-tab', jeu === 'crossroad' ? 'jeu-tab--actif' : '']" @click="jeu = 'crossroad'; chargerCrossroadConfig()">
+          Traversée Démoniaque
+        </button>
       </div>
 
-      <!-- ── Onglets du jeu sélectionné ── -->
-      <div class="onglets">
+      <!-- ── Gestion des jeux ── -->
+      <template v-if="jeu === 'gestion' && isCasino">
+        <div class="form-card">
+          <h2 class="form-title">Activer / Désactiver les jeux</h2>
+          <p class="field-hint" style="margin-bottom: 20px">Un jeu désactivé affiche un message d'indisponibilité aux joueurs.</p>
+
+          <div class="games-toggles">
+            <div v-for="g in jeusList" :key="g.key" class="game-toggle-row">
+              <div class="game-toggle-info">
+                <span class="game-toggle-name">{{ g.label }}</span>
+                <span class="game-toggle-route">{{ g.route }}</span>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" v-model="gestionForm[g.key]" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+          </div>
+
+          <div v-if="gestionErreur" class="form-erreur">{{ gestionErreur }}</div>
+          <div v-if="gestionOk" class="form-ok">Configuration enregistrée.</div>
+
+          <div class="form-actions">
+            <button class="btn-submit" :disabled="loadingGestion" @click="sauvegarderGestion">
+              {{ loadingGestion ? '…' : 'Enregistrer' }}
+            </button>
+          </div>
+        </div>
+      </template>
+
+      <!-- ── Onglets du jeu sélectionné (slots) ── -->
+      <div v-if="jeu === 'slots'" class="onglets">
         <button
           v-for="tab in ongletsDispo"
           :key="tab"
@@ -31,6 +66,51 @@
           @click="onglet = tab; if(tab==='joueurs') chargerJoueurs(); if(tab==='logs') chargerLogs(); if(tab==='stats') chargerStats(); if(tab==='notifications') chargerWebhook()"
         >{{ { symboles: 'Symboles', config: 'Configuration', joueurs: 'Joueurs', logs: 'Logs', stats: 'Statistiques', notifications: 'Notifications' }[tab] }}</button>
       </div>
+
+      <!-- ── Traversée Démoniaque ── -->
+      <template v-if="jeu === 'crossroad' && isAdmin">
+        <div class="form-card">
+          <h2 class="form-title">Configuration — Traversée Démoniaque</h2>
+
+          <div class="form-grid">
+            <div class="field">
+              <label class="field-label">Probabilité de mort par ruelle</label>
+              <input v-model.number="crossroadForm.bust_prob" class="field-input" type="number"
+                min="0.01" max="0.99" step="0.01" placeholder="0.12" />
+              <p class="field-hint">
+                Probabilité qu'une ruelle soit fatale (0.01 = 1 %, 0.99 = 99 %). Par défaut : 0.12 (12 %).
+                Plus la valeur est haute, plus la maison a l'avantage.
+              </p>
+            </div>
+          </div>
+
+          <div v-if="crossroadErreur" class="form-erreur">{{ crossroadErreur }}</div>
+          <div v-if="crossroadOk" class="form-ok">Configuration enregistrée.</div>
+
+          <div class="form-actions">
+            <button class="btn-submit" :disabled="loadingCrossroad" @click="sauvegarderCrossroad">
+              {{ loadingCrossroad ? '…' : 'Enregistrer' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="form-card" style="margin-top:16px">
+          <h2 class="form-title">Tableau des multiplicateurs actuels</h2>
+          <p class="field-hint" style="margin-bottom:12px">
+            Affiché à titre indicatif — les multiplicateurs sont fixes dans le code.
+          </p>
+          <table class="mult-table">
+            <thead><tr><th>Ruelle</th><th>Multiplicateur</th><th>Gain net sur 10 000 ¥</th></tr></thead>
+            <tbody>
+              <tr v-for="(m, i) in crossroadMults" :key="i">
+                <td>{{ i + 1 }}</td>
+                <td>×{{ m.toFixed(2) }}</td>
+                <td :class="m >= 1 ? 'gain--pos' : 'gain--neg'">{{ m >= 1 ? '+' : '' }}{{ Math.floor(10000 * m - 10000).toLocaleString('fr-FR') }} ¥</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
 
       <!-- ── Onglet Symboles ── -->
       <template v-if="onglet === 'symboles' && isAdmin">
@@ -504,6 +584,8 @@ import {
   getSlotsAdminJoueurs, updateJoueurSolde,
   getSlotsAdminLogs, getSlotsAdminStats, wipeStats,
   getSlotsWebhook, updateSlotsWebhook, testSlotsWebhook,
+  getCrossroadConfig, updateCrossroadConfig,
+  getCasinoGames, updateCasinoGames,
 } from '../api.js'
 
 const isAdmin  = computed(() => currentUser.value?.role === 'admin')
@@ -514,8 +596,70 @@ const ongletsDispo = computed(() =>
     : ['joueurs', 'logs', 'stats', 'notifications']
 )
 
-const jeu    = ref('slots')
+const jeu    = ref('gestion')
 const onglet = ref(isAdmin.value ? 'symboles' : 'joueurs')
+
+// ── Gestion des jeux ─────────────────────────────────────────────────────────
+const jeusList = [
+  { key: 'slots',     label: 'Machine à Sous',       route: '/slots'     },
+  { key: 'blackjack', label: 'Blackjack',             route: '/blackjack' },
+  { key: 'roulette',  label: 'Roulette',              route: '/roulette'  },
+  { key: 'crossroad', label: 'Traversée Démoniaque',  route: '/crossroad' },
+  { key: 'mines',     label: 'Champ Maudit',          route: '/mines'     },
+]
+const gestionForm    = ref({ slots: true, blackjack: true, roulette: true, crossroad: true, mines: true })
+const loadingGestion = ref(false)
+const gestionErreur  = ref('')
+const gestionOk      = ref(false)
+
+async function chargerGestion() {
+  try { Object.assign(gestionForm.value, await getCasinoGames()) } catch {}
+}
+
+async function sauvegarderGestion() {
+  loadingGestion.value = true
+  gestionErreur.value  = ''
+  gestionOk.value      = false
+  try {
+    await updateCasinoGames(gestionForm.value)
+    gestionOk.value = true
+    setTimeout(() => { gestionOk.value = false }, 3000)
+  } catch (e) {
+    gestionErreur.value = e.message
+  } finally {
+    loadingGestion.value = false
+  }
+}
+
+// ── Crossroad config ─────────────────────────────────────────────────────────
+const crossroadMults    = ref([])
+const crossroadForm     = ref({ bust_prob: 0.12 })
+const loadingCrossroad  = ref(false)
+const crossroadErreur   = ref('')
+const crossroadOk       = ref(false)
+
+async function chargerCrossroadConfig() {
+  try {
+    const [cfg, info] = await Promise.all([getCrossroadConfig(), fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/crossroad/info`, { credentials: 'include' }).then(r => r.json())])
+    crossroadForm.value.bust_prob = cfg.bust_prob
+    crossroadMults.value = info.MULT || []
+  } catch {}
+}
+
+async function sauvegarderCrossroad() {
+  loadingCrossroad.value = true
+  crossroadErreur.value  = ''
+  crossroadOk.value      = false
+  try {
+    await updateCrossroadConfig(crossroadForm.value.bust_prob)
+    crossroadOk.value = true
+    setTimeout(() => { crossroadOk.value = false }, 3000)
+  } catch (e) {
+    crossroadErreur.value = e.message
+  } finally {
+    loadingCrossroad.value = false
+  }
+}
 
 // ── Webhook Discord ──────────────────────────────────────────────────────────
 const webhookForm    = ref({ url: '' })
@@ -780,6 +924,7 @@ function formatResultat(json) {
 }
 
 onMounted(async () => {
+  chargerGestion()
   try {
     symboles.value = await getSlotsAdminSymbols()
   } finally {
@@ -1677,4 +1822,40 @@ onMounted(async () => {
 .notif-dot--green  { background: #43B581; }
 .notif-dot--orange { background: #E74C3C; }
 .notif-dot--blue   { background: #7289DA; }
+
+.games-toggles { display: flex; flex-direction: column; gap: 2px; margin-bottom: 24px; }
+.game-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; background: #0f0f11; border: 1px solid rgba(255,255,255,0.05);
+}
+.game-toggle-info { display: flex; flex-direction: column; gap: 3px; }
+.game-toggle-name {
+  font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.06em; color: #d4cfc9;
+}
+.game-toggle-route {
+  font-family: monospace; font-size: 0.72rem; color: rgba(255,255,255,0.22);
+}
+
+.mult-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Cinzel', serif;
+  font-size: 0.78rem;
+}
+.mult-table th {
+  text-align: left;
+  padding: 8px 12px;
+  color: rgba(255,255,255,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+.mult-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.65);
+}
+.mult-table tr:last-child td { border-bottom: none; }
+.gain--pos { color: #6fcf97; }
+.gain--neg { color: #e07070; }
 </style>

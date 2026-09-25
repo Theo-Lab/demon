@@ -147,6 +147,30 @@ db.prepare('INSERT OR IGNORE INTO slots_config (id, mise_min, mise_max) VALUES (
 try { db.prepare('ALTER TABLE slots_symbols ADD COLUMN is_wild INTEGER NOT NULL DEFAULT 0').run() } catch {}
 // Migration : discord_webhook
 try { db.prepare("ALTER TABLE slots_config ADD COLUMN discord_webhook TEXT NOT NULL DEFAULT ''").run() } catch {}
+// Migration : crossroad_bust_prob
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN crossroad_bust_prob REAL NOT NULL DEFAULT 0.12').run() } catch {}
+// Migrations : activation des jeux
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN slots_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN blackjack_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN roulette_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN crossroad_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN mines_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
+
+// Table mines
+db.exec(`
+  CREATE TABLE IF NOT EXISTS mines_games (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id            INTEGER NOT NULL REFERENCES users(id),
+    statut             TEXT NOT NULL DEFAULT 'en_cours',
+    mise               INTEGER NOT NULL,
+    nb_mines           INTEGER NOT NULL,
+    mines_positions    TEXT NOT NULL,
+    revealed_positions TEXT NOT NULL DEFAULT '[]',
+    solde_avant        INTEGER NOT NULL,
+    gain_net           INTEGER NOT NULL DEFAULT 0,
+    created_at         DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
 
 // Table logs solde admin
 db.exec(`
