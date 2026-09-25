@@ -23,7 +23,6 @@
 
           <nav class="games-list">
             <RouterLink to="/slots" class="game-item">
-              <span class="game-item-icon">🎰</span>
               <div class="game-item-body">
                 <span class="game-item-name">Machine à Sous</span>
                 <span class="game-item-desc">Wilds, jackpots, combos</span>
@@ -31,7 +30,6 @@
               <span class="game-item-cta">Jouer →</span>
             </RouterLink>
             <RouterLink to="/blackjack" class="game-item">
-              <span class="game-item-icon">🃏</span>
               <div class="game-item-body">
                 <span class="game-item-name">Blackjack</span>
                 <span class="game-item-desc">Solo ou table multijoueur</span>
@@ -39,7 +37,6 @@
               <span class="game-item-cta">Jouer →</span>
             </RouterLink>
             <RouterLink to="/roulette" class="game-item">
-              <span class="game-item-icon">🎲</span>
               <div class="game-item-body">
                 <span class="game-item-name">Roulette</span>
                 <span class="game-item-desc">Rouge, noir, plein, douzaines</span>
@@ -47,7 +44,6 @@
               <span class="game-item-cta">Jouer →</span>
             </RouterLink>
             <RouterLink to="/crossroad" class="game-item">
-              <span class="game-item-icon">😈</span>
               <div class="game-item-body">
                 <span class="game-item-name">Traversée Démoniaque</span>
                 <span class="game-item-desc">Traversez les ruelles, encaissez avant d'être brûlé</span>
@@ -55,7 +51,6 @@
               <span class="game-item-cta">Jouer →</span>
             </RouterLink>
             <RouterLink to="/mines" class="game-item">
-              <span class="game-item-icon">💣</span>
               <div class="game-item-body">
                 <span class="game-item-name">Champ Maudit</span>
                 <span class="game-item-desc">Révélez les gemmes, évitez les mines</span>
@@ -233,7 +228,6 @@ const croupierImg = '/croupier.png'
   background: #141416;
 }
 
-.game-item-icon { font-size: 1.2rem; line-height: 1; }
 
 .game-item-body {
   display: flex;
