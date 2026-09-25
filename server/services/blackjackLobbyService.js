@@ -65,8 +65,8 @@ const _prendreSiege = db.transaction((tableId, siegeNumero, userId, userNom, mis
 
   db.prepare('UPDATE users SET solde = solde - ? WHERE id = ?').run(mise, userId)
   db.prepare(
-    "UPDATE bj_sieges SET user_id = ?, user_nom = ?, mise = ?, statut = 'assis', main = '[]', resultat = NULL, gain_net = 0 WHERE table_id = ? AND numero = ?"
-  ).run(userId, userNom, mise, tableId, siegeNumero)
+    "UPDATE bj_sieges SET user_id = ?, user_nom = ?, mise = ?, mise_initiale = ?, statut = 'assis', main = '[]', resultat = NULL, gain_net = 0 WHERE table_id = ? AND numero = ?"
+  ).run(userId, userNom, mise, mise, tableId, siegeNumero)
 
   const solde = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
   return { solde }
@@ -93,7 +93,7 @@ const _modifierMise = db.transaction((tableId, userId, nouvelleMise) => {
   if (diff > 0 && user.solde < diff) throw new Error('Solde insuffisant.')
 
   db.prepare('UPDATE users SET solde = solde - ? WHERE id = ?').run(diff, userId)
-  db.prepare('UPDATE bj_sieges SET mise = ? WHERE table_id = ? AND user_id = ?').run(nouvelleMise, tableId, userId)
+  db.prepare('UPDATE bj_sieges SET mise = ?, mise_initiale = ? WHERE table_id = ? AND user_id = ?').run(nouvelleMise, nouvelleMise, tableId, userId)
 
   return { solde: db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde }
 })
@@ -359,8 +359,20 @@ function resoudrePartie(tableId) {
 // ── resetTable ────────────────────────────────────────────────────────────────
 
 const _resetTable = db.transaction((tableId) => {
-  // Garder les joueurs assis avec leur mise, juste remettre les mains à zéro
-  db.prepare("UPDATE bj_sieges SET statut = 'assis', main = '[]', resultat = NULL, gain_net = 0 WHERE table_id = ? AND statut != 'vide'").run(tableId)
+  const sieges = db.prepare("SELECT * FROM bj_sieges WHERE table_id = ? AND statut != 'vide'").all(tableId)
+  for (const siege of sieges) {
+    if (!siege.user_id) continue
+    const mise = siege.mise_initiale > 0 ? siege.mise_initiale : siege.mise
+    if (mise <= 0) continue
+    const user = db.prepare('SELECT solde FROM users WHERE id = ?').get(siege.user_id)
+    if (user && user.solde >= mise) {
+      db.prepare('UPDATE users SET solde = solde - ? WHERE id = ?').run(mise, siege.user_id)
+      db.prepare("UPDATE bj_sieges SET statut = 'assis', mise = ?, main = '[]', resultat = NULL, gain_net = 0 WHERE id = ?").run(mise, siege.id)
+    } else {
+      // Solde insuffisant → libérer le siège
+      db.prepare("UPDATE bj_sieges SET user_id = NULL, user_nom = NULL, mise = 0, mise_initiale = 0, statut = 'vide', main = '[]', resultat = NULL, gain_net = 0 WHERE id = ?").run(siege.id)
+    }
+  }
   db.prepare("UPDATE bj_tables SET statut = 'attente', deck = '[]', main_dealer = '[]', siege_actif = NULL WHERE id = ?").run(tableId)
 })
 

@@ -286,6 +286,7 @@ db.exec(`
 
 // Migration bj_sieges : colonne user_nom (ajoutée après création initiale de la table)
 try { db.exec(`ALTER TABLE bj_sieges ADD COLUMN user_nom TEXT DEFAULT NULL`) } catch {}
+try { db.exec(`ALTER TABLE bj_sieges ADD COLUMN mise_initiale INTEGER NOT NULL DEFAULT 0`) } catch {}
 
 // Migrations colonnes rapports
 try { db.exec(`ALTER TABLE rapports ADD COLUMN token TEXT`) } catch {}
