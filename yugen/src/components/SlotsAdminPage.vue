@@ -19,11 +19,23 @@
         <button :class="['jeu-tab', jeu === 'gestion' ? 'jeu-tab--actif' : '']" @click="jeu = 'gestion'; chargerGestion()">
           Gestion des jeux
         </button>
-        <button :class="['jeu-tab', jeu === 'slots' ? 'jeu-tab--actif' : '']" @click="jeu = 'slots'">
+        <button v-if="isAdmin" :class="['jeu-tab', jeu === 'slots' ? 'jeu-tab--actif' : '']" @click="jeu = 'slots'">
           Machine à Sous
         </button>
-        <button :class="['jeu-tab', jeu === 'crossroad' ? 'jeu-tab--actif' : '']" @click="jeu = 'crossroad'; chargerCrossroadConfig()">
+        <button v-if="isAdmin" :class="['jeu-tab', jeu === 'crossroad' ? 'jeu-tab--actif' : '']" @click="jeu = 'crossroad'; chargerCrossroadConfig()">
           Traversée Démoniaque
+        </button>
+        <button v-if="isCasino" :class="['jeu-tab', jeu === 'joueurs' ? 'jeu-tab--actif' : '']" @click="jeu = 'joueurs'; chargerJoueurs()">
+          Joueurs
+        </button>
+        <button v-if="isCasino" :class="['jeu-tab', jeu === 'logs' ? 'jeu-tab--actif' : '']" @click="jeu = 'logs'; chargerLogs()">
+          Logs
+        </button>
+        <button v-if="isCasino" :class="['jeu-tab', jeu === 'stats' ? 'jeu-tab--actif' : '']" @click="jeu = 'stats'; chargerStats()">
+          Statistiques
+        </button>
+        <button v-if="isCasino" :class="['jeu-tab', jeu === 'notifications' ? 'jeu-tab--actif' : '']" @click="jeu = 'notifications'; chargerWebhook()">
+          Notifications
         </button>
       </div>
 
@@ -57,14 +69,14 @@
         </div>
       </template>
 
-      <!-- ── Onglets du jeu sélectionné (slots) ── -->
-      <div v-if="jeu === 'slots'" class="onglets">
+      <!-- ── Sous-onglets Machine à Sous ── -->
+      <div v-if="jeu === 'slots' && isAdmin" class="onglets">
         <button
           v-for="tab in ongletsDispo"
           :key="tab"
           :class="['onglet', onglet === tab ? 'onglet--actif' : '']"
-          @click="onglet = tab; if(tab==='joueurs') chargerJoueurs(); if(tab==='logs') chargerLogs(); if(tab==='stats') chargerStats(); if(tab==='notifications') chargerWebhook()"
-        >{{ { symboles: 'Symboles', config: 'Configuration', joueurs: 'Joueurs', logs: 'Logs', stats: 'Statistiques', notifications: 'Notifications' }[tab] }}</button>
+          @click="onglet = tab"
+        >{{ { symboles: 'Symboles', config: 'Configuration' }[tab] }}</button>
       </div>
 
       <!-- ── Traversée Démoniaque ── -->
@@ -267,7 +279,7 @@
       </template>
 
       <!-- ── Onglet Joueurs ── -->
-      <template v-if="onglet === 'joueurs'">
+      <template v-if="jeu === 'joueurs'">
 
         <div class="joueurs-search">
           <input
@@ -321,7 +333,7 @@
       </template>
 
       <!-- ── Onglet Stats ── -->
-      <template v-if="onglet === 'stats'">
+      <template v-if="jeu === 'stats'">
         <div v-if="loadingStats" class="loading">Chargement…</div>
         <template v-else-if="stats">
           <div class="stats-toolbar">
@@ -454,7 +466,7 @@
       </template>
 
       <!-- ── Onglet Logs ── -->
-      <template v-if="onglet === 'logs'">
+      <template v-if="jeu === 'logs'">
 
         <div class="logs-toolbar">
           <input
@@ -523,7 +535,7 @@
       </template>
 
       <!-- ── Onglet Notifications ── -->
-      <template v-if="onglet === 'notifications' && isCasino">
+      <template v-if="jeu === 'notifications' && isCasino">
 
         <div class="form-card">
           <h2 class="form-title">Webhook Discord</h2>
@@ -591,13 +603,11 @@ import {
 const isAdmin  = computed(() => currentUser.value?.role === 'admin')
 const isCasino = computed(() => ['admin', 'groupier'].includes(currentUser.value?.role))
 const ongletsDispo = computed(() =>
-  isAdmin.value
-    ? ['symboles', 'config', 'joueurs', 'logs', 'stats', 'notifications']
-    : ['joueurs', 'logs', 'stats', 'notifications']
+  isAdmin.value ? ['symboles', 'config'] : []
 )
 
-const jeu    = ref('gestion')
-const onglet = ref(isAdmin.value ? 'symboles' : 'joueurs')
+const jeu    = ref(isAdmin.value ? 'gestion' : 'joueurs')
+const onglet = ref('symboles')
 
 // ── Gestion des jeux ─────────────────────────────────────────────────────────
 const jeusList = [
