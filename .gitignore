@@ -3,4 +3,6 @@ dist/
 .env
 .env.production
 *.db
+*.db-shm
+*.db-wal
 uploads/
