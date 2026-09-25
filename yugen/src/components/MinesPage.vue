@@ -20,7 +20,7 @@
       <h1 class="page-title">Champ Maudit</h1>
 
       <!-- Grille 5×5 -->
-      <div class="grid" :class="{ 'grid--bust': bustFlash }">
+      <div class="grid" :class="{ 'grid--bust': bustFlash, 'grid--win': winFlash }">
         <button
           v-for="i in 25"
           :key="i - 1"
@@ -36,6 +36,16 @@
           <!-- Non révélé -->
           <span v-else class="tile-dot"></span>
         </button>
+      </div>
+
+      <!-- Particules cashout -->
+      <div class="particles-wrap" aria-hidden="true">
+        <span
+          v-for="p in particles"
+          :key="p.id"
+          class="particle"
+          :style="p.style"
+        ></span>
       </div>
 
       <!-- Mult bar -->
@@ -83,14 +93,14 @@
                 type="number"
                 class="mise-input"
                 :min="1"
-                :max="solde"
+                :max="Math.min(solde, 10000)"
                 step="1000"
                 :disabled="loading"
                 @keydown.enter="lancerPartie"
               />
             </div>
           </div>
-          <button class="btn btn--invoke" :disabled="loading || miseInput <= 0 || miseInput > solde" @click="lancerPartie">
+          <button class="btn btn--invoke" :disabled="loading || miseInput <= 0 || miseInput > solde || miseInput > 10000" @click="lancerPartie">
             {{ loading ? 'Chargement…' : 'Invoquer' }}
           </button>
         </template>
@@ -125,26 +135,34 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { getMe, getCasinoGames, minesNew, minesReveal, minesCashout } from '../api.js'
+import { playReveal, playMine, playCashout, playInvoke, resumeAudio } from '../mines-audio.js'
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-const solde           = ref(0)
-const miseInput       = ref(10000)
-const miseEnCours     = ref(0)
-const nbMines         = ref(3)
-const etat            = ref('idle')     // 'idle' | 'en_cours' | 'fini_bust' | 'fini_win'
-const revealed        = ref([])         // positions sûres révélées
-const mines           = ref([])         // positions mines (après bust ou victoire totale)
-const mult            = ref(1)
-const gainNet         = ref(0)
+const solde            = ref(0)
+const miseInput        = ref(10000)
+const miseEnCours      = ref(0)
+const nbMines          = ref(3)
+const etat             = ref('idle')     // 'idle' | 'en_cours' | 'fini_bust' | 'fini_win'
+const revealed         = ref([])
+const mines            = ref([])
+const mult             = ref(1)
+const gainNet          = ref(0)
 const gainNetPotentiel = ref(0)
-const loading         = ref(false)
-const erreur          = ref('')
-const bustFlash       = ref(false)
-const jeuIndisponible = ref(false)
+const loading          = ref(false)
+const erreur           = ref('')
+const bustFlash        = ref(false)
+const winFlash         = ref(false)
+const jeuIndisponible  = ref(false)
+
+// tiles en animation de révélation
+const revealingTiles   = ref(new Set())
+// particules au cashout
+const particles        = ref([])
+let   _particleId      = 0
 
 // ── Formatage ─────────────────────────────────────────────────────────────────
 
@@ -155,13 +173,38 @@ function fmtYen(n) {
 // ── Helpers tiles ─────────────────────────────────────────────────────────────
 
 function tileClass(i) {
-  if (mines.value.includes(i)) return 'tile--mine'
+  if (mines.value.includes(i))    return 'tile--mine'
+  if (revealingTiles.value.has(i)) return 'tile--revealing'
   if (revealed.value.includes(i)) return 'tile--safe'
   return 'tile--hidden'
 }
 
 function canReveal(i) {
-  return etat.value === 'en_cours' && !revealed.value.includes(i) && !mines.value.includes(i) && !loading.value
+  return etat.value === 'en_cours'
+    && !revealed.value.includes(i)
+    && !mines.value.includes(i)
+    && !loading.value
+}
+
+// ── Particules ────────────────────────────────────────────────────────────────
+
+function spawnParticles() {
+  particles.value = []
+  for (let i = 0; i < 22; i++) {
+    const id    = _particleId++
+    const x     = 10 + Math.random() * 80
+    const delay = Math.random() * 0.4
+    const dur   = 0.7 + Math.random() * 0.6
+    const size  = 5 + Math.random() * 7
+    const hue   = Math.random() > 0.5 ? '43' : '52'   // or / jaune
+    particles.value.push({
+      id,
+      style: `left:${x}%;top:50%;width:${size}px;height:${size}px;` +
+             `background:hsl(${hue},85%,58%);` +
+             `animation:particle-fly ${dur}s ${delay}s ease-out forwards`,
+    })
+  }
+  setTimeout(() => { particles.value = [] }, 1600)
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -169,16 +212,18 @@ function canReveal(i) {
 async function lancerPartie() {
   erreur.value = ''
   loading.value = true
+  resumeAudio()
   try {
     const r = await minesNew(miseInput.value, nbMines.value)
-    miseEnCours.value = miseInput.value
-    revealed.value    = r.revealed ?? []
-    mines.value       = []
-    mult.value        = r.mult ?? 1
-    gainNet.value     = 0
+    miseEnCours.value      = miseInput.value
+    revealed.value         = r.revealed ?? []
+    mines.value            = []
+    mult.value             = r.mult ?? 1
+    gainNet.value          = 0
     gainNetPotentiel.value = 0
-    solde.value       = r.solde
-    etat.value        = 'en_cours'
+    solde.value            = r.solde
+    etat.value             = 'en_cours'
+    playInvoke()
   } catch (e) {
     erreur.value = e.message
   } finally {
@@ -190,29 +235,44 @@ async function doReveal(position) {
   if (!canReveal(position)) return
   erreur.value = ''
   loading.value = true
+  resumeAudio()
+
+  // Animation flip immédiate
+  revealingTiles.value = new Set([...revealingTiles.value, position])
+
   try {
     const r = await minesReveal(position)
     solde.value = r.solde
 
     if (r.statut === 'bust') {
-      mines.value   = r.mines
-      gainNet.value = r.gain_net
-      etat.value    = 'fini_bust'
+      revealingTiles.value = new Set()
+      mines.value    = r.mines
+      gainNet.value  = r.gain_net
+      etat.value     = 'fini_bust'
+      playMine()
       bustFlash.value = true
-      setTimeout(() => { bustFlash.value = false }, 600)
+      setTimeout(() => { bustFlash.value = false }, 700)
     } else if (r.statut === 'victoire_totale') {
+      revealingTiles.value = new Set()
       revealed.value = [...revealed.value, position]
       mines.value    = r.mines
       mult.value     = r.mult
       gainNet.value  = r.gain_net
       gainNetPotentiel.value = r.gain_net
       etat.value     = 'fini_win'
+      playCashout()
+      spawnParticles()
+      winFlash.value = true
+      setTimeout(() => { winFlash.value = false }, 900)
     } else {
+      revealingTiles.value = new Set([...revealingTiles.value].filter(t => t !== position))
       revealed.value = [...revealed.value, position]
       mult.value     = r.mult
       gainNetPotentiel.value = r.gain_net_potentiel
+      playReveal()
     }
   } catch (e) {
+    revealingTiles.value = new Set([...revealingTiles.value].filter(t => t !== position))
     erreur.value = e.message
   } finally {
     loading.value = false
@@ -222,13 +282,18 @@ async function doReveal(position) {
 async function doCashout() {
   erreur.value = ''
   loading.value = true
+  resumeAudio()
   try {
     const r = await minesCashout()
-    solde.value   = r.solde
-    mult.value    = r.mult
-    gainNet.value = r.gain_net
+    solde.value            = r.solde
+    mult.value             = r.mult
+    gainNet.value          = r.gain_net
     gainNetPotentiel.value = r.gain_net
-    etat.value    = 'fini_win'
+    etat.value             = 'fini_win'
+    playCashout()
+    spawnParticles()
+    winFlash.value = true
+    setTimeout(() => { winFlash.value = false }, 900)
   } catch (e) {
     erreur.value = e.message
   } finally {
@@ -237,13 +302,15 @@ async function doCashout() {
 }
 
 function reset() {
-  etat.value     = 'idle'
-  revealed.value = []
-  mines.value    = []
-  mult.value     = 1
-  gainNet.value  = 0
+  etat.value             = 'idle'
+  revealed.value         = []
+  mines.value            = []
+  mult.value             = 1
+  gainNet.value          = 0
   gainNetPotentiel.value = 0
-  erreur.value   = ''
+  erreur.value           = ''
+  revealingTiles.value   = new Set()
+  particles.value        = []
 }
 
 async function rejouer() {
@@ -293,6 +360,7 @@ onMounted(async () => {
   max-width: 560px;
   margin: 0 auto;
   padding: 20px 16px 48px;
+  position: relative;
 }
 
 /* ── Top bar ─────────────────────────────────────────────────────────────── */
@@ -338,10 +406,26 @@ onMounted(async () => {
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   margin-bottom: 20px;
-  transition: filter .3s;
+  transition: filter .25s;
 }
 .grid--bust {
-  filter: brightness(.5) saturate(.3);
+  animation: grid-shake 0.55s ease;
+  filter: brightness(.45) saturate(.2);
+}
+.grid--win {
+  filter: brightness(1.08) saturate(1.3);
+}
+
+@keyframes grid-shake {
+  0%   { transform: translateX(0); }
+  12%  { transform: translateX(-7px) rotate(-0.8deg); }
+  24%  { transform: translateX(7px)  rotate(0.8deg); }
+  36%  { transform: translateX(-5px) rotate(-0.5deg); }
+  48%  { transform: translateX(5px)  rotate(0.5deg); }
+  60%  { transform: translateX(-3px); }
+  75%  { transform: translateX(3px); }
+  88%  { transform: translateX(-1px); }
+  100% { transform: translateX(0); }
 }
 
 .tile {
@@ -353,35 +437,56 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color .15s, background .15s, transform .1s;
+  transition: border-color .15s, background .15s, transform .12s, box-shadow .2s;
   position: relative;
   overflow: hidden;
 }
 .tile:not(:disabled):hover {
   border-color: #3a3050;
   background: #151520;
-  transform: scale(1.04);
+  transform: scale(1.06);
+  box-shadow: 0 0 12px rgba(140,80,200,.15);
 }
 .tile:disabled { cursor: default; }
 
-/* Tile cachée (à révéler) */
+/* Tile cachée */
 .tile--hidden {
   background: #0f0f11;
   border-color: #1e1a2a;
+}
+
+/* En cours de révélation (flip) */
+.tile--revealing {
+  animation: tile-flip 0.28s ease;
+  background: #12102a;
+  border-color: #4a3070;
+}
+
+@keyframes tile-flip {
+  0%   { transform: scaleX(1); }
+  40%  { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
 }
 
 /* Tile safe (gemme) */
 .tile--safe {
   background: #0e1208;
   border-color: #c9a84c;
-  box-shadow: 0 0 8px rgba(201,168,76,.18);
+  box-shadow: 0 0 10px rgba(201,168,76,.2);
 }
 
-/* Tile mine (après bust) */
+/* Tile mine */
 .tile--mine {
   background: #2a0808;
   border-color: #7a1010;
-  box-shadow: 0 0 8px rgba(180,20,20,.25);
+  box-shadow: 0 0 10px rgba(180,20,20,.3);
+  animation: tile-mine-pop 0.35s ease;
+}
+
+@keyframes tile-mine-pop {
+  0%   { transform: scale(0.8); opacity: .6; }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* ── Gemme (losange CSS) ─────────────────────────────────────────────────── */
@@ -393,8 +498,14 @@ onMounted(async () => {
   transform: rotate(45deg);
   border-radius: 2px;
   box-shadow:
-    0 0 8px rgba(201,168,76,.7),
-    0 0 2px rgba(255,230,140,.9);
+    0 0 10px rgba(201,168,76,.75),
+    0 0 3px  rgba(255,230,140,.9);
+  animation: gem-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes gem-glow {
+  from { box-shadow: 0 0 8px rgba(201,168,76,.6), 0 0 2px rgba(255,230,140,.8); }
+  to   { box-shadow: 0 0 16px rgba(201,168,76,.95), 0 0 6px rgba(255,230,140,1); }
 }
 
 /* ── Croix mine ──────────────────────────────────────────────────────────── */
@@ -403,7 +514,7 @@ onMounted(async () => {
   color: #e03030;
   font-weight: 700;
   line-height: 1;
-  text-shadow: 0 0 8px rgba(220,40,40,.6);
+  text-shadow: 0 0 10px rgba(220,40,40,.7);
 }
 
 /* ── Dot non révélé ──────────────────────────────────────────────────────── */
@@ -414,6 +525,24 @@ onMounted(async () => {
   background: #2a2540;
   border-radius: 50%;
   opacity: .5;
+}
+
+/* ── Particules ──────────────────────────────────────────────────────────── */
+.particles-wrap {
+  position: relative;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+}
+
+@keyframes particle-fly {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-120px) scale(.4); }
 }
 
 /* ── Mult bar ────────────────────────────────────────────────────────────── */

@@ -27,7 +27,7 @@ function shuffle(arr) {
 // ── newGame ───────────────────────────────────────────────────────────────────
 
 const _newGame = db.transaction((userId, mise, nbMines) => {
-  if (mise <= 0)      throw new Error('Mise invalide.')
+  if (mise <= 0 || mise > 10000) throw new Error('Mise invalide (1–10 000 ¥).')
   if (nbMines < 3 || nbMines > 24) throw new Error('Nombre de mines invalide (3–24).')
 
   const user = db.prepare('SELECT id, solde FROM users WHERE id = ?').get(userId)
