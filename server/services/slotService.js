@@ -165,4 +165,75 @@ function jouer(userId, mise) {
   return clientResult
 }
 
-module.exports = { jouer }
+// ── Multi-spin ────────────────────────────────────────────────────────────────
+
+const _jouerMulti = db.transaction((userId, mise, nb) => {
+  if (nb < 2 || nb > 5) throw new Error('Nombre de machines invalide (2–5).')
+
+  const config = db.prepare('SELECT * FROM slots_config WHERE id = 1').get()
+  if (mise < config.mise_min || mise > config.mise_max) {
+    throw new Error(`Mise invalide (${config.mise_min.toLocaleString()} – ${config.mise_max.toLocaleString()} ¥).`)
+  }
+
+  const user = db.prepare('SELECT solde, nom, identifiant FROM users WHERE id = ?').get(userId)
+  if (!user) throw new Error('Utilisateur introuvable.')
+  if (user.solde < mise * nb) throw new Error(`Solde insuffisant (mise totale : ${(mise * nb).toLocaleString()} ¥).`)
+
+  const symboles = db.prepare('SELECT * FROM slots_symbols WHERE actif = 1').all()
+  if (symboles.length < 2) throw new Error('Configuration insuffisante : au moins 2 symboles actifs requis.')
+
+  const nb_colonnes = config.nb_colonnes ?? 3
+  const resultats   = []
+  let   solde       = user.solde
+
+  for (let i = 0; i < nb; i++) {
+    const grille       = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))
+    const lignePayline = grille.slice(nb_colonnes, 2 * nb_colonnes)
+    const { multiplicateur, type, run, winning_cols, near_miss, is_jackpot } = evaluerLigne(lignePayline)
+
+    const gain      = Math.floor(mise * multiplicateur)
+    const gain_net  = gain - mise
+    const solde_avant = solde
+    solde = solde + gain_net
+
+    db.prepare(`
+      INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres)
+      VALUES (?, 'slots', ?, ?, ?, ?, ?)
+    `).run(
+      userId, mise,
+      JSON.stringify({
+        nb_colonnes,
+        grille:   grille.map(s => ({ id: s.id, nom: s.nom, image_url: s.image_url, is_wild: !!s.is_wild })),
+        ligne:    lignePayline.map(s => ({ id: s.id, nom: s.nom, image_url: s.image_url, is_wild: !!s.is_wild })),
+        multiplicateur, type, run, winning_cols, near_miss, is_jackpot,
+      }),
+      gain_net, solde_avant, solde
+    )
+
+    resultats.push({
+      nb_colonnes,
+      grille: grille.map(s => ({ id: s.id, nom: s.nom, image_url: s.image_url, is_wild: !!s.is_wild })),
+      multiplicateur, type, run, winning_cols, near_miss, is_jackpot,
+      gain, gain_net,
+    })
+  }
+
+  db.prepare('UPDATE users SET solde = ? WHERE id = ?').run(solde, userId)
+
+  return {
+    resultats,
+    solde,
+    total_mise:     mise * nb,
+    total_gain:     resultats.reduce((s, r) => s + r.gain,     0),
+    total_gain_net: resultats.reduce((s, r) => s + r.gain_net, 0),
+    _player: { nom: user.nom, identifiant: user.identifiant },
+  }
+})
+
+function jouerMulti(userId, mise, nb) {
+  const result = _jouerMulti(userId, mise, nb)
+  const { _player, ...clientResult } = result
+  return clientResult
+}
+
+module.exports = { jouer, jouerMulti }

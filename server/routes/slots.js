@@ -59,6 +59,18 @@ router.post('/spin', requireAuth, (req, res) => {
   }
 })
 
+// POST /api/slots/multispin
+router.post('/multispin', requireAuth, (req, res) => {
+  const mise = parseInt(req.body.mise)
+  const nb   = Math.min(5, Math.max(2, parseInt(req.body.nb_machines) || 2))
+  if (!mise || mise <= 0) return res.status(400).json({ message: 'Mise invalide.' })
+  try {
+    res.json(slotService.jouerMulti(req.user.id, mise, nb))
+  } catch (e) {
+    res.status(400).json({ message: e.message })
+  }
+})
+
 // ── Routes admin ────────────────────────────────────────────────────────────
 
 // GET /api/slots/admin/symbols

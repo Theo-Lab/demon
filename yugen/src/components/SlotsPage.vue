@@ -13,9 +13,12 @@
           <p class="page-label">Casino de l'Ordre</p>
           <h1 class="page-title">Machine à Sous</h1>
         </div>
-        <div class="solde-display">
-          <span class="solde-label">Solde</span>
-          <span class="solde-value">{{ solde.toLocaleString() }} ¥</span>
+        <div class="header-right">
+          <RouterLink to="/slots/multi" class="btn-multi">Multi-Spin →</RouterLink>
+          <div class="solde-display">
+            <span class="solde-label">Solde</span>
+            <span class="solde-value">{{ solde.toLocaleString() }} ¥</span>
+          </div>
         </div>
       </div>
 
@@ -559,6 +562,30 @@ onMounted(async () => {
   align-items: flex-end;
   justify-content: space-between;
   margin-bottom: 24px;
+}
+
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.btn-multi {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c9a84c;
+  border: 1px solid rgba(201,168,76,0.4);
+  border-radius: 4px;
+  padding: 5px 12px;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-multi:hover {
+  background: rgba(201,168,76,0.1);
+  border-color: rgba(201,168,76,0.7);
 }
 
 .page-label {
