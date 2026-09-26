@@ -19,18 +19,35 @@ function isChefOrAdmin(req, sphereId) {
 
 // GET /api/spheres — membres connectés seulement
 router.get('/', requireAuth, (req, res) => {
-  const spheres = db.prepare(`
-    SELECT s.*, u.nom as chef_nom,
-      (SELECT COUNT(*) FROM user_spheres us WHERE us.sphere_id = s.id) as nb_membres
-    FROM spheres s
-    LEFT JOIN users u ON u.id = s.chef_id
-    ORDER BY s.nom ASC
-  `).all()
+  const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
+  let spheres
+  if (user?.role === 'admin') {
+    spheres = db.prepare(`
+      SELECT s.*, u.nom as chef_nom,
+        (SELECT COUNT(*) FROM user_spheres us WHERE us.sphere_id = s.id) as nb_membres
+      FROM spheres s
+      LEFT JOIN users u ON u.id = s.chef_id
+      ORDER BY s.nom ASC
+    `).all()
+  } else {
+    spheres = db.prepare(`
+      SELECT s.*, u.nom as chef_nom,
+        (SELECT COUNT(*) FROM user_spheres us WHERE us.sphere_id = s.id) as nb_membres
+      FROM spheres s
+      LEFT JOIN users u ON u.id = s.chef_id
+      WHERE s.id IN (SELECT sphere_id FROM user_spheres WHERE user_id = ?)
+      ORDER BY s.nom ASC
+    `).all(req.user.id)
+  }
   res.json({ spheres })
 })
 
 // GET /api/spheres/:id — détail avec membres
 router.get('/:id', requireAuth, (req, res) => {
+  const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
+  const isMembre = db.prepare('SELECT 1 FROM user_spheres WHERE user_id = ? AND sphere_id = ?').get(req.user.id, req.params.id)
+  if (user?.role !== 'admin' && !isMembre) return res.status(403).json({ message: 'Accès refusé.' })
+
   const sphere = db.prepare(`
     SELECT s.*, u.nom as chef_nom
     FROM spheres s
