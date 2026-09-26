@@ -64,6 +64,13 @@
               </div>
               <span class="game-item-cta">Jouer →</span>
             </RouterLink>
+            <RouterLink to="/poker" class="game-item">
+              <div class="game-item-body">
+                <span class="game-item-name">Poker</span>
+                <span class="game-item-desc">Texas Hold'em multijoueur</span>
+              </div>
+              <span class="game-item-cta">Jouer →</span>
+            </RouterLink>
           </nav>
         </div>
 

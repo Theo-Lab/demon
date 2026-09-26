@@ -24,6 +24,8 @@ import CrossroadPage from '../components/CrossroadPage.vue'
 import MinesPage from '../components/MinesPage.vue'
 import WheelPage from '../components/WheelPage.vue'
 import SlotsMultiPage from '../components/SlotsMultiPage.vue'
+import PokerLobbyPage from '../components/PokerLobbyPage.vue'
+import PokerTablePage from '../components/PokerTablePage.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -50,6 +52,8 @@ const routes = [
   { path: '/mines',             component: MinesPage          },
   { path: '/wheel',             component: WheelPage          },
   { path: '/slots/multi',       component: SlotsMultiPage     },
+  { path: '/poker',             component: PokerLobbyPage     },
+  { path: '/poker/:id',         component: PokerTablePage     },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

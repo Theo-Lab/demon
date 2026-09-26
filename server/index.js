@@ -30,6 +30,7 @@ app.use('/api/crossroad',      require('./routes/crossroad'))
 app.use('/api/mines',          require('./routes/mines'))
 app.use('/api/wheel',          require('./routes/wheel'))
 app.use('/api/casino',         require('./routes/casino'))
+app.use('/api/poker',          require('./routes/pokerLobby'))
 app.use('/uploads', require('express').static('./uploads'))
 
 // ── HTTP + Socket.io ──────────────────────────────────────────────────────────
@@ -40,6 +41,8 @@ const io = new Server(httpServer, {
 })
 
 // ── Lobby state (en mémoire) ──────────────────────────────────────────────────
+
+const { registerPokerHandlers } = require('./poker-socket')
 
 const {
   getTableState,
@@ -296,6 +299,9 @@ io.on('connection', (socket) => {
       socket.emit('error', { message: e.message })
     }
   })
+
+  // ── Poker ────────────────────────────────────────────────────────────────────
+  registerPokerHandlers(io, socket)
 
   socket.on('disconnect', () => {
     // Libérer le siège si le joueur quitte pendant la phase d'attente
