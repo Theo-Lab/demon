@@ -22,6 +22,7 @@ import BlackjackLobbyPage from '../components/BlackjackLobbyPage.vue'
 import BlackjackTablePage from '../components/BlackjackTablePage.vue'
 import CrossroadPage from '../components/CrossroadPage.vue'
 import MinesPage from '../components/MinesPage.vue'
+import WheelPage from '../components/WheelPage.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -46,6 +47,7 @@ const routes = [
   { path: '/slots',             component: SlotsPage          },
   { path: '/crossroad',         component: CrossroadPage      },
   { path: '/mines',             component: MinesPage          },
+  { path: '/wheel',             component: WheelPage          },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

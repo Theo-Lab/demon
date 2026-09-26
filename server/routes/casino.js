@@ -11,23 +11,24 @@ function requireCasino(req, res, next) {
 }
 
 router.get('/games', requireAuth, (_req, res) => {
-  const row = db.prepare('SELECT slots_actif, blackjack_actif, roulette_actif, crossroad_actif, mines_actif FROM slots_config WHERE id = 1').get()
+  const row = db.prepare('SELECT slots_actif, blackjack_actif, roulette_actif, crossroad_actif, mines_actif, wheel_actif FROM slots_config WHERE id = 1').get()
   res.json({
     slots:     !!row?.slots_actif,
     blackjack: !!row?.blackjack_actif,
     roulette:  !!row?.roulette_actif,
     crossroad: !!row?.crossroad_actif,
     mines:     !!row?.mines_actif,
+    wheel:     !!row?.wheel_actif,
   })
 })
 
 router.post('/games', requireAuth, requireCasino, (req, res) => {
-  const { slots, blackjack, roulette, crossroad, mines } = req.body
+  const { slots, blackjack, roulette, crossroad, mines, wheel } = req.body
   db.prepare(`
     UPDATE slots_config
-    SET slots_actif = ?, blackjack_actif = ?, roulette_actif = ?, crossroad_actif = ?, mines_actif = ?
+    SET slots_actif = ?, blackjack_actif = ?, roulette_actif = ?, crossroad_actif = ?, mines_actif = ?, wheel_actif = ?
     WHERE id = 1
-  `).run(slots ? 1 : 0, blackjack ? 1 : 0, roulette ? 1 : 0, crossroad ? 1 : 0, mines ? 1 : 0)
+  `).run(slots ? 1 : 0, blackjack ? 1 : 0, roulette ? 1 : 0, crossroad ? 1 : 0, mines ? 1 : 0, wheel ? 1 : 0)
   res.json({ ok: true })
 })
 

@@ -57,6 +57,13 @@
               </div>
               <span class="game-item-cta">Jouer →</span>
             </RouterLink>
+            <RouterLink to="/wheel" class="game-item">
+              <div class="game-item-body">
+                <span class="game-item-name">Roue du Destin</span>
+                <span class="game-item-desc">×0 à ×20 — un seul coup de destin</span>
+              </div>
+              <span class="game-item-cta">Jouer →</span>
+            </RouterLink>
           </nav>
         </div>
 
