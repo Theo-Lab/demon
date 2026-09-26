@@ -1,248 +1,210 @@
 <template>
   <div class="page" @click="resumeAudio">
     <AppNavbar />
-    <div class="page-inner">
 
-      <!-- Barre du haut -->
-      <div class="top-bar">
-        <RouterLink to="/poker" class="back-link">← Lobby</RouterLink>
-        <div v-if="state" class="top-center">
-          <span class="table-name-lbl">{{ state.name }}</span>
-          <span class="blinds-lbl">{{ state.smallBlind.toLocaleString() }} / {{ state.bigBlind.toLocaleString() }} ¥</span>
-        </div>
-        <div class="top-right">
-          <span class="my-chips-lbl" v-if="myPlayer">{{ myPlayer.chips.toLocaleString() }} ¥</span>
-          <button
-            v-if="state && state.status === 'waiting' && myPlayer"
-            class="btn-leave"
-            @click="partir"
-          >Quitter</button>
-        </div>
+    <!-- Top bar -->
+    <div class="top-bar">
+      <RouterLink to="/poker" class="back-link">← Lobby</RouterLink>
+      <div v-if="state" class="top-center">
+        <span class="table-name">{{ state.name }}</span>
+        <span class="table-blinds">{{ state.smallBlind.toLocaleString() }} / {{ state.bigBlind.toLocaleString() }} ¥</span>
       </div>
+      <div class="top-right">
+        <span class="my-stack" v-if="myPlayer">{{ myPlayer.chips.toLocaleString() }} ¥</span>
+        <button v-if="state?.status === 'waiting' && myPlayer" class="btn-leave" @click="partir">Quitter</button>
+      </div>
+    </div>
 
-      <!-- Countdown avant main -->
-      <Transition name="slide-down">
-        <div v-if="countdown != null" class="countdown-banner">
-          <span class="countdown-num">{{ countdown }}</span>
-          <span class="countdown-txt">La main commence dans…</span>
-        </div>
-      </Transition>
+    <!-- Countdown toast -->
+    <Transition name="toast">
+      <div v-if="countdown != null" class="countdown-toast">
+        <span class="toast-num">{{ countdown }}</span>
+        <span class="toast-txt">La main commence dans…</span>
+      </div>
+    </Transition>
 
-      <!-- Table ovale -->
-      <div v-if="state" class="arena">
-        <div class="oval-table">
+    <!-- Erreur flash -->
+    <Transition name="toast">
+      <div v-if="flashError" class="error-toast">{{ flashError }}</div>
+    </Transition>
 
-          <!-- Pot central -->
-          <Transition name="pot-pop">
-            <div
-              v-if="state.pot > 0"
-              class="pot-display"
-              :class="{ 'pot-display--pulse': potPulse }"
-              :key="potPulse ? 'p' : 'n'"
-            >
-              <div class="pot-chips-row">
-                <div v-for="i in potChipCount" :key="i" class="chip-dot" :style="chipDotStyle(i)"></div>
-              </div>
-              <span class="pot-label">POT</span>
-              <span class="pot-value">{{ state.pot.toLocaleString() }} ¥</span>
+    <!-- Arena -->
+    <div class="arena" v-if="state">
+      <div class="oval-table">
+
+        <!-- Overlay résultat sur la table -->
+        <Transition name="overlay-pop">
+          <div v-if="handResult" class="result-overlay">
+            <div v-for="w in handResult.winners" :key="w.userId" class="result-winner-row">
+              <span class="result-crown">♛</span>
+              <span class="result-name">{{ w.nom }}</span>
+              <span class="result-amount">{{ handResult.pot.toLocaleString() }} ¥</span>
             </div>
-          </Transition>
+            <div v-if="handResult.players.some(p => p.handName)" class="result-hands">
+              <div v-for="p in handResult.players.filter(x => x.handName)" :key="p.userId" class="result-hand-row">
+                <span class="result-hand-name-lbl">{{ p.nom }}</span>
+                <div class="result-hand-cards">
+                  <span v-for="(c,i) in p.cards" :key="i" class="card card--sm" :class="c?.red ? 'card--red':'card--black'">{{ c?.nom ?? '?' }}</span>
+                </div>
+                <span class="result-hand-type">{{ p.handName }}</span>
+              </div>
+            </div>
+          </div>
+        </Transition>
+
+        <!-- Centre de table : pot + cartes communes -->
+        <div class="table-center">
+
+          <!-- Pot -->
+          <div v-if="state.pot > 0" class="pot-zone" :class="{ 'pot-zone--pulse': potPulse }">
+            <div class="pot-chips">
+              <span v-for="i in potChipCount" :key="i" class="pot-chip" :style="{ background: CHIP_COLORS[(i-1)%5] }"></span>
+            </div>
+            <span class="pot-lbl">POT</span>
+            <span class="pot-val">{{ state.pot.toLocaleString() }} ¥</span>
+          </div>
 
           <!-- Cartes communes -->
-          <div class="community-cards">
-            <span v-if="state.status === 'waiting'" class="phase-waiting-lbl">En attente de joueurs</span>
-            <template v-else>
+          <div class="community-tray">
+            <template v-if="['preflop','flop','turn','river','showdown'].includes(state.status)">
               <span
-                v-for="(c, i) in state.communityCards"
-                :key="`comm-${i}`"
-                class="card card--community"
-                :class="[
-                  c.red ? 'card--red' : 'card--black',
-                  animCommCards.has(i) ? 'card--flip-in' : '',
-                ]"
-                :style="animCommCards.has(i) ? { animationDelay: `${(i % 3) * 100}ms` } : {}"
+                v-for="(c,i) in state.communityCards" :key="`c${i}`"
+                class="card card--comm"
+                :class="[c.red ? 'card--red':'card--black', animCommCards.has(i) ? 'card--flip-in':'']"
+                :style="animCommCards.has(i) ? { animationDelay: `${(i%3)*100}ms` } : {}"
               >{{ c.nom }}</span>
-              <span
-                v-for="i in (5 - state.communityCards.length)"
-                :key="`ph-${i}`"
-                class="card card--placeholder"
-              ></span>
+              <span v-for="i in (5 - state.communityCards.length)" :key="`ph${i}`" class="card card--ph"></span>
             </template>
+            <span v-else class="waiting-lbl">En attente de joueurs…</span>
           </div>
 
-          <!-- Phase badge -->
-          <div class="phase-badge" v-if="!['waiting','showdown'].includes(state.status)">
-            {{ phaseLabel }}
+          <!-- Phase -->
+          <span v-if="phaseLabel" class="phase-lbl" :key="phaseLabel">{{ phaseLabel }}</span>
+        </div>
+
+        <!-- Sièges -->
+        <div
+          v-for="(seat, si) in orderedSeats"
+          :key="seat.userId"
+          class="seat"
+          :style="seatStyle(si, orderedSeats.length)"
+          :class="{
+            'seat--active': seat.userId === state.activeUserId,
+            'seat--folded': seat.status === 'folded',
+            'seat--me':     seat.userId === myUserId,
+            'seat--winner': winnerIds.has(seat.userId),
+          }"
+        >
+          <!-- Badges -->
+          <div class="seat-badges">
+            <span v-if="seat.isDealer" class="badge badge--d">D</span>
+            <span v-else-if="seat.isSB"   class="badge badge--sb">SB</span>
+            <span v-else-if="seat.isBB"   class="badge badge--bb">BB</span>
           </div>
 
-          <!-- Joueurs autour de la table -->
-          <div
-            v-for="(seat, si) in orderedSeats"
-            :key="seat.userId"
-            class="seat"
-            :style="seatStyle(si, orderedSeats.length)"
-            :class="{
-              'seat--active': seat.userId === state.activeUserId,
-              'seat--folded': seat.status === 'folded',
-              'seat--me': seat.userId === myUserId,
-              'seat--winner': winnerIds.has(seat.userId),
-            }"
-          >
-            <!-- Badges dealer / SB / BB -->
-            <div class="seat-badges">
-              <span v-if="seat.isDealer" class="badge badge--dealer">D</span>
-              <span v-else-if="seat.isSB" class="badge badge--sb">SB</span>
-              <span v-else-if="seat.isBB" class="badge badge--bb">BB</span>
-            </div>
-
-            <!-- Avatar -->
+          <!-- Avatar + timer circulaire -->
+          <div class="avatar-wrap">
+            <svg v-if="seat.userId === state.activeUserId && actionCountdown != null"
+              class="timer-svg" viewBox="0 0 44 44">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2.5"/>
+              <circle cx="22" cy="22" r="18" fill="none"
+                :stroke="actionCountdown <= 8 ? '#e05555' : '#c9a84c'"
+                stroke-width="2.5" stroke-linecap="round"
+                :stroke-dasharray="CIRC"
+                :stroke-dashoffset="CIRC - (actionCountdown / 30) * CIRC"
+                style="transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset 1s linear,stroke 0.3s"
+              />
+            </svg>
             <div class="seat-avatar">{{ seat.nom[0]?.toUpperCase() }}</div>
-            <div class="seat-nom">{{ seat.nom }}</div>
-            <div class="seat-chips">{{ seat.chips.toLocaleString() }} ¥</div>
-
-            <!-- Mise -->
-            <Transition name="bet-pop">
-              <div v-if="seat.bet > 0" class="seat-bet">
-                <span class="seat-bet-chip"></span>
-                {{ seat.bet.toLocaleString() }} ¥
-              </div>
-            </Transition>
-
-            <!-- Cartes -->
-            <div class="seat-cards" v-if="seat.cards?.length">
-              <span
-                v-for="(c, ci) in seat.cards"
-                :key="ci"
-                class="card"
-                :class="[
-                  c ? (c.red ? 'card--red' : 'card--black') : 'card--back',
-                  justDealt ? 'card--deal-in' : '',
-                ]"
-                :style="justDealt ? { animationDelay: `${si * 80 + ci * 160}ms` } : {}"
-              >{{ c ? c.nom : '' }}</span>
-            </div>
-
-            <!-- Timer barre -->
-            <div
-              v-if="seat.userId === state.activeUserId && actionCountdown != null"
-              class="timer-bar-wrap"
-            >
-              <div class="timer-bar" :style="{ width: (actionCountdown / 30 * 100) + '%' }"></div>
-              <span class="timer-num">{{ actionCountdown }}</span>
-            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Résultat de main -->
-      <Transition name="result-pop">
-        <div v-if="handResult" class="result-banner">
-          <div class="result-winners-row">
-            <div v-for="w in handResult.winners" :key="w.userId" class="result-winner">
-              <span class="result-crown">♛</span>
-              <span class="result-nom">{{ w.nom }}</span>
-              <span class="result-pot">remporte {{ handResult.pot.toLocaleString() }} ¥</span>
-            </div>
-          </div>
-          <div v-if="handResult.players.some(p => p.handName)" class="result-hands-row">
-            <div v-for="p in handResult.players.filter(p => p.handName)" :key="p.userId" class="result-hand">
-              <span class="result-player-nom">{{ p.nom }}</span>
-              <div class="result-cards">
-                <span
-                  v-for="(c, i) in p.cards"
-                  :key="i"
-                  class="card"
-                  :class="c?.red ? 'card--red' : 'card--black'"
-                >{{ c?.nom ?? '?' }}</span>
-              </div>
-              <span class="result-hand-name">{{ p.handName }}</span>
-            </div>
-          </div>
-        </div>
-      </Transition>
+          <div class="seat-nom">{{ seat.nom }}</div>
+          <div class="seat-stack">{{ seat.chips.toLocaleString() }} ¥</div>
 
-      <!-- Zone d'action (mon tour) -->
-      <Transition name="action-slide">
-        <div v-if="isMyTurn" class="action-zone">
-          <div class="action-info">
-            <span class="action-info-turn">Votre tour</span>
-            <span v-if="state.currentBet > 0 && myPlayer.bet < state.currentBet" class="action-info-call">
-              À suivre : {{ (state.currentBet - myPlayer.bet).toLocaleString() }} ¥
-            </span>
-          </div>
-          <div class="action-buttons">
-            <button class="btn-action btn-fold" @click="doAction('fold')">
-              <span class="btn-icon">✕</span> Se coucher
-            </button>
-            <button
-              v-if="myPlayer.bet >= state.currentBet"
-              class="btn-action btn-check"
-              @click="doAction('check')"
-            ><span class="btn-icon">✓</span> Checker</button>
-            <button
-              v-if="myPlayer.bet < state.currentBet"
-              class="btn-action btn-call"
-              @click="doAction('call')"
-            ><span class="btn-icon">→</span> Suivre {{ (state.currentBet - myPlayer.bet).toLocaleString() }} ¥</button>
-            <div class="raise-wrap">
-              <button class="btn-action btn-raise" @click="doAction('raise', raiseAmount)">
-                <span class="btn-icon">↑</span> Relancer
-              </button>
-              <div class="raise-input-wrap">
-                <button class="raise-adj" @click="adjRaise(-1)">−</button>
-                <span class="raise-val">{{ raiseAmount.toLocaleString() }} ¥</span>
-                <button class="raise-adj" @click="adjRaise(1)">+</button>
-              </div>
-            </div>
-          </div>
-          <!-- Mes cartes dans la zone d'action -->
-          <div class="my-cards" v-if="myPlayer?.cards?.length">
+          <!-- Cartes dans le siège -->
+          <div v-if="seat.cards?.length" class="seat-cards">
             <span
-              v-for="(c, ci) in myPlayer.cards"
-              :key="ci"
-              class="card card--large"
-              :class="c ? (c.red ? 'card--red' : 'card--black') : 'card--back'"
+              v-for="(c,ci) in seat.cards" :key="ci"
+              class="card card--seat"
+              :class="[
+                c ? (c.red ? 'card--red':'card--black') : 'card--back',
+                justDealt ? 'card--deal-in' : '',
+              ]"
+              :style="justDealt ? { animationDelay: `${si*80+ci*160}ms` } : {}"
             >{{ c ? c.nom : '' }}</span>
           </div>
+
+          <!-- Mise (chip flottant vers le centre) -->
+          <Transition name="bet-pop">
+            <div v-if="seat.bet > 0" class="seat-bet">
+              <span class="bet-chip"></span>{{ seat.bet.toLocaleString() }} ¥
+            </div>
+          </Transition>
         </div>
-      </Transition>
 
-      <!-- Mes cartes quand ce n'est pas mon tour -->
-      <div
-        v-if="!isMyTurn && myPlayer?.cards?.length && ['preflop','flop','turn','river'].includes(state?.status)"
-        class="my-cards-passive"
-      >
-        <span
-          v-for="(c, ci) in myPlayer.cards"
-          :key="ci"
-          class="card card--large"
-          :class="[
-            c ? (c.red ? 'card--red' : 'card--black') : 'card--back',
-            justDealt ? 'card--deal-in' : '',
-          ]"
-          :style="justDealt ? { animationDelay: `${ci * 160}ms` } : {}"
-        >{{ c ? c.nom : '' }}</span>
       </div>
-
-      <!-- Spectateur -->
-      <div v-else-if="state && !myPlayer" class="spectate-info">
-        <p>Vous observez la partie.</p>
-        <RouterLink to="/poker" class="back-link-center">← Rejoindre une table</RouterLink>
-      </div>
-
-      <!-- Log d'actions -->
-      <div class="action-log" v-if="log.length">
-        <TransitionGroup name="log-slide" tag="div">
-          <div v-for="(entry, i) in log.slice(-6)" :key="entry + i" class="log-entry">{{ entry }}</div>
-        </TransitionGroup>
-      </div>
-
     </div>
+
+    <!-- Zone d'action -->
+    <Transition name="action-up">
+      <div v-if="isMyTurn" class="action-zone">
+
+        <!-- Mes cartes (grandes) -->
+        <div class="my-hand" v-if="myPlayer?.cards?.length">
+          <span
+            v-for="(c,ci) in myPlayer.cards" :key="ci"
+            class="card card--lg"
+            :class="c ? (c.red ? 'card--red':'card--black') : 'card--back'"
+          >{{ c ? c.nom : '' }}</span>
+        </div>
+
+        <!-- Boutons -->
+        <div class="action-btns">
+          <button class="btn btn--fold"  @click="doAction('fold')">Se coucher</button>
+          <button v-if="myPlayer.bet >= state.currentBet"
+            class="btn btn--check" @click="doAction('check')">Checker</button>
+          <button v-else
+            class="btn btn--call" @click="doAction('call')">
+            Suivre&nbsp;<strong>{{ (state.currentBet - myPlayer.bet).toLocaleString() }} ¥</strong>
+          </button>
+          <div class="raise-group">
+            <button class="btn btn--raise" @click="doAction('raise', raiseAmount)">Relancer</button>
+            <div class="raise-ctrl">
+              <button class="raise-adj" @click="adjRaise(-1)">−</button>
+              <span class="raise-amount">{{ raiseAmount.toLocaleString() }} ¥</span>
+              <button class="raise-adj" @click="adjRaise(1)">+</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </Transition>
+
+    <!-- Mes cartes passives -->
+    <div
+      v-if="!isMyTurn && myPlayer?.cards?.length && ['preflop','flop','turn','river'].includes(state?.status)"
+      class="my-hand-passive"
+    >
+      <span
+        v-for="(c,ci) in myPlayer.cards" :key="ci"
+        class="card card--lg"
+        :class="[c ? (c.red ? 'card--red':'card--black') : 'card--back', justDealt ? 'card--deal-in':'']"
+        :style="justDealt ? { animationDelay: `${ci*160}ms` } : {}"
+      >{{ c ? c.nom : '' }}</span>
+    </div>
+
+    <!-- Log -->
+    <div class="log-zone" v-if="log.length">
+      <TransitionGroup name="log-in" tag="div" class="log-inner">
+        <div v-for="(e,i) in log.slice(-5)" :key="e+i" class="log-row" :class="{ 'log-row--last': i === log.slice(-5).length-1 }">{{ e }}</div>
+      </TransitionGroup>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from './AppNavbar.vue'
 import { io } from 'socket.io-client'
@@ -253,64 +215,57 @@ import {
 } from '../poker-audio.js'
 
 const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:3001'
+const CIRC = 2 * Math.PI * 18   // circonférence cercle r=18
+const CHIP_COLORS = ['#e74c3c','#3498db','#2ecc71','#9b59b6','#f39c12']
 
-const route = useRoute()
+const route  = useRoute()
 const router = useRouter()
 const tableId = parseInt(route.params.id)
 
-const state = ref(null)
-const countdown = ref(null)
-const handResult = ref(null)
-const log = ref([])
-const raiseAmount = ref(0)
+const state          = ref(null)
+const countdown      = ref(null)
+const handResult     = ref(null)
+const log            = ref([])
+const raiseAmount    = ref(0)
 const actionCountdown = ref(null)
+const flashError     = ref(null)
 
-// Animation state
-const justDealt = ref(false)
-const potPulse = ref(false)
-const winnerIds = ref(new Set())
-const animCommCards = ref(new Set())   // indices de cartes communes en cours d'animation
+const justDealt     = ref(false)
+const potPulse      = ref(false)
+const winnerIds     = ref(new Set())
+const animCommCards = ref(new Set())
 
 let socket = null
-let actionTimerInterval = null
+let actionTimerInt = null
+let prevPot = 0
+let prevActiveId = null
 
-const myUserId = computed(() => currentUser.value?.id)
-const myPlayer = computed(() => state.value?.players.find(p => p.userId === myUserId.value))
-const isMyTurn = computed(() =>
+const myUserId  = computed(() => currentUser.value?.id)
+const myPlayer  = computed(() => state.value?.players.find(p => p.userId === myUserId.value))
+const isMyTurn  = computed(() =>
   state.value?.activeUserId === myUserId.value &&
   ['preflop','flop','turn','river'].includes(state.value?.status)
 )
-
 const orderedSeats = computed(() => {
   if (!state.value) return []
-  const players = state.value.players
-  const myIdx = players.findIndex(p => p.userId === myUserId.value)
-  if (myIdx === -1) return players
-  return [...players.slice(myIdx), ...players.slice(0, myIdx)]
+  const ps = state.value.players
+  const mi = ps.findIndex(p => p.userId === myUserId.value)
+  return mi === -1 ? ps : [...ps.slice(mi), ...ps.slice(0, mi)]
 })
-
 const phaseLabel = computed(() => ({
-  preflop: 'Pré-flop', flop: 'Flop', turn: 'Turn', river: 'River', showdown: 'Showdown',
+  preflop:'Pré-flop', flop:'Flop', turn:'Turn', river:'River',
 })[state.value?.status] ?? '')
-
-// Nombre de jetons visuels dans le pot (1–5)
 const potChipCount = computed(() => {
-  if (!state.value || state.value.pot <= 0) return 0
-  const bb = state.value.bigBlind
-  return Math.min(5, Math.ceil(state.value.pot / (bb * 5)))
+  if (!state.value?.pot) return 0
+  return Math.min(5, Math.ceil(state.value.pot / (state.value.bigBlind * 5)))
 })
 
-const CHIP_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#f39c12']
-function chipDotStyle(i) {
-  return { background: CHIP_COLORS[(i - 1) % CHIP_COLORS.length] }
-}
-
-// Position des sièges (ovale, sens horaire depuis bas)
+// Position sièges : ovale, sens horaire depuis bas (i=0 = joueur actuel)
 function seatStyle(i, n) {
   const angle = Math.PI / 2 - (2 * Math.PI / n) * i
   return {
-    left: `${50 + 43 * Math.cos(angle)}%`,
-    top: `${50 + 38 * Math.sin(angle)}%`,
+    left: `${50 + 42 * Math.cos(angle)}%`,
+    top:  `${50 + 38 * Math.sin(angle)}%`,
     transform: 'translate(-50%, -50%)',
   }
 }
@@ -320,55 +275,38 @@ function adjRaise(dir) {
   raiseAmount.value = Math.max(state.value.bigBlind, raiseAmount.value + dir * state.value.bigBlind)
 }
 
-// Countdown d'action (timer barre)
-function startActionCountdown() {
-  clearActionCountdown()
+function startActionCd() {
+  clearActionCd()
   actionCountdown.value = 30
-  actionTimerInterval = setInterval(() => {
-    actionCountdown.value--
-    if (actionCountdown.value <= 0) clearActionCountdown()
-  }, 1000)
+  actionTimerInt = setInterval(() => { if (--actionCountdown.value <= 0) clearActionCd() }, 1000)
 }
-
-function clearActionCountdown() {
-  if (actionTimerInterval) { clearInterval(actionTimerInterval); actionTimerInterval = null }
+function clearActionCd() {
+  if (actionTimerInt) { clearInterval(actionTimerInt); actionTimerInt = null }
   actionCountdown.value = null
 }
 
-// Pot pulse quand il augmente
-let prevPot = 0
 function triggerPotPulse() {
   potPulse.value = true
   setTimeout(() => { potPulse.value = false }, 500)
 }
 
-// Anim cartes communes
-function animateNewCommunityCards(fromIdx, toIdx) {
-  const newSet = new Set(animCommCards.value)
-  for (let i = fromIdx; i < toIdx; i++) {
-    newSet.add(i)
-    playFlip((i - fromIdx) * 110)
+function animateComm(from, to) {
+  const s = new Set(animCommCards.value)
+  for (let i = from; i < to; i++) {
+    s.add(i)
+    playFlip((i - from) * 110)
   }
-  animCommCards.value = newSet
+  animCommCards.value = s
   setTimeout(() => {
-    const cleaned = new Set(animCommCards.value)
-    for (let i = fromIdx; i < toIdx; i++) cleaned.delete(i)
-    animCommCards.value = cleaned
+    const c = new Set(animCommCards.value)
+    for (let i = from; i < to; i++) c.delete(i)
+    animCommCards.value = c
   }, 700)
 }
 
-function doAction(act, amount) {
-  if (!socket) return
-  // Sons avant envoi
-  if (act === 'fold') playFold()
-  else if (act === 'call') playChip()
-  else if (act === 'raise') playChipStack(3)
-  socket.emit('poker_action', { tableId, action: act, amount })
-}
-
-function partir() {
-  if (!socket) return
-  socket.emit('poker_leave', { tableId })
+function showError(msg) {
+  flashError.value = msg
+  setTimeout(() => { flashError.value = null }, 2800)
 }
 
 function addLog(msg) {
@@ -376,53 +314,48 @@ function addLog(msg) {
   if (log.value.length > 20) log.value.shift()
 }
 
-let prevCommLen = 0
-let prevActiveUserId = null
+function doAction(act, amount) {
+  if (!socket) return
+  if (act === 'fold') playFold()
+  else if (act === 'call') playChip()
+  else if (act === 'raise') playChipStack(3)
+  socket.emit('poker_action', { tableId, action: act, amount })
+}
+
+function partir() {
+  socket?.emit('poker_leave', { tableId })
+}
 
 onMounted(() => {
   socket = io(SOCKET_URL, { withCredentials: true })
 
-  socket.on('connect', () => {
-    socket.emit('poker_join', tableId)
-  })
+  socket.on('connect', () => socket.emit('poker_join', tableId))
 
   socket.on('poker_table_update', (s) => {
-    const prevState = state.value
-
-    // Détecter nouvelles cartes communes
-    const oldLen = prevState?.communityCards?.length ?? 0
+    const oldLen = state.value?.communityCards?.length ?? 0
     const newLen = s.communityCards?.length ?? 0
-    if (newLen > oldLen) animateNewCommunityCards(oldLen, newLen)
+    if (newLen > oldLen) animateComm(oldLen, newLen)
 
-    // Détecter changement de joueur actif
-    const newActive = s.activeUserId
-    if (newActive && newActive !== prevActiveUserId) {
-      startActionCountdown()
-      if (newActive === myUserId.value) playYourTurn()
+    if (s.activeUserId && s.activeUserId !== prevActiveId) {
+      startActionCd()
+      if (s.activeUserId === myUserId.value) playYourTurn()
     }
-    prevActiveUserId = newActive
+    prevActiveId = s.activeUserId
 
-    // Détecter hausse du pot
     const newPot = s.pot ?? 0
-    if (newPot > prevPot && prevPot >= 0) {
-      triggerPotPulse()
-      if (newPot > prevPot && prevPot > 0) playChip()
-    }
+    if (newPot > prevPot) { triggerPotPulse(); if (prevPot > 0) playChip() }
     prevPot = newPot
 
-    if (!['preflop','flop','turn','river'].includes(s.status)) clearActionCountdown()
-
+    if (!['preflop','flop','turn','river'].includes(s.status)) clearActionCd()
     if (s.status !== 'waiting') raiseAmount.value = s.bigBlind
     handResult.value = s.handResult ?? null
-
     state.value = s
   })
 
   socket.on('poker_countdown', ({ sLeft }) => {
     countdown.value = sLeft
-    if (sLeft <= 0) setTimeout(() => { countdown.value = null }, 600)
+    if (sLeft <= 0) setTimeout(() => { if (countdown.value === 0) countdown.value = null }, 600)
   })
-
   socket.on('poker_countdown_cancel', () => { countdown.value = null })
 
   socket.on('poker_hand_start', () => {
@@ -430,11 +363,8 @@ onMounted(() => {
     handResult.value = null
     winnerIds.value = new Set()
     prevPot = 0
-    prevCommLen = 0
-    prevActiveUserId = null
+    prevActiveId = null
     addLog('─── Nouvelle main ───')
-
-    // Animation distribution des cartes
     justDealt.value = true
     const n = state.value?.players.length ?? 2
     for (let i = 0; i < n * 2; i++) playDeal(i * 80)
@@ -443,407 +373,395 @@ onMounted(() => {
 
   socket.on('poker_hand_result', (result) => {
     handResult.value = result
-    clearActionCountdown()
-    // Mettre en évidence les gagnants
+    clearActionCd()
     winnerIds.value = new Set(result.winners.map(w => w.userId))
     const iWon = result.winners.some(w => w.userId === myUserId.value)
     if (iWon) playWin(); else playLose()
-    for (const w of result.winners) addLog(`♛ ${w.nom} remporte ${result.pot.toLocaleString()} ¥`)
+    for (const w of result.winners) addLog(`♛ ${w.nom} — ${result.pot.toLocaleString()} ¥`)
     for (const p of result.players) if (p.handName) addLog(`  ${p.nom} : ${p.handName}`)
   })
 
-  socket.on('poker_reset', () => {
-    handResult.value = null
-    winnerIds.value = new Set()
-    prevPot = 0
-  })
-
-  socket.on('poker_left', () => {
-    socket.disconnect()
-    router.push('/poker')
-  })
-
-  socket.on('poker_error', ({ message }) => {
-    addLog(`⚠ ${message}`)
-  })
+  socket.on('poker_reset', () => { handResult.value = null; winnerIds.value = new Set(); prevPot = 0 })
+  socket.on('poker_left',  () => { socket.disconnect(); router.push('/poker') })
+  socket.on('poker_error', ({ message }) => { showError(message); addLog(`⚠ ${message}`) })
 })
 
-onUnmounted(() => {
-  clearActionCountdown()
-  socket?.disconnect()
-})
+onUnmounted(() => { clearActionCd(); socket?.disconnect() })
 
-// Log quand le joueur actif change
-watch(() => state.value?.activeUserId, (newId, oldId) => {
-  if (!newId || newId === oldId) return
-  const p = state.value?.players.find(p => p.userId === newId)
+watch(() => state.value?.activeUserId, (id, old) => {
+  if (!id || id === old) return
+  const p = state.value?.players.find(p => p.userId === id)
   if (p) addLog(`→ ${p.nom}`)
 })
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #090909; color: #fff; }
-.page-inner { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+/* ── Page ── */
+.page {
+  min-height: 100vh;
+  background: #07080a;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
 /* ── Top bar ── */
 .top-bar {
+  width: 100%; max-width: 860px;
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px;
+  padding: 14px 20px 10px;
+  flex-shrink: 0;
 }
 .back-link {
-  font-family: 'Cinzel', serif; font-size: 0.68rem;
-  letter-spacing: 0.1em; color: rgba(255,255,255,0.3); text-decoration: none;
+  font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.25); text-decoration: none; transition: color 0.15s;
 }
 .back-link:hover { color: rgba(255,255,255,0.6); }
-.top-center { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.table-name-lbl { font-family: 'Cinzel', serif; font-size: 0.82rem; letter-spacing: 0.08em; color: #d4cfc9; }
-.blinds-lbl { font-size: 0.72rem; color: rgba(255,255,255,0.25); }
+.top-center { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.table-name  { font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 0.08em; color: #d4cfc9; }
+.table-blinds { font-size: 0.7rem; color: rgba(255,255,255,0.22); }
 .top-right { display: flex; align-items: center; gap: 12px; }
-.my-chips-lbl { font-family: 'Cinzel', serif; font-size: 0.82rem; color: #c9a84c; letter-spacing: 0.06em; }
+.my-stack { font-family: 'Cinzel', serif; font-size: 0.85rem; color: #c9a84c; letter-spacing: 0.05em; }
 .btn-leave {
-  background: none; border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 4px; color: rgba(255,255,255,0.3);
-  font-family: 'Cinzel', serif; font-size: 0.62rem; letter-spacing: 0.1em;
-  padding: 6px 14px; cursor: pointer; transition: all 0.15s;
+  background: none; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px; color: rgba(255,255,255,0.25);
+  font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.1em;
+  padding: 5px 13px; cursor: pointer; transition: all 0.15s;
 }
-.btn-leave:hover { border-color: #8B1A1A; color: #e05555; }
+.btn-leave:hover { border-color: rgba(200,50,50,0.5); color: #e05555; }
 
-/* ── Countdown ── */
-.countdown-banner {
-  display: flex; align-items: center; gap: 14px; justify-content: center;
-  padding: 10px 20px; background: rgba(201,168,76,0.07);
-  border: 1px solid rgba(201,168,76,0.2); border-radius: 6px;
-  margin-bottom: 12px;
+/* ── Toasts ── */
+.countdown-toast, .error-toast {
+  position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px; border-radius: 8px; z-index: 100;
+  pointer-events: none;
 }
-.countdown-num { font-family: 'Cinzel', serif; font-size: 1.6rem; color: #c9a84c; line-height: 1; }
-.countdown-txt { font-size: 0.78rem; color: rgba(255,255,255,0.35); }
+.countdown-toast {
+  background: rgba(14,14,16,0.95);
+  border: 1px solid rgba(201,168,76,0.25);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+}
+.error-toast {
+  background: rgba(100,20,20,0.95); border: 1px solid rgba(220,80,80,0.3);
+  font-size: 0.82rem; color: #ffaaaa;
+}
+.toast-num { font-family: 'Cinzel', serif; font-size: 1.5rem; color: #c9a84c; line-height: 1; }
+.toast-txt { font-size: 0.78rem; color: rgba(255,255,255,0.35); }
 
 /* ── Arena ── */
-.arena { display: flex; justify-content: center; margin: 4px 0; }
+.arena {
+  width: 100%; display: flex; justify-content: center;
+  padding: 0 16px;
+  flex: 1;
+}
 
+/* ── Oval table ── */
 .oval-table {
   position: relative;
-  width: min(700px, 96vw);
-  aspect-ratio: 700 / 390;
-  background: radial-gradient(ellipse at 50% 55%, #1e7040 0%, #0f4526 50%, #072d18 100%);
+  width: min(780px, 100%);
+  aspect-ratio: 780 / 430;
   border-radius: 50%;
-  border: 7px solid #8b6914;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(40,110,65,0.6) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 65%, #0f4526 0%, #082c18 55%, #041810 100%);
+  border: 8px solid #7a5c10;
   box-shadow:
-    0 0 0 3px #5a4510,
-    0 0 60px rgba(0,0,0,0.85),
-    inset 0 0 80px rgba(0,0,0,0.35);
+    0 0 0 3px #4a3808,
+    0 0 0 5px rgba(201,168,76,0.08),
+    0 8px 60px rgba(0,0,0,0.9),
+    inset 0 2px 0 rgba(255,255,255,0.04),
+    inset 0 0 80px rgba(0,0,0,0.4);
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+/* ── Result overlay ── */
+.result-overlay {
+  position: absolute;
+  inset: 12% 8%;
+  background: rgba(8,12,8,0.94);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 14px;
+  z-index: 20;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 30px rgba(201,168,76,0.06);
+}
+.result-winner-row {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Cinzel', serif;
+}
+.result-crown  { color: #c9a84c; font-size: 1.1rem; }
+.result-name   { font-size: 1rem; color: #fff; letter-spacing: 0.06em; }
+.result-amount { font-size: 1rem; color: #c9a84c; }
+.result-hands  { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.result-hand-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.05);
+}
+.result-hand-name-lbl { font-family: 'Cinzel', serif; font-size: 0.68rem; color: rgba(255,255,255,0.4); min-width: 70px; }
+.result-hand-cards { display: flex; gap: 3px; }
+.result-hand-type { font-size: 0.72rem; color: rgba(201,168,76,0.65); }
+
+/* ── Table center ── */
+.table-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  z-index: 2;
+  pointer-events: none;
 }
 
 /* ── Pot ── */
-.pot-display {
-  position: absolute;
-  top: 28%; left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center; z-index: 3;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
+.pot-zone {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
 }
-
-.pot-chips-row {
-  display: flex; gap: 4px; justify-content: center; margin-bottom: 2px;
+.pot-chips { display: flex; gap: 4px; }
+.pot-chip {
+  width: 11px; height: 11px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.2);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
-.chip-dot {
-  width: 12px; height: 12px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.25);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
-}
-
-.pot-label {
+.pot-lbl {
   font-family: 'Cinzel', serif; font-size: 0.5rem;
-  letter-spacing: 0.25em; color: rgba(255,255,255,0.3);
+  letter-spacing: 0.28em; color: rgba(255,255,255,0.28);
   text-transform: uppercase;
 }
-.pot-value {
-  font-family: 'Cinzel', serif; font-size: 1.1rem;
-  color: #c9a84c; letter-spacing: 0.06em;
-  text-shadow: 0 0 12px rgba(201,168,76,0.5);
+.pot-val {
+  font-family: 'Cinzel', serif; font-size: 1.05rem;
+  color: #c9a84c; letter-spacing: 0.05em;
+  text-shadow: 0 0 16px rgba(201,168,76,0.55);
 }
-
 @keyframes potPulse {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.18); }
-  70% { transform: scale(0.96); }
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.2); }
+  70%  { transform: scale(0.96); }
   100% { transform: scale(1); }
 }
-.pot-display--pulse { animation: potPulse 0.4s ease-out; }
+.pot-zone--pulse { animation: potPulse 0.38s ease-out; }
 
-/* ── Cartes communes ── */
-.community-cards {
-  position: absolute;
-  top: 56%; left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex; gap: 6px; align-items: center; z-index: 2;
+/* ── Community cards ── */
+.community-tray {
+  display: flex; gap: 5px; align-items: center;
+  background: rgba(0,0,0,0.18); border-radius: 6px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,0.04);
 }
-.phase-waiting-lbl {
-  font-family: 'Cinzel', serif; font-size: 0.6rem;
-  letter-spacing: 0.22em; color: rgba(255,255,255,0.18);
+.waiting-lbl {
+  font-family: 'Cinzel', serif; font-size: 0.55rem;
+  letter-spacing: 0.22em; color: rgba(255,255,255,0.16);
   text-transform: uppercase;
 }
 
-/* ── Phase badge ── */
-.phase-badge {
-  position: absolute; bottom: 10%; left: 50%;
-  transform: translateX(-50%);
+/* ── Phase label ── */
+.phase-lbl {
   font-family: 'Cinzel', serif; font-size: 0.52rem;
-  letter-spacing: 0.22em; text-transform: uppercase;
-  color: rgba(255,255,255,0.18);
+  letter-spacing: 0.25em; text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
 }
 
 /* ── Cartes ── */
 .card {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 48px;
-  background: #f5f0e8;
-  border-radius: 4px; border: 1px solid rgba(0,0,0,0.12);
-  font-size: 0.72rem; font-weight: 700;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
-  flex-shrink: 0;
-  user-select: none;
+  background: #f5f0e8; border-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.12);
+  font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  flex-shrink: 0; user-select: none;
 }
-.card--red  { color: #c0222a; }
+.card--sm   { width: 30px; height: 42px; font-size: 0.65rem; }
+.card--seat { width: 26px; height: 36px; font-size: 0.6rem; }
+.card--comm { width: 38px; height: 54px; font-size: 0.8rem; }
+.card--ph   {
+  width: 38px; height: 54px;
+  background: rgba(0,0,0,0.1); border: 1px dashed rgba(255,255,255,0.07); box-shadow: none;
+}
+.card--lg   { width: 58px; height: 80px; font-size: 1.05rem; }
+.card--red   { color: #c0222a; }
 .card--black { color: #111; }
-.card--back {
-  background: linear-gradient(135deg, #1c2d6a 0%, #142056 100%);
+.card--back  {
+  background: linear-gradient(145deg, #1c2d6a 0%, #112050 100%);
   border-color: #2a3a8a;
-  background-image: repeating-linear-gradient(
-    45deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 2px,
-    transparent 2px, transparent 8px
-  );
+  background-image: repeating-linear-gradient(45deg,
+    rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 2px, transparent 2px, transparent 8px);
 }
-.card--community { width: 40px; height: 56px; font-size: 0.82rem; }
-.card--placeholder {
-  width: 40px; height: 56px;
-  background: rgba(0,0,0,0.12);
-  border-radius: 4px; border: 1px dashed rgba(255,255,255,0.07);
-}
-.card--large { width: 56px; height: 78px; font-size: 1.05rem; }
 
-@keyframes cardDealIn {
-  0%   { transform: translateY(-24px) scale(0.75) rotateY(80deg); opacity: 0; }
-  60%  { transform: translateY(2px)   scale(1.04) rotateY(0deg);  opacity: 1; }
-  100% { transform: translateY(0)     scale(1)    rotateY(0deg);  opacity: 1; }
+@keyframes dealIn {
+  0%   { transform: translateY(-30px) scale(0.7) rotateY(70deg); opacity: 0; }
+  60%  { transform: translateY(2px) scale(1.04) rotateY(0deg); opacity: 1; }
+  100% { transform: none; opacity: 1; }
 }
-.card--deal-in { animation: cardDealIn 0.38s ease-out both; }
+.card--deal-in { animation: dealIn 0.38s ease-out both; }
 
-@keyframes cardFlipIn {
-  0%   { transform: scaleX(0); opacity: 0.4; }
-  50%  { transform: scaleX(1.05); opacity: 1; }
+@keyframes flipIn {
+  0%   { transform: scaleX(0.05); opacity: 0.5; }
+  55%  { transform: scaleX(1.05); }
   100% { transform: scaleX(1); opacity: 1; }
 }
-.card--flip-in { animation: cardFlipIn 0.32s ease-out both; }
+.card--flip-in { animation: flipIn 0.3s ease-out both; }
 
 /* ── Sièges ── */
 .seat {
   position: absolute;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   z-index: 5;
+  min-width: 74px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 9px;
+  padding: 5px 7px 6px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(2px);
 }
+.seat--active {
+  border-color: rgba(201,168,76,0.5);
+  box-shadow: 0 0 0 1px rgba(201,168,76,0.15), 0 4px 20px rgba(0,0,0,0.6);
+}
+.seat--folded { opacity: 0.42; filter: grayscale(0.5); }
+.seat--me { border-color: rgba(139,26,26,0.45); }
 
-.seat-badges { display: flex; gap: 3px; min-height: 16px; margin-bottom: 1px; }
+@keyframes winBorder {
+  0%,100% { border-color: rgba(201,168,76,0.5); box-shadow: 0 0 10px rgba(201,168,76,0.3); }
+  50%      { border-color: #f0d060; box-shadow: 0 0 24px rgba(201,168,76,0.8); }
+}
+.seat--winner { animation: winBorder 0.9s ease-in-out infinite; }
+
+.seat-badges { display: flex; gap: 3px; min-height: 15px; }
 .badge {
-  font-family: 'Cinzel', serif; font-size: 0.5rem; font-weight: 700;
-  letter-spacing: 0.05em; padding: 1px 5px; border-radius: 3px;
+  font-family: 'Cinzel', serif; font-size: 0.48rem; font-weight: 700;
+  padding: 1px 4px; border-radius: 3px; letter-spacing: 0.04em;
 }
-.badge--dealer { background: #c9a84c; color: #1a1200; }
-.badge--sb     { background: rgba(80,150,255,0.85); color: #fff; }
-.badge--bb     { background: rgba(200,80,80,0.85); color: #fff; }
+.badge--d  { background: #c9a84c; color: #1a1200; }
+.badge--sb { background: rgba(60,130,240,0.85); color: #fff; }
+.badge--bb { background: rgba(200,70,70,0.85); color: #fff; }
 
+/* Avatar avec timer circulaire SVG */
+.avatar-wrap {
+  position: relative;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+}
+.timer-svg {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px); height: calc(100% + 12px);
+  pointer-events: none;
+}
 .seat-avatar {
-  width: 34px; height: 34px; border-radius: 50%;
+  width: 32px; height: 32px; border-radius: 50%;
   background: rgba(255,255,255,0.07);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Cinzel', serif; font-size: 0.78rem;
+  font-family: 'Cinzel', serif; font-size: 0.75rem;
   border: 2px solid rgba(255,255,255,0.1);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s;
+  position: relative; z-index: 1;
 }
-
-@keyframes activePulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(201,168,76,0.5); }
-  50%       { box-shadow: 0 0 18px rgba(201,168,76,0.9); }
-}
-.seat--active .seat-avatar {
-  border-color: #c9a84c;
-  animation: activePulse 1.2s ease-in-out infinite;
-}
-.seat--folded { opacity: 0.45; }
-.seat--folded .seat-avatar { border-color: rgba(255,255,255,0.05); filter: grayscale(0.6); }
-.seat--me .seat-avatar { background: rgba(139,26,26,0.3); border-color: rgba(139,26,26,0.7); }
-
-@keyframes winnerGlow {
-  0%, 100% { box-shadow: 0 0 10px rgba(201,168,76,0.6); border-color: #c9a84c; }
-  50%       { box-shadow: 0 0 28px rgba(201,168,76,1), 0 0 50px rgba(201,168,76,0.4); border-color: #f0d070; }
-}
-.seat--winner .seat-avatar {
-  border-color: #c9a84c;
-  animation: winnerGlow 0.8s ease-in-out infinite;
-}
+.seat--active .seat-avatar { border-color: rgba(201,168,76,0.6); }
+.seat--me .seat-avatar { background: rgba(139,26,26,0.25); border-color: rgba(139,26,26,0.6); }
 
 .seat-nom {
-  font-family: 'Cinzel', serif; font-size: 0.58rem; letter-spacing: 0.06em;
-  color: rgba(255,255,255,0.7); max-width: 78px; text-align: center;
+  font-family: 'Cinzel', serif; font-size: 0.58rem; letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.72); max-width: 72px; text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.seat-chips { font-size: 0.6rem; color: rgba(255,255,255,0.32); }
+.seat-stack { font-size: 0.58rem; color: rgba(255,255,255,0.28); }
+.seat-cards { display: flex; gap: 2px; margin-top: 3px; }
 
+/* Mise flottante */
 .seat-bet {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 0.64rem; color: #c9a84c;
-  background: rgba(0,0,0,0.55); border-radius: 3px; padding: 1px 6px;
+  display: flex; align-items: center; gap: 3px;
+  font-size: 0.62rem; color: #c9a84c;
+  background: rgba(0,0,0,0.6); border-radius: 3px; padding: 1px 5px;
+  margin-top: 2px;
 }
-.seat-bet-chip {
-  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-  background: #c9a84c; border: 1px solid rgba(255,255,255,0.3);
-}
-
-.seat-cards { display: flex; gap: 3px; margin-top: 2px; }
-
-/* Timer barre */
-.timer-bar-wrap {
-  width: 44px; height: 4px;
-  background: rgba(255,255,255,0.1); border-radius: 2px;
-  position: relative; margin-top: 3px;
-  display: flex; align-items: center;
-}
-.timer-bar {
-  height: 100%; border-radius: 2px;
-  background: linear-gradient(90deg, #e05555, #c9a84c);
-  transition: width 1s linear;
-}
-.timer-num {
-  position: absolute; right: -18px;
-  font-size: 0.55rem; color: rgba(255,255,255,0.4);
-  font-family: 'Cinzel', serif;
+.bet-chip {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: #c9a84c; border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0;
 }
 
-/* ── Résultat ── */
-.result-banner {
-  background: rgba(14,14,16,0.98);
-  border: 1px solid rgba(201,168,76,0.35);
-  border-radius: 8px; padding: 18px 22px;
-  margin: 10px 0;
-  display: flex; flex-direction: column; gap: 12px;
-  box-shadow: 0 0 40px rgba(201,168,76,0.08);
-}
-.result-winners-row { display: flex; gap: 20px; flex-wrap: wrap; }
-.result-winner { display: flex; align-items: center; gap: 8px; font-family: 'Cinzel', serif; }
-.result-crown { color: #c9a84c; font-size: 1rem; }
-.result-nom { font-size: 0.9rem; color: #fff; letter-spacing: 0.06em; }
-.result-pot { font-size: 0.82rem; color: #c9a84c; }
-.result-hands-row { display: flex; flex-direction: column; gap: 8px; }
-.result-hand {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);
-}
-.result-player-nom {
-  font-family: 'Cinzel', serif; font-size: 0.7rem; color: rgba(255,255,255,0.45);
-  min-width: 80px;
-}
-.result-cards { display: flex; gap: 4px; }
-.result-hand-name { font-size: 0.75rem; color: rgba(201,168,76,0.6); margin-left: 2px; }
-
-/* ── Zone d'action ── */
+/* ── Action zone ── */
 .action-zone {
-  margin-top: 12px;
-  background: rgba(14,14,16,0.98);
-  border: 1px solid rgba(201,168,76,0.3);
-  border-radius: 8px; padding: 16px 20px;
-  display: flex; flex-direction: column; gap: 12px;
-  box-shadow: 0 0 30px rgba(201,168,76,0.06);
+  width: 100%; max-width: 780px;
+  margin-top: 14px;
+  padding: 14px 20px 16px;
+  background: rgba(12,12,14,0.98);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  box-shadow: 0 -2px 30px rgba(0,0,0,0.5);
 }
-.action-info { display: flex; align-items: center; gap: 12px; }
-.action-info-turn {
-  font-family: 'Cinzel', serif; font-size: 0.62rem;
-  letter-spacing: 0.18em; text-transform: uppercase;
-  color: #c9a84c;
+.my-hand {
+  display: flex; gap: 10px; justify-content: center;
 }
-.action-info-call { font-size: 0.8rem; color: rgba(255,255,255,0.4); }
+.my-hand-passive {
+  display: flex; gap: 10px; justify-content: center;
+  margin-top: 14px;
+}
+.action-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
 
-.action-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.btn-action {
-  font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.08em;
-  text-transform: uppercase; border: none; border-radius: 5px;
-  padding: 10px 16px; cursor: pointer; transition: all 0.15s;
-  display: flex; align-items: center; gap: 6px;
+.btn {
+  font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.08em;
+  text-transform: uppercase; border: none; border-radius: 6px;
+  padding: 11px 20px; cursor: pointer; transition: all 0.15s;
+  outline: none;
 }
-.btn-icon { font-size: 0.8rem; opacity: 0.7; }
-.btn-fold  { background: rgba(139,26,26,0.75); color: #ffbbbb; }
-.btn-fold:hover  { background: rgba(180,30,30,1); transform: translateY(-1px); }
-.btn-check { background: rgba(40,110,50,0.75); color: #aaffbb; }
-.btn-check:hover { background: rgba(50,140,60,1); transform: translateY(-1px); }
-.btn-call  { background: rgba(30,90,170,0.8);  color: #aaccff; }
-.btn-call:hover  { background: rgba(40,110,200,1); transform: translateY(-1px); }
-.btn-raise { background: rgba(160,120,15,0.85); color: #fff5cc; }
-.btn-raise:hover { background: rgba(190,145,20,1); transform: translateY(-1px); }
+.btn--fold  { background: rgba(120,20,20,0.8);  color: #ffbbbb; border: 1px solid rgba(200,50,50,0.2); }
+.btn--check { background: rgba(25,90,40,0.85);  color: #aaffbb; border: 1px solid rgba(50,160,80,0.2); }
+.btn--call  { background: rgba(20,70,150,0.85); color: #aaccff; border: 1px solid rgba(60,130,220,0.2); }
+.btn--raise { background: rgba(140,105,10,0.9); color: #fff5cc; border: 1px solid rgba(201,168,76,0.3); }
+.btn:hover  { filter: brightness(1.2); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); filter: brightness(0.95); }
 
-.raise-wrap { display: flex; align-items: center; gap: 8px; }
-.raise-input-wrap {
+.raise-group { display: flex; align-items: center; gap: 8px; }
+.raise-ctrl  {
   display: flex; align-items: center; gap: 6px;
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 4px; padding: 5px 8px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 5px; padding: 6px 9px;
 }
 .raise-adj {
   background: none; border: none; color: rgba(255,255,255,0.4);
-  font-size: 1rem; cursor: pointer; padding: 0 2px; line-height: 1;
-  transition: color 0.12s;
+  font-size: 1rem; cursor: pointer; padding: 0 3px; transition: color 0.12s;
 }
 .raise-adj:hover { color: #c9a84c; }
-.raise-val { font-size: 0.78rem; color: #c9a84c; min-width: 88px; text-align: center; }
-
-.my-cards { display: flex; gap: 10px; justify-content: center; padding-top: 4px; }
-.my-cards-passive { display: flex; gap: 10px; justify-content: center; margin: 12px 0; }
-
-/* ── Spectateur ── */
-.spectate-info { text-align: center; padding: 24px; color: rgba(255,255,255,0.3); font-size: 0.88rem; }
-.back-link-center {
-  display: block; margin-top: 10px;
-  font-family: 'Cinzel', serif; font-size: 0.68rem;
-  letter-spacing: 0.1em; color: rgba(255,255,255,0.3); text-decoration: none;
-}
+.raise-amount { font-size: 0.8rem; color: #c9a84c; min-width: 90px; text-align: center; }
 
 /* ── Log ── */
-.action-log {
-  margin-top: 12px; background: rgba(0,0,0,0.25);
-  border-radius: 6px; padding: 10px 14px;
-  display: flex; flex-direction: column; gap: 3px;
-  max-height: 130px; overflow: hidden;
+.log-zone {
+  width: 100%; max-width: 780px;
+  margin-top: 10px; padding: 0 20px 20px;
 }
-.log-entry {
-  font-size: 0.72rem; color: rgba(255,255,255,0.28);
-  font-family: 'Cinzel', serif; letter-spacing: 0.04em;
+.log-inner { display: flex; flex-direction: column; gap: 2px; }
+.log-row {
+  font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.2); padding: 1px 0;
 }
-.log-entry:last-child { color: rgba(255,255,255,0.5); }
+.log-row--last { color: rgba(255,255,255,0.45); }
 
 /* ── Transitions ── */
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.toast-enter-active { transition: all 0.25s cubic-bezier(0.22,1,0.36,1); }
+.toast-leave-active { transition: all 0.2s ease-in; }
+.toast-enter-from   { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+.toast-leave-to     { opacity: 0; transform: translateX(-50%) translateY(-6px); }
 
-.slide-down-enter-active { transition: all 0.3s ease-out; }
-.slide-down-leave-active { transition: all 0.25s ease-in; }
-.slide-down-enter-from { opacity: 0; transform: translateY(-12px); }
-.slide-down-leave-to   { opacity: 0; transform: translateY(-8px); }
+.action-up-enter-active { transition: all 0.3s cubic-bezier(0.22,1,0.36,1); }
+.action-up-leave-active { transition: all 0.2s ease-in; }
+.action-up-enter-from   { opacity: 0; transform: translateY(18px); }
+.action-up-leave-to     { opacity: 0; transform: translateY(10px); }
 
-.action-slide-enter-active { transition: all 0.28s cubic-bezier(0.22,1,0.36,1); }
-.action-slide-leave-active { transition: all 0.2s ease-in; }
-.action-slide-enter-from { opacity: 0; transform: translateY(16px); }
-.action-slide-leave-to   { opacity: 0; transform: translateY(8px); }
+.overlay-pop-enter-active { transition: all 0.3s cubic-bezier(0.22,1,0.36,1); }
+.overlay-pop-leave-active { transition: all 0.22s ease-in; }
+.overlay-pop-enter-from   { opacity: 0; transform: scale(0.94); }
+.overlay-pop-leave-to     { opacity: 0; }
 
-.result-pop-enter-active { transition: all 0.35s cubic-bezier(0.22,1,0.36,1); }
-.result-pop-leave-active { transition: opacity 0.25s; }
-.result-pop-enter-from { opacity: 0; transform: scale(0.96) translateY(-8px); }
-.result-pop-leave-to   { opacity: 0; }
+.bet-pop-enter-active { transition: all 0.18s cubic-bezier(0.22,1,0.36,1); }
+.bet-pop-leave-active { transition: all 0.14s ease-in; }
+.bet-pop-enter-from   { opacity: 0; transform: scale(0.6) translateY(-4px); }
+.bet-pop-leave-to     { opacity: 0; transform: scale(0.7); }
 
-.pot-pop-enter-active { transition: all 0.25s cubic-bezier(0.22,1,0.36,1); }
-.pot-pop-enter-from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-
-.bet-pop-enter-active { transition: all 0.2s cubic-bezier(0.22,1,0.36,1); }
-.bet-pop-leave-active { transition: all 0.15s ease-in; }
-.bet-pop-enter-from { opacity: 0; transform: scale(0.7) translateY(-4px); }
-.bet-pop-leave-to   { opacity: 0; transform: scale(0.8); }
-
-.log-slide-enter-active { transition: all 0.2s ease-out; }
-.log-slide-enter-from   { opacity: 0; transform: translateX(-8px); }
+.log-in-enter-active { transition: all 0.2s ease-out; }
+.log-in-enter-from   { opacity: 0; transform: translateX(-6px); }
 </style>
