@@ -155,6 +155,7 @@ try { db.prepare('ALTER TABLE slots_config ADD COLUMN blackjack_actif INTEGER NO
 try { db.prepare('ALTER TABLE slots_config ADD COLUMN roulette_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
 try { db.prepare('ALTER TABLE slots_config ADD COLUMN crossroad_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
 try { db.prepare('ALTER TABLE slots_config ADD COLUMN mines_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN wheel_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
 
 // Table mines
 db.exec(`
