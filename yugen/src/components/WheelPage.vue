@@ -48,9 +48,9 @@
             @click="miseInput = p">{{ fmtYen(p) }}</button>
         </div>
         <button class="btn btn--spin"
-          :disabled="etat === 'spinning' || miseInput <= 0 || miseInput > solde || miseInput > 500000"
+          :disabled="etat === 'spinning' || loading || miseInput <= 0 || miseInput > solde || miseInput > 500000"
           @click="doSpin">
-          {{ etat === 'spinning' ? 'La roue tourne…' : 'Lancer la Roue' }}
+          {{ etat === 'spinning' ? 'La roue tourne…' : loading ? '…' : 'Lancer la Roue' }}
         </button>
       </div>
 
@@ -99,6 +99,7 @@ const SPIN_DURATION = 4400
 const solde       = ref(0)
 const miseInput   = ref(5000)
 const etat        = ref('idle')   // idle | spinning | fini
+const loading     = ref(false)
 const dernierMult = ref(0)
 const gainNet     = ref(0)
 const erreur      = ref('')
@@ -322,13 +323,13 @@ function getTargetRotation(idx) {
 
 // ── doSpin ─────────────────────────────────────────────────────────────────────
 async function doSpin() {
-  if (etat.value === 'spinning') return
+  if (etat.value === 'spinning' || loading.value) return
   erreur.value = ''
+  loading.value = true
   resumeAudio()
 
   try {
-    etat.value = 'spinning'
-
+    // Récupérer le résultat serveur AVANT de lancer l'animation
     const data = await apiFetch(`${BASE}/wheel/spin`, {
       method: 'POST',
       body: JSON.stringify({ mise: miseInput.value }),
@@ -341,14 +342,17 @@ async function doSpin() {
     gainNet.value     = data.gain_net
     solde.value       = data.solde
 
-    spinFrom     = rotation
-    spinTo       = getTargetRotation(resultIdx)
-    spinStartTs  = null
+    // Configurer la trajectoire puis démarrer l'animation
+    spinFrom      = rotation
+    spinTo        = getTargetRotation(resultIdx)
+    spinStartTs   = null
     prevTickCount = 0
+    etat.value    = 'spinning'
 
   } catch (e) {
     erreur.value = e.message
-    etat.value   = 'idle'
+  } finally {
+    loading.value = false
   }
 }
 
