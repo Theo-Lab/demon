@@ -27,10 +27,27 @@
       <Transition name="result-pop">
         <div v-if="etat === 'fini'" class="resultat"
           :class="gainNet > 0 ? 'resultat--win' : gainNet === 0 ? 'resultat--neutral' : 'resultat--bust'">
-          <span class="r-mult">×{{ dernierMult }}</span>
-          <span class="r-gain" :class="gainNet > 0 ? 'pos' : gainNet === 0 ? 'neutral' : 'neg'">
-            {{ gainNet > 0 ? '+' : '' }}{{ fmtYen(gainNet) }}
-          </span>
+          <div class="r-row">
+            <span class="r-label">Mise</span>
+            <span class="r-val">{{ fmtYen(derniereMise) }}</span>
+          </div>
+          <div class="r-divider"></div>
+          <div class="r-row">
+            <span class="r-label">Multiplicateur</span>
+            <span class="r-val r-mult">×{{ dernierMult }}</span>
+          </div>
+          <div class="r-divider"></div>
+          <div class="r-row">
+            <span class="r-label">Récupéré</span>
+            <span class="r-val">{{ fmtYen(derniereMise + gainNet) }}</span>
+          </div>
+          <div class="r-divider"></div>
+          <div class="r-row">
+            <span class="r-label">Gain net</span>
+            <span class="r-val r-gain" :class="gainNet > 0 ? 'pos' : gainNet === 0 ? 'neutral' : 'neg'">
+              {{ gainNet > 0 ? '+' : '' }}{{ fmtYen(gainNet) }}
+            </span>
+          </div>
         </div>
       </Transition>
 
@@ -101,6 +118,7 @@ const miseInput   = ref(5000)
 const etat        = ref('idle')   // idle | spinning | fini
 const loading     = ref(false)
 const dernierMult = ref(0)
+const derniereMise = ref(0)
 const gainNet     = ref(0)
 const erreur      = ref('')
 const jeuIndisponible = ref(false)
@@ -338,9 +356,10 @@ async function doSpin() {
     resultIdx = SEGMENTS.findIndex(s => s.mult === data.mult)
     if (resultIdx === -1) resultIdx = 0
 
-    dernierMult.value = data.mult
-    gainNet.value     = data.gain_net
-    solde.value       = data.solde
+    dernierMult.value  = data.mult
+    derniereMise.value = miseInput.value
+    gainNet.value      = data.gain_net
+    solde.value        = data.solde
 
     // Configurer la trajectoire puis démarrer l'animation
     spinFrom      = rotation
@@ -444,23 +463,38 @@ onUnmounted(() => { if (loopRAF) cancelAnimationFrame(loopRAF) })
 
 /* Résultat */
 .resultat {
-  display: flex; align-items: center; justify-content: center;
-  gap: 20px; padding: 16px 24px; margin-bottom: 1.5rem;
+  display: flex; flex-direction: column;
+  padding: 0; margin-bottom: 1.5rem;
   border: 1px solid rgba(255,255,255,0.06);
   background: rgba(255,255,255,0.02);
 }
-.resultat--win     { border-color: rgba(201,168,76,0.2); background: rgba(201,168,76,0.04); }
-.resultat--bust    { border-color: rgba(139,26,26,0.25); background: rgba(139,26,26,0.05); }
+.resultat--win     { border-color: rgba(201,168,76,0.2); background: rgba(201,168,76,0.03); }
+.resultat--bust    { border-color: rgba(139,26,26,0.25); background: rgba(139,26,26,0.04); }
 .resultat--neutral { border-color: rgba(255,255,255,0.06); }
 
+.r-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 18px;
+}
+.r-divider {
+  height: 1px; background: rgba(255,255,255,0.05); margin: 0;
+}
+.r-label {
+  font-family: 'Cinzel', serif; font-size: 0.58rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgba(255,255,255,0.28);
+}
+.r-val {
+  font-family: 'Cinzel', serif; font-size: 0.8rem; letter-spacing: 0.06em;
+  color: #d4cfc9;
+}
 .r-mult {
   font-family: 'Cinzel Decorative', 'Cinzel', serif;
-  font-size: 1.25rem; letter-spacing: 0.05em; color: #d4cfc9;
+  font-size: 1rem; letter-spacing: 0.05em; color: #d4cfc9;
 }
-.r-gain { font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 0.08em; }
+.r-gain { font-family: 'Cinzel', serif; font-size: 0.8rem; letter-spacing: 0.08em; }
 .r-gain.pos     { color: #c9a84c; }
 .r-gain.neutral { color: rgba(255,255,255,0.35); }
-.r-gain.neg     { color: #8b1a1a; }
+.r-gain.neg     { color: #c0392b; }
 
 @keyframes result-in {
   0%   { opacity: 0; transform: translateY(8px) scale(0.94); }
