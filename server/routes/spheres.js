@@ -17,8 +17,8 @@ function isChefOrAdmin(req, sphereId) {
   return sphere?.chef_id === req.user.id
 }
 
-// GET /api/spheres — liste publique
-router.get('/', (req, res) => {
+// GET /api/spheres — membres connectés seulement
+router.get('/', requireAuth, (req, res) => {
   const spheres = db.prepare(`
     SELECT s.*, u.nom as chef_nom,
       (SELECT COUNT(*) FROM user_spheres us WHERE us.sphere_id = s.id) as nb_membres
@@ -30,7 +30,7 @@ router.get('/', (req, res) => {
 })
 
 // GET /api/spheres/:id — détail avec membres
-router.get('/:id', (req, res) => {
+router.get('/:id', requireAuth, (req, res) => {
   const sphere = db.prepare(`
     SELECT s.*, u.nom as chef_nom
     FROM spheres s
