@@ -145,52 +145,43 @@
       </div>
     </div>
 
-    <!-- Zone d'action -->
-    <Transition name="action-up">
-      <div v-if="isMyTurn" class="action-zone">
-
-        <!-- Mes cartes (grandes) -->
-        <div class="my-hand" v-if="myPlayer?.cards?.length">
-          <span
-            v-for="(c,ci) in myPlayer.cards" :key="ci"
-            class="card card--lg"
-            :class="c ? (c.red ? 'card--red':'card--black') : 'card--back'"
-          >{{ c ? c.nom : '' }}</span>
-        </div>
-
-        <!-- Boutons -->
-        <div class="action-btns">
-          <button class="btn btn--fold"  @click="doAction('fold')">Se coucher</button>
-          <button v-if="myPlayer.bet >= state.currentBet"
-            class="btn btn--check" @click="doAction('check')">Checker</button>
-          <button v-else
-            class="btn btn--call" @click="doAction('call')">
-            Suivre&nbsp;<strong>{{ (state.currentBet - myPlayer.bet).toLocaleString() }} ¥</strong>
-          </button>
-          <div class="raise-group">
-            <button class="btn btn--raise" @click="doAction('raise', raiseAmount)">Relancer</button>
-            <div class="raise-ctrl">
-              <button class="raise-adj" @click="adjRaise(-1)">−</button>
-              <span class="raise-amount">{{ raiseAmount.toLocaleString() }} ¥</span>
-              <button class="raise-adj" @click="adjRaise(1)">+</button>
+    <!-- Panneau joueur fixé en bas (ne bouge jamais) -->
+    <div
+      v-if="myPlayer?.cards?.length && ['preflop','flop','turn','river','showdown'].includes(state?.status)"
+      class="player-panel"
+    >
+      <!-- Boutons d'action (glissement interne, layout stable) -->
+      <Transition name="btns-slide">
+        <div v-if="isMyTurn" class="action-btns-wrap">
+          <div class="action-btns">
+            <button class="btn btn--fold"  @click="doAction('fold')">Se coucher</button>
+            <button v-if="myPlayer.bet >= state.currentBet"
+              class="btn btn--check" @click="doAction('check')">Checker</button>
+            <button v-else
+              class="btn btn--call" @click="doAction('call')">
+              Suivre&nbsp;<strong>{{ (state.currentBet - myPlayer.bet).toLocaleString() }} ¥</strong>
+            </button>
+            <div class="raise-group">
+              <button class="btn btn--raise" @click="doAction('raise', raiseAmount)">Relancer</button>
+              <div class="raise-ctrl">
+                <button class="raise-adj" @click="adjRaise(-1)">−</button>
+                <span class="raise-amount">{{ raiseAmount.toLocaleString() }} ¥</span>
+                <button class="raise-adj" @click="adjRaise(1)">+</button>
+              </div>
             </div>
           </div>
         </div>
+      </Transition>
 
+      <!-- Mes cartes (toujours visibles) -->
+      <div class="my-hand">
+        <span
+          v-for="(c,ci) in myPlayer.cards" :key="ci"
+          class="card card--lg"
+          :class="[c ? (c.red ? 'card--red':'card--black') : 'card--back', justDealt ? 'card--deal-in':'']"
+          :style="justDealt ? { animationDelay: `${ci*160}ms` } : {}"
+        >{{ c ? c.nom : '' }}</span>
       </div>
-    </Transition>
-
-    <!-- Mes cartes passives -->
-    <div
-      v-if="!isMyTurn && myPlayer?.cards?.length && ['preflop','flop','turn','river'].includes(state?.status)"
-      class="my-hand-passive"
-    >
-      <span
-        v-for="(c,ci) in myPlayer.cards" :key="ci"
-        class="card card--lg"
-        :class="[c ? (c.red ? 'card--red':'card--black') : 'card--back', justDealt ? 'card--deal-in':'']"
-        :style="justDealt ? { animationDelay: `${ci*160}ms` } : {}"
-      >{{ c ? c.nom : '' }}</span>
     </div>
 
     <!-- Log -->
@@ -404,6 +395,7 @@ watch(() => state.value?.activeUserId, (id, old) => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding-bottom: 180px; /* espace pour le panneau fixe */
 }
 
 /* ── Top bar ── */
@@ -683,23 +675,26 @@ watch(() => state.value?.activeUserId, (id, old) => {
   background: #c9a84c; border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0;
 }
 
-/* ── Action zone ── */
-.action-zone {
-  width: 100%; max-width: 780px;
-  margin-top: 14px;
-  padding: 14px 20px 16px;
-  background: rgba(12,12,14,0.98);
-  border: 1px solid rgba(201,168,76,0.2);
-  border-radius: 10px;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
-  box-shadow: 0 -2px 30px rgba(0,0,0,0.5);
+/* ── Panneau joueur fixé en bas ── */
+.player-panel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 50;
+  background: rgba(8,9,10,0.97);
+  border-top: 1px solid rgba(201,168,76,0.15);
+  box-shadow: 0 -4px 30px rgba(0,0,0,0.7);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 20px 14px;
+  gap: 0;
+}
+.action-btns-wrap {
+  width: 100%; max-width: 760px;
+  padding-top: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 .my-hand {
   display: flex; gap: 10px; justify-content: center;
-}
-.my-hand-passive {
-  display: flex; gap: 10px; justify-content: center;
-  margin-top: 14px;
+  padding-top: 10px;
 }
 .action-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
 
@@ -747,10 +742,12 @@ watch(() => state.value?.activeUserId, (id, old) => {
 .toast-enter-from   { opacity: 0; transform: translateX(-50%) translateY(-10px); }
 .toast-leave-to     { opacity: 0; transform: translateX(-50%) translateY(-6px); }
 
-.action-up-enter-active { transition: all 0.3s cubic-bezier(0.22,1,0.36,1); }
-.action-up-leave-active { transition: all 0.2s ease-in; }
-.action-up-enter-from   { opacity: 0; transform: translateY(18px); }
-.action-up-leave-to     { opacity: 0; transform: translateY(10px); }
+.btns-slide-enter-active { transition: all 0.22s cubic-bezier(0.22,1,0.36,1); overflow: hidden; }
+.btns-slide-leave-active { transition: all 0.18s ease-in; overflow: hidden; }
+.btns-slide-enter-from   { opacity: 0; max-height: 0; }
+.btns-slide-enter-to     { opacity: 1; max-height: 120px; }
+.btns-slide-leave-from   { opacity: 1; max-height: 120px; }
+.btns-slide-leave-to     { opacity: 0; max-height: 0; }
 
 .overlay-pop-enter-active { transition: all 0.3s cubic-bezier(0.22,1,0.36,1); }
 .overlay-pop-leave-active { transition: all 0.22s ease-in; }
