@@ -107,8 +107,8 @@ const _newGame = db.transaction((userId, mise) => {
 
   const deck = createDeck(6)
 
-  // Malchance : 70% de stacker le deck contre le joueur (main basse, dealer fort)
-  if (hasMalchance(userId) && Math.random() < 0.70) {
+  // Malchance : 60% de stacker le deck contre le joueur (main basse, dealer fort)
+  if (hasMalchance(userId) && Math.random() < 0.60) {
     const lowVals = ['5','6','7','8']
     const highVals = ['10','J','Q','K']
     const swap = (targetVals, pos) => {

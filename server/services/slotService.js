@@ -103,8 +103,8 @@ const _jouer = db.transaction((userId, mise) => {
   const nb_colonnes = config.nb_colonnes ?? 3
   let grille = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))
 
-  // Malchance : 70% de forcer une grille perdante
-  if (hasMalchance(userId) && Math.random() < 0.70) {
+  // Malchance : 60% de forcer une grille perdante
+  if (hasMalchance(userId) && Math.random() < 0.60) {
     let essais = 0
     while (essais < 20) {
       grille = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))

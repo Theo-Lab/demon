@@ -41,8 +41,8 @@ const _jouer = db.transaction((userId, mises) => {
   if (user.solde < mise_totale) throw new Error('Solde insuffisant.')
 
   let numero = Math.floor(Math.random() * 37)
-  // Malchance : 70% de forcer un numéro qui fait perdre toutes les mises
-  if (hasMalchance(userId) && Math.random() < 0.70) {
+  // Malchance : 60% de forcer un numéro qui fait perdre toutes les mises
+  if (hasMalchance(userId) && Math.random() < 0.60) {
     for (let i = 0; i < 37; i++) {
       const candidate = (numero + i) % 37
       const totalGain = mises.reduce((s, m) => s + m.montant * evaluerMise(m.type, m.valeur, candidate), 0)

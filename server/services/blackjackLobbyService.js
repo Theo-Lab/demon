@@ -157,8 +157,8 @@ const _demarrerPartie = db.transaction((tableId) => {
 
   let premierEnJeu = null
   for (const siege of siegesOccupes) {
-    // Malchance : 70% de stacker les mauvaises cartes pour ce joueur
-    if (siege.user_id && hasMalchance(siege.user_id) && Math.random() < 0.70) {
+    // Malchance : 60% de stacker les mauvaises cartes pour ce joueur
+    if (siege.user_id && hasMalchance(siege.user_id) && Math.random() < 0.60) {
       const swap = (targetVals, pos) => {
         const idx = deck.findIndex((c, i) => i < deck.length - pos && targetVals.includes(c.v))
         if (idx >= 0) [deck[idx], deck[deck.length - 1 - pos]] = [deck[deck.length - 1 - pos], deck[idx]]

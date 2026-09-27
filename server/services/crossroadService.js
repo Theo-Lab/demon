@@ -41,7 +41,7 @@ const _newGame = db.transaction((userId, mise) => {
   const solde_avant = user.solde
   // Malchance : 70% de forcer la mort à la 1ère ou 2ème ruelle
   let lane_mort
-  if (hasMalchance(userId) && Math.random() < 0.70) {
+  if (hasMalchance(userId) && Math.random() < 0.60) {
     lane_mort = Math.random() < 0.6 ? 1 : 2
   } else {
     lane_mort = getBustLane()
