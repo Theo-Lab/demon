@@ -652,6 +652,13 @@ export async function updateCasinoGames(games) {
   return data
 }
 
+export async function getMalchanceLogs(userId) {
+  const res = await apiFetch(`${BASE}/casino/malchance-logs/${userId}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function toggleMalchance(userId, actif, prob) {
   const body = { actif }
   if (prob !== undefined) body.prob = prob

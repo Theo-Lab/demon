@@ -1,6 +1,6 @@
 const db      = require('../db')
 const discord = require('./discordService')
-const { hasMalchance, getMalchanceProb } = require('./malchanceService')
+const { hasMalchance, getMalchanceProb, logMalchance } = require('./malchanceService')
 
 const MAX_LANES  = 20
 const HOUSE_EDGE = 0.01  // 1% — standard casino en ligne (RTP 99%)
@@ -42,6 +42,7 @@ const _newGame = db.transaction((userId, mise) => {
   // Malchance : 70% de forcer la mort à la 1ère ou 2ème ruelle
   let lane_mort
   if (hasMalchance(userId) && Math.random() < getMalchanceProb(userId)) {
+    logMalchance(userId, 'crossroad')
     lane_mort = Math.random() < 0.6 ? 1 : 2
   } else {
     lane_mort = getBustLane()

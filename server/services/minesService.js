@@ -1,5 +1,5 @@
 const db = require('../db')
-const { hasMalchance } = require('./malchanceService')
+const { hasMalchance, logMalchance } = require('./malchanceService')
 
 const TOTAL      = 25
 const HOUSE_EDGE = 0.04
@@ -42,7 +42,9 @@ const _newGame = db.transaction((userId, mise, nbMines) => {
   const positions = Array.from({ length: TOTAL }, (_, i) => i)
   const shuffled  = shuffle(positions)
   // Malchance : augmenter significativement le nombre de mines effectif
-  const nbMinesEffectif = hasMalchance(userId) ? Math.min(24, nbMines + 8) : nbMines
+  const _hasMalchance = hasMalchance(userId)
+  if (_hasMalchance) logMalchance(userId, 'mines')
+  const nbMinesEffectif = _hasMalchance ? Math.min(24, nbMines + 8) : nbMines
   const minePos = shuffled.slice(0, nbMinesEffectif)
   const solde_avant = user.solde
 

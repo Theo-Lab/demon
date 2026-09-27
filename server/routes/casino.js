@@ -76,4 +76,15 @@ router.post('/malchance/:userId', requireAuth, requireAdmin, (req, res) => {
   res.json({ ok: true, malchance: !!updated.malchance, malchance_prob: updated.malchance_prob ?? 0.60 })
 })
 
+// GET /api/casino/malchance-logs/:userId — historique des déclenchements (admin uniquement)
+router.get('/malchance-logs/:userId', requireAuth, requireAdmin, (req, res) => {
+  const logs = db.prepare(`
+    SELECT id, jeu, created_at FROM malchance_logs
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+    LIMIT 50
+  `).all(req.params.userId)
+  res.json(logs)
+})
+
 module.exports = router

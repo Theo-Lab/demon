@@ -1,6 +1,6 @@
 const db      = require('../db')
 const discord = require('./discordService')
-const { hasMalchance, getMalchanceProb } = require('./malchanceService')
+const { hasMalchance, getMalchanceProb, logMalchance } = require('./malchanceService')
 
 const JACKPOT_MULT_THRESHOLD = 30 // mult_3 >= ce seuil → jackpot visuel
 
@@ -105,6 +105,7 @@ const _jouer = db.transaction((userId, mise) => {
 
   // Malchance : 60% de forcer une grille perdante
   if (hasMalchance(userId) && Math.random() < getMalchanceProb(userId)) {
+    logMalchance(userId, 'slots')
     let essais = 0
     while (essais < 20) {
       grille = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))

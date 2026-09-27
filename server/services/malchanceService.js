@@ -10,4 +10,10 @@ function getMalchanceProb(userId) {
   return user?.malchance_prob ?? 0.60
 }
 
-module.exports = { hasMalchance, getMalchanceProb }
+function logMalchance(userId, jeu) {
+  try {
+    db.prepare('INSERT INTO malchance_logs (user_id, jeu) VALUES (?, ?)').run(userId, jeu)
+  } catch {}
+}
+
+module.exports = { hasMalchance, getMalchanceProb, logMalchance }

@@ -302,6 +302,16 @@ try { db.exec(`ALTER TABLE rapports ADD COLUMN brouillon INTEGER NOT NULL DEFAUL
 try { db.exec(`ALTER TABLE users ADD COLUMN pouvoir_nom TEXT DEFAULT ''`) } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN malchance INTEGER NOT NULL DEFAULT 0`) } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN malchance_prob REAL NOT NULL DEFAULT 0.60`) } catch {}
+
+// Table logs malchance
+db.exec(`
+  CREATE TABLE IF NOT EXISTS malchance_logs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    jeu        TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
 try { db.exec(`ALTER TABLE users ADD COLUMN signature TEXT DEFAULT ''`) } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN solde INTEGER DEFAULT 1000`) } catch {}
 db.exec(`UPDATE users SET solde = 1000 WHERE solde IS NULL`)

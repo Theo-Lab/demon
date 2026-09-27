@@ -383,10 +383,23 @@
                     :title="`Probabilité malchance (actuellement ${Math.round((j.malchance_prob ?? 0.60) * 100)}%)`"
                     @change="doSaveMalchanceProb(j)"
                   />
+                  <button class="btn-op btn-logs-malchance" @click="doToggleLogs(j)" title="Voir les logs malchance">
+                    📋 {{ logsOuverts[j.id] ? 'Masquer' : 'Logs' }}
+                  </button>
                 </template>
               </div>
             </div>
             <div v-if="erreurs[j.id]" class="joueur-err">{{ erreurs[j.id] }}</div>
+            <div v-if="isAdmin && logsOuverts[j.id]" class="malchance-logs">
+              <div v-if="!malchanceLogs[j.id] || malchanceLogs[j.id].length === 0" class="malchance-logs-empty">Aucun déclenchement enregistré.</div>
+              <div v-else>
+                <div class="malchance-logs-title">💀 Derniers déclenchements ({{ malchanceLogs[j.id].length }})</div>
+                <div v-for="log in malchanceLogs[j.id]" :key="log.id" class="malchance-log-row">
+                  <span class="log-jeu">{{ log.jeu }}</span>
+                  <span class="log-date">{{ new Date(log.created_at).toLocaleString('fr-FR') }}</span>
+                </div>
+              </div>
+            </div>
 
           </div>
         </div>
@@ -659,7 +672,7 @@ import {
   getSlotsWebhook, updateSlotsWebhook, testSlotsWebhook,
   getCrossroadConfig, updateCrossroadConfig,
   getCasinoGames, updateCasinoGames,
-  getBjConfig, saveBjConfig, toggleMalchance,
+  getBjConfig, saveBjConfig, toggleMalchance, getMalchanceLogs,
 } from '../api.js'
 
 const isAdmin  = computed(() => currentUser.value?.role === 'admin')
@@ -943,12 +956,27 @@ async function opSolde(j, operation) {
 }
 
 const malchanceProbs = ref({})
+const malchanceLogs  = ref({})
+const logsOuverts    = ref({})
 
 async function doToggleMalchance(j) {
   try {
     const res = await toggleMalchance(j.id, !j.malchance)
     const idx = joueurs.value.findIndex(x => x.id === j.id)
     if (idx !== -1) joueurs.value[idx] = { ...joueurs.value[idx], malchance: res.malchance ? 1 : 0, malchance_prob: res.malchance_prob }
+  } catch (e) {
+    erreurs.value[j.id] = e.message
+  }
+}
+
+async function doToggleLogs(j) {
+  if (logsOuverts.value[j.id]) {
+    logsOuverts.value[j.id] = false
+    return
+  }
+  try {
+    malchanceLogs.value[j.id] = await getMalchanceLogs(j.id)
+    logsOuverts.value[j.id] = true
   } catch (e) {
     erreurs.value[j.id] = e.message
   }
@@ -1657,6 +1685,14 @@ onMounted(async () => {
 .btn-malchance { background: rgba(80,20,20,0.3); color: rgba(255,80,80,0.4); }
 .btn-malchance--on { background: rgba(139,26,26,0.7) !important; color: #ff6060 !important; font-weight: 600; }
 .malchance-prob-input { width: 56px; text-align: center; font-size: 0.75rem; padding: 0.25rem 0.35rem; }
+.btn-logs-malchance { background: rgba(40,40,80,0.4); color: rgba(160,160,255,0.6); font-size: 0.68rem; }
+.btn-logs-malchance:hover { background: rgba(60,60,120,0.5); color: rgba(180,180,255,0.9); }
+.malchance-logs { margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(20,10,30,0.5); border-left: 2px solid rgba(180,50,50,0.4); border-radius: 4px; }
+.malchance-logs-title { font-size: 0.72rem; color: rgba(255,80,80,0.7); margin-bottom: 0.35rem; font-weight: 600; }
+.malchance-logs-empty { font-size: 0.72rem; color: rgba(255,255,255,0.3); }
+.malchance-log-row { display: flex; justify-content: space-between; font-size: 0.7rem; padding: 0.15rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.log-jeu { color: rgba(255,120,120,0.8); text-transform: uppercase; letter-spacing: 0.05em; }
+.log-date { color: rgba(255,255,255,0.35); }
 
 .btn-add:hover    { background: rgba(58,122,58,0.4); }
 .btn-remove:hover { background: rgba(139,26,26,0.4); }
