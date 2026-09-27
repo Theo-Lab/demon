@@ -1,6 +1,6 @@
 const db      = require('../db')
 const discord = require('./discordService')
-const { hasMalchance } = require('./malchanceService')
+const { hasMalchance, getMalchanceProb } = require('./malchanceService')
 
 const SUITS  = ['S','H','D','C']
 const VALUES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']
@@ -108,7 +108,7 @@ const _newGame = db.transaction((userId, mise) => {
   const deck = createDeck(6)
 
   // Malchance : 60% de stacker le deck contre le joueur (main basse, dealer fort)
-  if (hasMalchance(userId) && Math.random() < 0.60) {
+  if (hasMalchance(userId) && Math.random() < getMalchanceProb(userId)) {
     const lowVals = ['5','6','7','8']
     const highVals = ['10','J','Q','K']
     const swap = (targetVals, pos) => {

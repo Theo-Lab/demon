@@ -652,10 +652,12 @@ export async function updateCasinoGames(games) {
   return data
 }
 
-export async function toggleMalchance(userId, actif) {
+export async function toggleMalchance(userId, actif, prob) {
+  const body = { actif }
+  if (prob !== undefined) body.prob = prob
   const res = await apiFetch(`${BASE}/casino/malchance/${userId}`, {
     method: 'POST',
-    body: JSON.stringify({ actif }),
+    body: JSON.stringify(body),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)

@@ -301,6 +301,7 @@ try { db.exec(`ALTER TABLE rapports ADD COLUMN brouillon INTEGER NOT NULL DEFAUL
 // Migration colonne users
 try { db.exec(`ALTER TABLE users ADD COLUMN pouvoir_nom TEXT DEFAULT ''`) } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN malchance INTEGER NOT NULL DEFAULT 0`) } catch {}
+try { db.exec(`ALTER TABLE users ADD COLUMN malchance_prob REAL NOT NULL DEFAULT 0.60`) } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN signature TEXT DEFAULT ''`) } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN solde INTEGER DEFAULT 1000`) } catch {}
 db.exec(`UPDATE users SET solde = 1000 WHERE solde IS NULL`)

@@ -5,4 +5,9 @@ function hasMalchance(userId) {
   return !!user?.malchance
 }
 
-module.exports = { hasMalchance }
+function getMalchanceProb(userId) {
+  const user = db.prepare('SELECT malchance_prob FROM users WHERE id = ?').get(userId)
+  return user?.malchance_prob ?? 0.60
+}
+
+module.exports = { hasMalchance, getMalchanceProb }

@@ -366,11 +366,24 @@
                 <button class="btn-op btn-add"    @click="opSolde(j, 'add')">+ Ajouter</button>
                 <button class="btn-op btn-remove" @click="opSolde(j, 'remove')">− Retirer</button>
                 <button class="btn-op btn-set"    @click="opSolde(j, 'set')">= Définir</button>
-                <button
-                  :class="['btn-op btn-malchance', j.malchance ? 'btn-malchance--on' : '']"
-                  @click="doToggleMalchance(j)"
-                  :title="j.malchance ? 'Désactiver la malchance' : 'Activer la malchance'"
-                >{{ j.malchance ? '💀 ON' : '💀 OFF' }}</button>
+                <template v-if="isAdmin">
+                  <button
+                    :class="['btn-op btn-malchance', j.malchance ? 'btn-malchance--on' : '']"
+                    @click="doToggleMalchance(j)"
+                    :title="j.malchance ? 'Désactiver la malchance' : 'Activer la malchance'"
+                  >{{ j.malchance ? '💀 ON' : '💀 OFF' }}</button>
+                  <input
+                    v-model.number="malchanceProbs[j.id]"
+                    class="field-input malchance-prob-input"
+                    type="number"
+                    min="1"
+                    max="99"
+                    step="5"
+                    :placeholder="`${Math.round((j.malchance_prob ?? 0.60) * 100)}%`"
+                    :title="`Probabilité malchance (actuellement ${Math.round((j.malchance_prob ?? 0.60) * 100)}%)`"
+                    @change="doSaveMalchanceProb(j)"
+                  />
+                </template>
               </div>
             </div>
             <div v-if="erreurs[j.id]" class="joueur-err">{{ erreurs[j.id] }}</div>
@@ -929,11 +942,27 @@ async function opSolde(j, operation) {
   }
 }
 
+const malchanceProbs = ref({})
+
 async function doToggleMalchance(j) {
   try {
     const res = await toggleMalchance(j.id, !j.malchance)
     const idx = joueurs.value.findIndex(x => x.id === j.id)
-    if (idx !== -1) joueurs.value[idx] = { ...joueurs.value[idx], malchance: res.malchance ? 1 : 0 }
+    if (idx !== -1) joueurs.value[idx] = { ...joueurs.value[idx], malchance: res.malchance ? 1 : 0, malchance_prob: res.malchance_prob }
+  } catch (e) {
+    erreurs.value[j.id] = e.message
+  }
+}
+
+async function doSaveMalchanceProb(j) {
+  const val = malchanceProbs.value[j.id]
+  if (val === null || val === undefined || val === '') return
+  const prob = Math.max(1, Math.min(99, val)) / 100
+  try {
+    const res = await toggleMalchance(j.id, undefined, prob)
+    const idx = joueurs.value.findIndex(x => x.id === j.id)
+    if (idx !== -1) joueurs.value[idx] = { ...joueurs.value[idx], malchance_prob: res.malchance_prob }
+    malchanceProbs.value[j.id] = null
   } catch (e) {
     erreurs.value[j.id] = e.message
   }
@@ -1627,6 +1656,7 @@ onMounted(async () => {
 .btn-set      { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
 .btn-malchance { background: rgba(80,20,20,0.3); color: rgba(255,80,80,0.4); }
 .btn-malchance--on { background: rgba(139,26,26,0.7) !important; color: #ff6060 !important; font-weight: 600; }
+.malchance-prob-input { width: 56px; text-align: center; font-size: 0.75rem; padding: 0.25rem 0.35rem; }
 
 .btn-add:hover    { background: rgba(58,122,58,0.4); }
 .btn-remove:hover { background: rgba(139,26,26,0.4); }

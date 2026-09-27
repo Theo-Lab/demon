@@ -139,7 +139,7 @@ router.delete('/admin/symbols/:id', requireAuth, requireAdmin, (req, res) => {
 // GET /api/slots/admin/joueurs
 router.get('/admin/joueurs', requireAuth, requireCasino, (req, res) => {
   const joueurs = db.prepare(`
-    SELECT id, nom, identifiant, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(malchance, 0) as malchance
+    SELECT id, nom, identifiant, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(malchance, 0) as malchance, COALESCE(malchance_prob, 0.60) as malchance_prob
     FROM users ORDER BY nom ASC
   `).all()
   res.json({ joueurs })

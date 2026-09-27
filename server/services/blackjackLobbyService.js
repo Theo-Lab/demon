@@ -1,6 +1,6 @@
 const db      = require('../db')
 const { createDeck, handTotal, isSoft17, dealerPlay } = require('./blackjackService')
-const { hasMalchance } = require('./malchanceService')
+const { hasMalchance, getMalchanceProb } = require('./malchanceService')
 const discord = require('./discordService')
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ const _demarrerPartie = db.transaction((tableId) => {
   let premierEnJeu = null
   for (const siege of siegesOccupes) {
     // Malchance : 60% de stacker les mauvaises cartes pour ce joueur
-    if (siege.user_id && hasMalchance(siege.user_id) && Math.random() < 0.60) {
+    if (siege.user_id && hasMalchance(siege.user_id) && Math.random() < getMalchanceProb(siege.user_id)) {
       const swap = (targetVals, pos) => {
         const idx = deck.findIndex((c, i) => i < deck.length - pos && targetVals.includes(c.v))
         if (idx >= 0) [deck[idx], deck[deck.length - 1 - pos]] = [deck[deck.length - 1 - pos], deck[idx]]

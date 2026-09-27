@@ -10,6 +10,12 @@ function requireCasino(req, res, next) {
   next()
 }
 
+function requireAdmin(req, res, next) {
+  const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
+  if (!user || user.role !== 'admin') return res.status(403).json({ message: 'Accès refusé.' })
+  next()
+}
+
 router.get('/games', requireAuth, (_req, res) => {
   const row = db.prepare('SELECT slots_actif, blackjack_actif, roulette_actif, crossroad_actif, mines_actif, wheel_actif FROM slots_config WHERE id = 1').get()
   res.json({
@@ -55,13 +61,19 @@ router.post('/blackjack', requireAuth, requireCasino, (req, res) => {
   res.json({ ok: true })
 })
 
-// POST /api/casino/malchance/:userId — activer/désactiver la malchance (casino/admin)
-router.post('/malchance/:userId', requireAuth, requireCasino, (req, res) => {
-  const { actif } = req.body
+// POST /api/casino/malchance/:userId — activer/désactiver la malchance + configurer le % (admin uniquement)
+router.post('/malchance/:userId', requireAuth, requireAdmin, (req, res) => {
+  const { actif, prob } = req.body
   const user = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.userId)
   if (!user) return res.status(404).json({ message: 'Joueur introuvable.' })
-  db.prepare('UPDATE users SET malchance = ? WHERE id = ?').run(actif ? 1 : 0, req.params.userId)
-  res.json({ ok: true, malchance: !!actif })
+  if (actif !== undefined)
+    db.prepare('UPDATE users SET malchance = ? WHERE id = ?').run(actif ? 1 : 0, req.params.userId)
+  if (prob !== undefined) {
+    const p = Math.max(0.01, Math.min(0.99, parseFloat(prob)))
+    db.prepare('UPDATE users SET malchance_prob = ? WHERE id = ?').run(p, req.params.userId)
+  }
+  const updated = db.prepare('SELECT malchance, malchance_prob FROM users WHERE id = ?').get(req.params.userId)
+  res.json({ ok: true, malchance: !!updated.malchance, malchance_prob: updated.malchance_prob ?? 0.60 })
 })
 
 module.exports = router
