@@ -46,6 +46,9 @@
             <span class="players-count">
               {{ table.sieges.filter(s => s.statut !== 'vide').length }}/{{ table.sieges.length }} joueurs
             </span>
+            <span v-if="table.mise_min" class="table-limits-badge">
+              {{ table.mise_min.toLocaleString() }} — {{ (table.mise_max || 0).toLocaleString() }} ¥
+            </span>
             <span class="join-hint">Rejoindre →</span>
           </div>
         </div>
@@ -306,6 +309,14 @@ onUnmounted(() => { if (socket) socket.disconnect() })
   transition: color 0.15s;
 }
 .table-card:hover .join-hint { color: rgba(255,255,255,0.55); }
+.table-limits-badge {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  color: rgba(201,168,76,0.45);
+  flex: 1;
+  text-align: center;
+}
 
 @media (max-width: 640px) {
   .tables-grid { grid-template-columns: 1fr; }

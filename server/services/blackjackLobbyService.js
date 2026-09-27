@@ -58,6 +58,10 @@ const _prendreSiege = db.transaction((tableId, siegeNumero, userId, userNom, mis
   if (dejaEnCours) throw new Error('Vous êtes déjà dans une partie en cours.')
 
   if (mise <= 0) throw new Error('Mise invalide.')
+  if (table.mise_min && mise < table.mise_min)
+    throw new Error(`Mise minimum sur cette table : ${table.mise_min.toLocaleString('fr-FR')} ¥`)
+  if (table.mise_max && mise > table.mise_max)
+    throw new Error(`Mise maximum sur cette table : ${table.mise_max.toLocaleString('fr-FR')} ¥`)
 
   const user = db.prepare('SELECT id, solde FROM users WHERE id = ?').get(userId)
   if (!user) throw new Error('Utilisateur introuvable.')
@@ -87,6 +91,10 @@ const _modifierMise = db.transaction((tableId, userId, nouvelleMise) => {
   if (!siege) throw new Error('Vous n\'êtes pas assis à cette table.')
 
   if (nouvelleMise <= 0) throw new Error('Mise invalide.')
+  if (table.mise_min && nouvelleMise < table.mise_min)
+    throw new Error(`Mise minimum sur cette table : ${table.mise_min.toLocaleString('fr-FR')} ¥`)
+  if (table.mise_max && nouvelleMise > table.mise_max)
+    throw new Error(`Mise maximum sur cette table : ${table.mise_max.toLocaleString('fr-FR')} ¥`)
 
   const diff = nouvelleMise - siege.mise
   const user = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId)

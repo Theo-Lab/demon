@@ -264,10 +264,20 @@ export async function getParis() {
   return data.paris
 }
 
-export async function createPari(titre, description, issues) {
+export async function createPari(titre, description, issues, mise_min, mise_max) {
   const res = await apiFetch(`${BASE}/paris`, {
     method: 'POST',
-    body: JSON.stringify({ titre, description, issues }),
+    body: JSON.stringify({ titre, description, issues, mise_min, mise_max }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.pari
+}
+
+export async function addMyMise(pariId, issue_id, montant) {
+  const res = await apiFetch(`${BASE}/paris/${pariId}/mises`, {
+    method: 'POST',
+    body: JSON.stringify({ issue_id, montant }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
@@ -637,6 +647,20 @@ export async function getCasinoGames() {
 }
 export async function updateCasinoGames(games) {
   const res = await apiFetch(`${BASE}/casino/games`, { method: 'POST', body: JSON.stringify(games) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function getBjConfig() {
+  const res = await apiFetch(`${BASE}/casino/blackjack`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function saveBjConfig(payload) {
+  const res = await apiFetch(`${BASE}/casino/blackjack`, { method: 'POST', body: JSON.stringify(payload) })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
   return data

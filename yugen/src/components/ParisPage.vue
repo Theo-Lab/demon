@@ -102,7 +102,7 @@
 
       </div>
 
-      <!-- Formulaire création -->
+      <!-- Formulaire création (admin) -->
       <div v-if="showFormCreation && ongletActif !== 'stats'" class="form-card">
         <h2 class="form-title">Nouveau pari</h2>
 
@@ -116,6 +116,17 @@
         <div class="field">
           <label class="field-label">Description</label>
           <textarea v-model="formCreation.description" class="field-input field-textarea" placeholder="Contexte du pari…"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="field field--grow">
+            <label class="field-label">Mise minimum (¥)</label>
+            <input v-model.number="formCreation.mise_min" class="field-input" type="number" min="1" placeholder="100" />
+          </div>
+          <div class="field field--grow">
+            <label class="field-label">Mise maximum (¥) <span class="label-opt">optionnel</span></label>
+            <input v-model="formCreation.mise_max" class="field-input" type="number" min="1" placeholder="Sans limite" />
+          </div>
         </div>
 
         <div class="issues-section">
@@ -161,6 +172,13 @@
 
         <p v-if="pari.description" class="pari-description">{{ pari.description }}</p>
 
+        <!-- Limites de mise -->
+        <div v-if="pari.statut === 'ouvert'" class="mise-limits">
+          <span class="limite-item">Min : {{ pari.mise_min?.toLocaleString() ?? 100 }} ¥</span>
+          <span v-if="pari.mise_max" class="limite-sep">·</span>
+          <span v-if="pari.mise_max" class="limite-item">Max : {{ pari.mise_max.toLocaleString() }} ¥</span>
+        </div>
+
         <!-- Issues -->
         <div class="issues-list">
           <div
@@ -174,27 +192,87 @@
           </div>
         </div>
 
-        <!-- Mises -->
+        <!-- Mises enregistrées -->
         <div v-if="pari.mises.length > 0" class="mises-section">
           <p class="mises-titre">Mises enregistrées</p>
           <div class="mises-list">
-            <div v-for="mise in pari.mises" :key="mise.id" class="mise-row">
-              <span class="mise-nom">{{ mise.joueur_nom }}</span>
+            <div
+              v-for="mise in pari.mises"
+              :key="mise.id"
+              :class="['mise-row', mise.user_id === currentUser?.id ? 'mise-row--mine' : '']"
+            >
+              <span class="mise-nom">
+                {{ mise.joueur_nom }}
+                <span v-if="mise.user_id === currentUser?.id" class="mise-moi">moi</span>
+              </span>
               <span class="mise-issue">{{ mise.issue_label }}</span>
-              <span class="mise-montant">{{ mise.montant }} ¥</span>
-              <span class="mise-gain-potentiel">→ {{ Math.round(mise.montant * mise.cote) }} ¥</span>
-              <button v-if="isAdmin && pari.statut === 'ouvert'" class="btn-remove-mise" @click="retirerMise(pari, mise.id)" title="Retirer">×</button>
+              <span class="mise-montant">{{ mise.montant.toLocaleString() }} ¥</span>
+              <span class="mise-gain-potentiel">→ {{ Math.round(mise.montant * mise.cote).toLocaleString() }} ¥</span>
+              <button
+                v-if="pari.statut === 'ouvert' && (isAdmin || mise.user_id === currentUser?.id)"
+                class="btn-remove-mise"
+                @click="retirerMise(pari, mise.id)"
+                title="Retirer"
+              >×</button>
             </div>
+          </div>
+        </div>
+
+        <!-- Zone mise utilisateur -->
+        <div v-if="pari.statut === 'ouvert' && currentUser" class="user-mise-zone">
+
+          <!-- Mise existante de l'utilisateur -->
+          <div v-if="maMise(pari)" class="ma-mise-info">
+            <span class="ma-mise-label">Votre mise</span>
+            <span class="ma-mise-issue">{{ maMise(pari).issue_label }}</span>
+            <span class="ma-mise-montant">{{ maMise(pari).montant.toLocaleString() }} ¥</span>
+            <span class="ma-mise-gain">→ {{ Math.round(maMise(pari).montant * maMise(pari).cote).toLocaleString() }} ¥ potentiels</span>
+          </div>
+
+          <!-- Formulaire pour miser -->
+          <div v-else class="form-user-mise">
+            <div
+              v-for="issue in pari.issues"
+              :key="issue.id"
+              :class="['issue-choice', formUserMise.pariId === pari.id && formUserMise.issue_id === issue.id ? 'issue-choice--active' : '']"
+              @click="selectionnerIssue(pari.id, issue.id)"
+            >
+              <span class="issue-choice-label">{{ issue.label }}</span>
+              <span class="issue-choice-cote">× {{ issue.cote }}</span>
+            </div>
+
+            <div v-if="formUserMise.pariId === pari.id" class="mise-input-row">
+              <div class="mise-input-wrap">
+                <input
+                  v-model.number="formUserMise.montant"
+                  class="field-input mise-amount-input"
+                  type="number"
+                  :min="pari.mise_min ?? 100"
+                  :max="pari.mise_max || undefined"
+                  :placeholder="`Min ${(pari.mise_min ?? 100).toLocaleString()} ¥`"
+                />
+                <span class="mise-currency">¥</span>
+              </div>
+              <button
+                class="btn-miser"
+                @click="placerMaMise(pari)"
+                :disabled="loadingUserMise"
+              >
+                {{ loadingUserMise ? '…' : 'Miser' }}
+              </button>
+            </div>
+
+            <div v-if="erreurUserMise && formUserMise.pariId === pari.id" class="form-erreur">{{ erreurUserMise }}</div>
           </div>
         </div>
 
         <!-- Panel admin -->
         <div v-if="isAdmin && pari.statut === 'ouvert'" class="admin-panel">
 
-          <!-- Ajouter une mise -->
+          <!-- Ajouter une mise manuellement (admin) -->
           <div class="admin-section">
             <button class="btn-secondary" @click="toggleFormMise(pari.id)">
-              {{ formMise.pariId === pari.id ? 'Annuler la mise' : '+ Ajouter une mise' }}
+              {{ formMise.pariId === pari.id ? 'Annuler' : '+ Mise manuelle' }}
             </button>
 
             <div v-if="formMise.pariId === pari.id" class="form-mise">
@@ -240,7 +318,7 @@
 import { ref, onMounted, computed } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { currentUser } from '../auth.js'
-import { getParis, createPari, deletePari, addMise, deleteMise, resoudrePari, getUsers } from '../api.js'
+import { getParis, createPari, deletePari, addMise, addMyMise, deleteMise, resoudrePari } from '../api.js'
 
 const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
@@ -308,7 +386,6 @@ const stats = computed(() => {
     }
   }
 
-  // Top joueurs
   const parJoueur = {}
   for (const m of tousLesMises) {
     if (!parJoueur[m.joueur_nom]) parJoueur[m.joueur_nom] = { nom: m.joueur_nom, nbMises: 0, total: 0 }
@@ -316,37 +393,47 @@ const stats = computed(() => {
     parJoueur[m.joueur_nom].total += m.montant
   }
   const topJoueurs = Object.values(parJoueur).sort((a, b) => b.total - a.total).slice(0, 5)
-
   const grossesMises = [...tousLesMises].sort((a, b) => b.montant - a.montant).slice(0, 5)
 
   return {
-    enJeu,
-    totalMise,
-    totalDistribue,
+    enJeu, totalMise, totalDistribue,
     nbOuverts: paris.value.filter(p => p.statut === 'ouvert').length,
     nbResolus: resolus.length,
     nbMises: tousLesMises.length,
-    topJoueurs,
-    grossesMises,
+    topJoueurs, grossesMises,
   }
 })
 
 const parisFiltres = computed(() => appliquerTri(parisParStatut.value.filter(matchRecherche)))
 
 const paris = ref([])
-const users = ref([])
 const loading = ref(true)
+
+// Ma mise sur un pari
+function maMise(pari) {
+  if (!currentUser.value) return null
+  return pari.mises.find(m => m.user_id === currentUser.value.id) ?? null
+}
 
 // Formulaire création
 const showFormCreation = ref(false)
 const loadingCreation = ref(false)
 const erreurCreation = ref('')
-const formCreation = ref({ titre: '', description: '', issues: [{ label: '', cote: '' }, { label: '', cote: '' }] })
+const formCreation = ref({
+  titre: '', description: '',
+  mise_min: 100, mise_max: '',
+  issues: [{ label: '', cote: '' }, { label: '', cote: '' }]
+})
 
-// Formulaire mise
+// Formulaire mise admin (manuelle)
 const formMise = ref({ pariId: null, user_nom: '', issue_id: '', montant: '' })
 const loadingMise = ref(false)
 const erreurMise = ref('')
+
+// Formulaire mise utilisateur
+const formUserMise = ref({ pariId: null, issue_id: null, montant: null })
+const loadingUserMise = ref(false)
+const erreurUserMise = ref('')
 
 // Formulaire résolution
 const formResolution = ref({ pariId: null, issue_gagnante_id: '' })
@@ -356,7 +443,6 @@ const erreurResolution = ref('')
 onMounted(async () => {
   try {
     paris.value = await getParis()
-    try { users.value = await getUsers() } catch (e) { console.error('getUsers:', e) }
   } finally {
     loading.value = false
   }
@@ -365,7 +451,7 @@ onMounted(async () => {
 function toggleFormCreation() {
   showFormCreation.value = !showFormCreation.value
   erreurCreation.value = ''
-  formCreation.value = { titre: '', description: '', issues: [{ label: '', cote: '' }, { label: '', cote: '' }] }
+  formCreation.value = { titre: '', description: '', mise_min: 100, mise_max: '', issues: [{ label: '', cote: '' }, { label: '', cote: '' }] }
 }
 
 function ajouterIssue() {
@@ -383,7 +469,9 @@ async function soumettrePari() {
     const pari = await createPari(
       formCreation.value.titre,
       formCreation.value.description,
-      formCreation.value.issues
+      formCreation.value.issues,
+      formCreation.value.mise_min || 100,
+      formCreation.value.mise_max || null,
     )
     paris.value.unshift(pari)
     showFormCreation.value = false
@@ -398,6 +486,39 @@ async function supprimerPari(id) {
   if (!confirm('Supprimer ce pari ?')) return
   await deletePari(id)
   paris.value = paris.value.filter(p => p.id !== id)
+}
+
+// Mise utilisateur : sélection d'une issue
+function selectionnerIssue(pariId, issueId) {
+  if (formUserMise.value.pariId === pariId && formUserMise.value.issue_id === issueId) {
+    formUserMise.value = { pariId: null, issue_id: null, montant: null }
+  } else {
+    formUserMise.value = { pariId, issue_id: issueId, montant: null }
+  }
+  erreurUserMise.value = ''
+}
+
+async function placerMaMise(pari) {
+  erreurUserMise.value = ''
+  if (!formUserMise.value.issue_id) {
+    erreurUserMise.value = 'Choisissez une issue.'
+    return
+  }
+  if (!formUserMise.value.montant || formUserMise.value.montant <= 0) {
+    erreurUserMise.value = 'Entrez un montant valide.'
+    return
+  }
+  try {
+    loadingUserMise.value = true
+    const updated = await addMyMise(pari.id, formUserMise.value.issue_id, formUserMise.value.montant)
+    const idx = paris.value.findIndex(p => p.id === pari.id)
+    paris.value[idx] = updated
+    formUserMise.value = { pariId: null, issue_id: null, montant: null }
+  } catch (e) {
+    erreurUserMise.value = e.message
+  } finally {
+    loadingUserMise.value = false
+  }
 }
 
 function toggleFormMise(pariId) {
@@ -415,7 +536,6 @@ async function soumettreMise(pari) {
     const idx = paris.value.findIndex(p => p.id === pari.id)
     paris.value[idx] = updated
     formMise.value = { pariId: null, user_nom: '', issue_id: '', montant: '' }
-    users.value = await getUsers()
   } catch (e) {
     erreurMise.value = e.message
   } finally {
@@ -427,7 +547,6 @@ async function retirerMise(pari, miseId) {
   const updated = await deleteMise(pari.id, miseId)
   const idx = paris.value.findIndex(p => p.id === pari.id)
   paris.value[idx] = updated
-  users.value = await getUsers()
 }
 
 function toggleFormResolution(pariId) {
@@ -445,7 +564,6 @@ async function soumettrResolution(pari) {
     const idx = paris.value.findIndex(p => p.id === pari.id)
     paris.value[idx] = updated
     formResolution.value = { pariId: null, issue_gagnante_id: '' }
-    users.value = await getUsers()
   } catch (e) {
     erreurResolution.value = e.message
   } finally {
@@ -539,6 +657,15 @@ async function soumettrResolution(pari) {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.35);
+}
+
+.label-opt {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.2);
 }
 
 .field-input {
@@ -648,7 +775,6 @@ async function soumettrResolution(pari) {
 .btn-submit:hover:not(:disabled) { background: #a82020; }
 .btn-submit:disabled { opacity: 0.5; cursor: default; }
 
-/* Carte pari */
 /* Barre de recherche */
 .search-bar {
   display: flex;
@@ -793,8 +919,6 @@ async function soumettrResolution(pari) {
   color: #fff;
 }
 
-.stats-section { }
-
 .stats-section-titre {
   font-family: 'Cinzel', serif;
   font-size: 0.65rem;
@@ -838,6 +962,7 @@ async function soumettrResolution(pari) {
   text-align: center;
 }
 
+/* Carte pari */
 .pari-card {
   background: #141416;
   border: 1px solid rgba(255,255,255,0.06);
@@ -889,6 +1014,26 @@ async function soumettrResolution(pari) {
   font-style: italic;
   color: #d4cfc9;
   margin: 0 0 16px;
+}
+
+/* Limites de mise */
+.mise-limits {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.limite-item {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: rgba(201,168,76,0.5);
+}
+
+.limite-sep {
+  color: rgba(255,255,255,0.15);
+  font-size: 0.8rem;
 }
 
 /* Issues liste */
@@ -962,12 +1107,33 @@ async function soumettrResolution(pari) {
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.95rem;
   color: #d4cfc9;
+  padding: 4px 0;
 }
 
-.mise-nom { min-width: 100px; }
+.mise-row--mine {
+  color: rgba(201,168,76,0.9);
+}
+
+.mise-nom {
+  min-width: 100px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mise-moi {
+  font-family: 'Cinzel', serif;
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(201,168,76,0.6);
+  border: 1px solid rgba(201,168,76,0.25);
+  padding: 1px 5px;
+}
+
 .mise-issue { flex: 1; font-style: italic; color: rgba(255,255,255,0.45); }
 .mise-montant { color: rgba(255,255,255,0.7); min-width: 70px; text-align: right; }
-.mise-gain-potentiel { color: rgba(255,255,255,0.35); font-size: 0.88rem; min-width: 80px; }
+.mise-gain-potentiel { color: rgba(255,255,255,0.35); font-size: 0.88rem; min-width: 90px; }
 
 .btn-remove-mise {
   background: transparent;
@@ -979,6 +1145,137 @@ async function soumettrResolution(pari) {
 }
 .btn-remove-mise:hover { color: #8b1a1a; }
 
+/* Zone mise utilisateur */
+.user-mise-zone {
+  border-top: 1px solid rgba(255,255,255,0.05);
+  padding-top: 16px;
+  margin-bottom: 0;
+}
+
+.ma-mise-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: rgba(201,168,76,0.06);
+  border: 1px solid rgba(201,168,76,0.15);
+}
+
+.ma-mise-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(201,168,76,0.5);
+  min-width: 70px;
+}
+
+.ma-mise-issue {
+  flex: 1;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: rgba(201,168,76,0.7);
+}
+
+.ma-mise-montant {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.95rem;
+  color: rgba(201,168,76,0.9);
+  font-weight: 600;
+}
+
+.ma-mise-gain {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.3);
+}
+
+/* Formulaire mise utilisateur */
+.form-user-mise {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.issue-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #0f0f10;
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.issue-choice:hover { border-color: rgba(255,255,255,0.15); background: #111113; }
+.issue-choice--active {
+  border-color: rgba(139,26,26,0.45);
+  background: rgba(139,26,26,0.07);
+}
+
+.issue-choice-label {
+  flex: 1;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.95rem;
+  color: #d4cfc9;
+}
+
+.issue-choice-cote {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.4);
+}
+
+.issue-choice--active .issue-choice-cote {
+  color: rgba(201,168,76,0.6);
+}
+
+.mise-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.mise-input-wrap {
+  display: flex;
+  align-items: center;
+  background: #0f0f10;
+  border: 1px solid rgba(255,255,255,0.1);
+  flex: 1;
+}
+
+.mise-amount-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 9px 12px;
+}
+
+.mise-currency {
+  padding: 0 12px;
+  color: rgba(255,255,255,0.3);
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+}
+
+.btn-miser {
+  background: #8b1a1a;
+  border: none;
+  color: #fff;
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.btn-miser:hover:not(:disabled) { background: #a82020; }
+.btn-miser:disabled { opacity: 0.45; cursor: default; }
+
 /* Panel admin */
 .admin-panel {
   border-top: 1px solid rgba(255,255,255,0.05);
@@ -986,6 +1283,7 @@ async function soumettrResolution(pari) {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: 16px;
 }
 
 .admin-section { display: flex; flex-direction: column; gap: 10px; }

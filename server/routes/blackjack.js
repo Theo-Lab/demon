@@ -1,6 +1,7 @@
 const express = require('express')
 const { requireAuth } = require('../middleware/auth')
 const bj = require('../services/blackjackService')
+const db = require('../db')
 
 const router = express.Router()
 
@@ -8,6 +9,11 @@ const router = express.Router()
 router.post('/new', requireAuth, (req, res) => {
   const mise = parseInt(req.body.mise)
   if (!mise || mise <= 0) return res.status(400).json({ message: 'Mise invalide.' })
+  const config = db.prepare('SELECT bj_solo_mise_min, bj_solo_mise_max FROM slots_config WHERE id = 1').get()
+  if (config?.bj_solo_mise_min && mise < config.bj_solo_mise_min)
+    return res.status(400).json({ message: `Mise minimum : ${config.bj_solo_mise_min.toLocaleString('fr-FR')} ¥` })
+  if (config?.bj_solo_mise_max && mise > config.bj_solo_mise_max)
+    return res.status(400).json({ message: `Mise maximum : ${config.bj_solo_mise_max.toLocaleString('fr-FR')} ¥` })
   try {
     res.json(bj.newGame(req.user.id, mise))
   } catch (e) {

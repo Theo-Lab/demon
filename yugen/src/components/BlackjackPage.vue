@@ -94,12 +94,13 @@
               v-model.number="miseInput"
               type="number"
               class="mise-input"
-              :min="1"
-              :max="solde"
+              :min="bjMin"
+              :max="Math.min(bjMax, solde)"
               step="1000"
               :disabled="loading"
               @keydown.enter="lancerPartie"
             />
+            <span class="mise-limits-hint">{{ fmtYen(bjMin) }} — {{ fmtYen(bjMax) }}</span>
           </div>
           <div class="btns">
             <button class="btn btn--primary" :disabled="loading || miseInput <= 0" @click="lancerPartie">
@@ -177,7 +178,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppNavbar from './AppNavbar.vue'
 import PlayingCard from './PlayingCard.vue'
-import { getMe, blackjackNew, blackjackHit, blackjackStand, blackjackDouble, getCasinoGames } from '../api.js'
+import { getMe, blackjackNew, blackjackHit, blackjackStand, blackjackDouble, getCasinoGames, getBjConfig } from '../api.js'
 import {
   playDeal, playFlip, playBust, playLose, playWin, playBlackjack, playChip, resumeAudio,
 } from '../blackjack-audio.js'
@@ -466,9 +467,17 @@ function changerMise() {
 }
 
 const jeuIndisponible = ref(false)
+const bjMin = ref(500)
+const bjMax = ref(500000)
 
 onMounted(async () => {
   try { const g = await getCasinoGames(); if (!g.blackjack) jeuIndisponible.value = true } catch {}
+  try {
+    const cfg = await getBjConfig()
+    bjMin.value = cfg.soloMin
+    bjMax.value = cfg.soloMax
+    miseInput.value = cfg.soloMin
+  } catch {}
   const me = await getMe()
   if (me) solde.value = me.solde
 })
@@ -708,6 +717,13 @@ onMounted(async () => {
 }
 .mise-input:focus { border-color: rgba(201,168,76,0.4); }
 .mise-input::-webkit-inner-spin-button { opacity: 0.3; }
+.mise-limits-hint {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: rgba(201,168,76,0.4);
+  white-space: nowrap;
+}
 
 .btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 

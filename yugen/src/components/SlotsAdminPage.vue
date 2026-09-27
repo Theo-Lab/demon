@@ -25,6 +25,9 @@
         <button v-if="isAdmin" :class="['jeu-tab', jeu === 'crossroad' ? 'jeu-tab--actif' : '']" @click="jeu = 'crossroad'; chargerCrossroadConfig()">
           Traversée Démoniaque
         </button>
+        <button v-if="isAdmin" :class="['jeu-tab', jeu === 'blackjack' ? 'jeu-tab--actif' : '']" @click="jeu = 'blackjack'; chargerBjConfig()">
+          Blackjack
+        </button>
         <button v-if="isCasino" :class="['jeu-tab', jeu === 'admin' ? 'jeu-tab--actif' : '']" @click="jeu = 'admin'">
           Admin
         </button>
@@ -77,6 +80,47 @@
           @click="onglet = tab"
         >{{ { symboles: 'Symboles', config: 'Configuration' }[tab] }}</button>
       </div>
+
+      <!-- ── Blackjack ── -->
+      <template v-if="jeu === 'blackjack' && isAdmin">
+        <div class="form-card">
+          <h2 class="form-title">Blackjack Solo — Limites de mise</h2>
+          <div class="form-grid">
+            <div class="field">
+              <label class="field-label">Mise minimum (¥)</label>
+              <input v-model.number="bjForm.soloMin" class="field-input" type="number" min="1" step="100" />
+            </div>
+            <div class="field">
+              <label class="field-label">Mise maximum (¥)</label>
+              <input v-model.number="bjForm.soloMax" class="field-input" type="number" min="1" step="10000" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-card" style="margin-top:16px">
+          <h2 class="form-title">Blackjack Multijoueur — Limites par table</h2>
+          <div v-for="t in bjForm.tables" :key="t.id" class="bj-table-row">
+            <span class="bj-table-label">Table {{ t.id }}</span>
+            <div class="field" style="flex:1">
+              <label class="field-label">Min (¥)</label>
+              <input v-model.number="t.mise_min" class="field-input" type="number" min="1" step="100" />
+            </div>
+            <div class="field" style="flex:1">
+              <label class="field-label">Max (¥)</label>
+              <input v-model.number="t.mise_max" class="field-input" type="number" min="1" step="10000" />
+            </div>
+          </div>
+        </div>
+
+        <div v-if="bjErreur" class="form-erreur" style="margin-top:12px">{{ bjErreur }}</div>
+        <div v-if="bjOk" class="form-ok" style="margin-top:12px">Configuration enregistrée.</div>
+
+        <div class="form-actions" style="margin-top:16px">
+          <button class="btn-submit" :disabled="loadingBj" @click="sauvegarderBj">
+            {{ loadingBj ? '…' : 'Enregistrer' }}
+          </button>
+        </div>
+      </template>
 
       <!-- ── Traversée Démoniaque ── -->
       <template v-if="jeu === 'crossroad' && isAdmin">
@@ -597,6 +641,7 @@ import {
   getSlotsWebhook, updateSlotsWebhook, testSlotsWebhook,
   getCrossroadConfig, updateCrossroadConfig,
   getCasinoGames, updateCasinoGames,
+  getBjConfig, saveBjConfig,
 } from '../api.js'
 
 const isAdmin  = computed(() => currentUser.value?.role === 'admin')
@@ -638,6 +683,36 @@ async function sauvegarderGestion() {
     gestionErreur.value = e.message
   } finally {
     loadingGestion.value = false
+  }
+}
+
+// ── Blackjack config ─────────────────────────────────────────────────────────
+const bjForm       = ref({ soloMin: 500, soloMax: 500000, tables: [] })
+const loadingBj    = ref(false)
+const bjErreur     = ref('')
+const bjOk         = ref(false)
+
+async function chargerBjConfig() {
+  try {
+    const cfg = await getBjConfig()
+    bjForm.value.soloMin = cfg.soloMin
+    bjForm.value.soloMax = cfg.soloMax
+    bjForm.value.tables  = cfg.tables.map(t => ({ ...t }))
+  } catch {}
+}
+
+async function sauvegarderBj() {
+  loadingBj.value = true
+  bjErreur.value  = ''
+  bjOk.value      = false
+  try {
+    await saveBjConfig({ soloMin: bjForm.value.soloMin, soloMax: bjForm.value.soloMax, tables: bjForm.value.tables })
+    bjOk.value = true
+    setTimeout(() => { bjOk.value = false }, 3000)
+  } catch (e) {
+    bjErreur.value = e.message
+  } finally {
+    loadingBj.value = false
   }
 }
 
@@ -1197,6 +1272,21 @@ onMounted(async () => {
 }
 
 .form-actions { display: flex; gap: 12px; justify-content: flex-end; }
+.bj-table-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.bj-table-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.5);
+  min-width: 60px;
+  padding-bottom: 10px;
+}
 
 .btn-submit {
   font-family: 'Cinzel', serif;

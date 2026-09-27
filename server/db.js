@@ -152,6 +152,11 @@ try { db.prepare('ALTER TABLE slots_config ADD COLUMN crossroad_bust_prob REAL N
 // Migrations : activation des jeux
 try { db.prepare('ALTER TABLE slots_config ADD COLUMN slots_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
 try { db.prepare('ALTER TABLE slots_config ADD COLUMN blackjack_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
+// Migrations blackjack limits
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN bj_solo_mise_min INTEGER NOT NULL DEFAULT 500').run() } catch {}
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN bj_solo_mise_max INTEGER NOT NULL DEFAULT 500000').run() } catch {}
+try { db.prepare('ALTER TABLE bj_tables ADD COLUMN mise_min INTEGER NOT NULL DEFAULT 500').run() } catch {}
+try { db.prepare('ALTER TABLE bj_tables ADD COLUMN mise_max INTEGER NOT NULL DEFAULT 500000').run() } catch {}
 try { db.prepare('ALTER TABLE slots_config ADD COLUMN roulette_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
 try { db.prepare('ALTER TABLE slots_config ADD COLUMN crossroad_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
 try { db.prepare('ALTER TABLE slots_config ADD COLUMN mines_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
@@ -298,6 +303,13 @@ try { db.exec(`ALTER TABLE users ADD COLUMN pouvoir_nom TEXT DEFAULT ''`) } catc
 try { db.exec(`ALTER TABLE users ADD COLUMN signature TEXT DEFAULT ''`) } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN solde INTEGER DEFAULT 1000`) } catch {}
 db.exec(`UPDATE users SET solde = 1000 WHERE solde IS NULL`)
+
+// Migrations paris : mise_min, mise_max
+try { db.exec(`ALTER TABLE paris ADD COLUMN mise_min INTEGER DEFAULT 100`) } catch {}
+try { db.exec(`ALTER TABLE paris ADD COLUMN mise_max INTEGER DEFAULT NULL`) } catch {}
+
+// Migrations paris_mises : user_id
+try { db.exec(`ALTER TABLE paris_mises ADD COLUMN user_id INTEGER REFERENCES users(id)`) } catch {}
 
 // Migration paris_mises : remplacer user_id par joueur_nom
 const misesCols = db.prepare(`PRAGMA table_info(paris_mises)`).all().map(c => c.name)
