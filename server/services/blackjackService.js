@@ -1,5 +1,6 @@
 const db      = require('../db')
 const discord = require('./discordService')
+const { hasMalchance } = require('./malchanceService')
 
 const SUITS  = ['S','H','D','C']
 const VALUES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']
@@ -104,7 +105,21 @@ const _newGame = db.transaction((userId, mise) => {
     db.prepare("UPDATE blackjack_games SET statut = 'fini', resultat = 'defaite' WHERE id = ?").run(prev.id)
   }
 
-  const deck        = createDeck(6)
+  const deck = createDeck(6)
+
+  // Malchance : 70% de stacker le deck contre le joueur (main basse, dealer fort)
+  if (hasMalchance(userId) && Math.random() < 0.70) {
+    const lowVals = ['5','6','7','8']
+    const highVals = ['10','J','Q','K']
+    const swap = (targetVals, pos) => {
+      const idx = deck.findIndex((c, i) => i < deck.length - pos && targetVals.includes(c.v))
+      if (idx >= 0) [deck[idx], deck[deck.length - 1 - pos]] = [deck[deck.length - 1 - pos], deck[idx]]
+    }
+    swap(lowVals, 0)   // 1re carte joueur → basse
+    swap(lowVals, 1)   // 2e carte joueur → basse
+    swap(highVals, 2)  // 1re carte dealer visible → haute
+  }
+
   const mainJoueur  = [deck.pop(), deck.pop()]
   const mainDealer  = [deck.pop(), deck.pop()]
   const solde_avant = user.solde

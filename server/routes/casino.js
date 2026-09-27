@@ -55,4 +55,13 @@ router.post('/blackjack', requireAuth, requireCasino, (req, res) => {
   res.json({ ok: true })
 })
 
+// POST /api/casino/malchance/:userId — activer/désactiver la malchance (casino/admin)
+router.post('/malchance/:userId', requireAuth, requireCasino, (req, res) => {
+  const { actif } = req.body
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.userId)
+  if (!user) return res.status(404).json({ message: 'Joueur introuvable.' })
+  db.prepare('UPDATE users SET malchance = ? WHERE id = ?').run(actif ? 1 : 0, req.params.userId)
+  res.json({ ok: true, malchance: !!actif })
+})
+
 module.exports = router

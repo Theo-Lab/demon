@@ -1,5 +1,6 @@
 const db      = require('../db')
 const discord = require('./discordService')
+const { hasMalchance } = require('./malchanceService')
 
 const JACKPOT_MULT_THRESHOLD = 30 // mult_3 >= ce seuil → jackpot visuel
 
@@ -100,7 +101,23 @@ const _jouer = db.transaction((userId, mise) => {
   if (symboles.length < 2) throw new Error('Configuration insuffisante : au moins 2 symboles actifs requis.')
 
   const nb_colonnes = config.nb_colonnes ?? 3
-  const grille = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))
+  let grille = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))
+
+  // Malchance : 70% de forcer une grille perdante
+  if (hasMalchance(userId) && Math.random() < 0.70) {
+    let essais = 0
+    while (essais < 20) {
+      grille = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))
+      const l = evaluerLigne(grille.slice(nb_colonnes, 2 * nb_colonnes))
+      if (l.multiplicateur === 0) break
+      essais++
+    }
+    // Force la ligne à ne pas matcher en cassant le 3e symbole
+    if (evaluerLigne(grille.slice(nb_colonnes, 2 * nb_colonnes)).multiplicateur > 0) {
+      const diff = symboles.find(s => s.id !== grille[nb_colonnes].id && !s.is_wild)
+      if (diff) grille[nb_colonnes + nb_colonnes - 1] = diff
+    }
+  }
 
   const lignePayline = grille.slice(nb_colonnes, 2 * nb_colonnes)
   const { multiplicateur, type, run, winning_cols, near_miss, is_jackpot } = evaluerLigne(lignePayline)

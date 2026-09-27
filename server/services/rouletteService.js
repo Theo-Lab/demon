@@ -1,5 +1,6 @@
 const db      = require('../db')
 const discord = require('./discordService')
+const { hasMalchance } = require('./malchanceService')
 
 // Roulette européenne : 0–36
 const ROUGE = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36])
@@ -39,7 +40,15 @@ const _jouer = db.transaction((userId, mises) => {
   if (mise_totale <= 0) throw new Error('Mise invalide.')
   if (user.solde < mise_totale) throw new Error('Solde insuffisant.')
 
-  const numero = Math.floor(Math.random() * 37)
+  let numero = Math.floor(Math.random() * 37)
+  // Malchance : 70% de forcer un numéro qui fait perdre toutes les mises
+  if (hasMalchance(userId) && Math.random() < 0.70) {
+    for (let i = 0; i < 37; i++) {
+      const candidate = (numero + i) % 37
+      const totalGain = mises.reduce((s, m) => s + m.montant * evaluerMise(m.type, m.valeur, candidate), 0)
+      if (totalGain === 0) { numero = candidate; break }
+    }
+  }
   const col    = couleur(numero)
 
   let gain_brut = 0

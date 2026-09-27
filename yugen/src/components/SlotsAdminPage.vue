@@ -366,6 +366,11 @@
                 <button class="btn-op btn-add"    @click="opSolde(j, 'add')">+ Ajouter</button>
                 <button class="btn-op btn-remove" @click="opSolde(j, 'remove')">− Retirer</button>
                 <button class="btn-op btn-set"    @click="opSolde(j, 'set')">= Définir</button>
+                <button
+                  :class="['btn-op btn-malchance', j.malchance ? 'btn-malchance--on' : '']"
+                  @click="doToggleMalchance(j)"
+                  :title="j.malchance ? 'Désactiver la malchance' : 'Activer la malchance'"
+                >{{ j.malchance ? '💀 ON' : '💀 OFF' }}</button>
               </div>
             </div>
             <div v-if="erreurs[j.id]" class="joueur-err">{{ erreurs[j.id] }}</div>
@@ -641,7 +646,7 @@ import {
   getSlotsWebhook, updateSlotsWebhook, testSlotsWebhook,
   getCrossroadConfig, updateCrossroadConfig,
   getCasinoGames, updateCasinoGames,
-  getBjConfig, saveBjConfig,
+  getBjConfig, saveBjConfig, toggleMalchance,
 } from '../api.js'
 
 const isAdmin  = computed(() => currentUser.value?.role === 'admin')
@@ -919,6 +924,16 @@ async function opSolde(j, operation) {
     const idx = joueurs.value.findIndex(x => x.id === j.id)
     if (idx !== -1) joueurs.value[idx] = updated
     montants.value[j.id] = null
+  } catch (e) {
+    erreurs.value[j.id] = e.message
+  }
+}
+
+async function doToggleMalchance(j) {
+  try {
+    const res = await toggleMalchance(j.id, !j.malchance)
+    const idx = joueurs.value.findIndex(x => x.id === j.id)
+    if (idx !== -1) joueurs.value[idx] = { ...joueurs.value[idx], malchance: res.malchance ? 1 : 0 }
   } catch (e) {
     erreurs.value[j.id] = e.message
   }
@@ -1609,7 +1624,9 @@ onMounted(async () => {
 
 .btn-add    { background: rgba(58,122,58,0.25); color: #6aaa6a; }
 .btn-remove { background: rgba(139,26,26,0.2);  color: #c05050; }
-.btn-set    { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+.btn-set      { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+.btn-malchance { background: rgba(80,20,20,0.3); color: rgba(255,80,80,0.4); }
+.btn-malchance--on { background: rgba(139,26,26,0.7) !important; color: #ff6060 !important; font-weight: 600; }
 
 .btn-add:hover    { background: rgba(58,122,58,0.4); }
 .btn-remove:hover { background: rgba(139,26,26,0.4); }

@@ -1,5 +1,6 @@
 const db      = require('../db')
 const discord  = require('./discordService')
+const { hasMalchance } = require('./malchanceService')
 
 const MISE_MAX      = 500_000
 const GAIN_JOUR_MAX = 2_500_000
@@ -58,7 +59,8 @@ const _spin = db.transaction((userId, mise) => {
   if (getGainJour(userId) >= GAIN_JOUR_MAX)
     throw new Error('Limite de gains journalière atteinte (2 500 000 ¥).')
 
-  const mult       = tirerResultat()
+  // Malchance : 70% de chance de tomber sur ×0
+  let mult = (hasMalchance(userId) && Math.random() < 0.70) ? 0 : tirerResultat()
   const payout     = Math.floor(mise * mult)
   const gain_net   = payout - mise
   const solde_avant = user.solde

@@ -652,6 +652,16 @@ export async function updateCasinoGames(games) {
   return data
 }
 
+export async function toggleMalchance(userId, actif) {
+  const res = await apiFetch(`${BASE}/casino/malchance/${userId}`, {
+    method: 'POST',
+    body: JSON.stringify({ actif }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function getBjConfig() {
   const res = await apiFetch(`${BASE}/casino/blackjack`)
   const data = await res.json()
