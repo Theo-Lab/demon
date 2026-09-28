@@ -36,12 +36,30 @@ app.use('/api/paris', require('./routes/paris'))
 app.use('/api/slots', require('./routes/slots'))
 app.use('/api/roulette', require('./routes/roulette'))
 app.use('/api/blackjack', require('./routes/blackjack'))
+// Socket broadcast quand une table BJ est fermée par un groupier (avant le router)
+app.post('/api/blackjack-lobby/tables/:id/close', (req, res, next) => {
+  res.on('finish', () => {
+    if (res.statusCode === 200) {
+      const tableId = parseInt(req.params.id)
+      io.to(`table_${tableId}`).emit('table_closed', { tableId, message: 'Table fermée par un groupier.' })
+    }
+  })
+  next()
+})
 app.use('/api/blackjack-lobby', require('./routes/blackjackLobby'))
 app.use('/api/crossroad',      require('./routes/crossroad'))
 app.use('/api/mines',          require('./routes/mines'))
 app.use('/api/wheel',          require('./routes/wheel'))
 app.use('/api/casino',         require('./routes/casino'))
 app.use('/api/ways243',        require('./routes/ways243'))
+app.delete('/api/poker/tables/:id', (req, res, next) => {
+  res.on('finish', () => {
+    if (res.statusCode === 200) {
+      io.to(`poker_${req.params.id}`).emit('table_closed', { message: 'Table fermée par un groupier.' })
+    }
+  })
+  next()
+})
 app.use('/api/poker',          require('./routes/pokerLobby'))
 app.use('/uploads', require('express').static('./uploads'))
 
@@ -60,6 +78,7 @@ const {
   getTableState,
   prendreSiege,
   modifierMise,
+  closeTable: closeBjTable,
   quitterSiege,
   demarrerPartie,
   jouerAction,

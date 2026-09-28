@@ -375,6 +375,7 @@ onMounted(() => {
   socket.on('poker_reset', () => { handResult.value = null; winnerIds.value = new Set(); prevPot = 0 })
   socket.on('poker_left',  () => { socket.disconnect(); router.push('/poker') })
   socket.on('poker_error', ({ message }) => { showError(message); addLog(`⚠ ${message}`) })
+  socket.on('table_closed', () => { socket.disconnect(); router.push('/poker') })
 })
 
 onUnmounted(() => { clearActionCd(); socket?.disconnect() })

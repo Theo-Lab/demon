@@ -31,6 +31,9 @@
         <button v-if="isAdmin" :class="['jeu-tab', jeu === 'oni243' ? 'jeu-tab--actif' : '']" @click="jeu = 'oni243'; chargerOniSymbols()">
           Oni 243
         </button>
+        <button v-if="isCasino" :class="['jeu-tab', jeu === 'tables' ? 'jeu-tab--actif' : '']" @click="jeu = 'tables'; chargerTables()">
+          Tables
+        </button>
         <button v-if="isCasino" :class="['jeu-tab', jeu === 'admin' ? 'jeu-tab--actif' : '']" @click="jeu = 'admin'">
           Admin
         </button>
@@ -368,6 +371,51 @@
               </label>
               <div v-if="oniErrors[sym]" class="oni-sym-err">{{ oniErrors[sym] }}</div>
             </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ── Tables actives ── -->
+      <template v-if="jeu === 'tables' && isCasino">
+        <div class="form-card">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px">
+            <h2 class="form-title" style="margin:0">Tables Blackjack</h2>
+            <button class="btn-secondary" @click="chargerTables">↺ Actualiser</button>
+          </div>
+          <div v-if="!bjTables.length" class="field-hint">Aucune table active.</div>
+          <div v-for="t in bjTables" :key="t.id" class="table-row">
+            <div class="table-info">
+              <span class="table-name">Table {{ t.id }}</span>
+              <span class="table-meta">{{ t.statut }} · {{ t.joueurs }} joueur{{ t.joueurs !== 1 ? 's' : '' }}</span>
+            </div>
+            <button
+              class="btn-close-table"
+              :disabled="!!tablesClosing['bj_' + t.id]"
+              @click="doCloseBj(t.id)"
+            >
+              {{ tablesClosing['bj_' + t.id] ? '…' : 'Fermer' }}
+            </button>
+          </div>
+          <div v-if="tablesErreur" class="form-erreur" style="margin-top:8px">{{ tablesErreur }}</div>
+        </div>
+
+        <div class="form-card" style="margin-top:16px">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px">
+            <h2 class="form-title" style="margin:0">Tables Poker</h2>
+          </div>
+          <div v-if="!pokerTables.length" class="field-hint">Aucune table active.</div>
+          <div v-for="t in pokerTables" :key="t.id" class="table-row">
+            <div class="table-info">
+              <span class="table-name">{{ t.name }}</span>
+              <span class="table-meta">{{ t.status }} · {{ t.playerCount }} joueur{{ t.playerCount !== 1 ? 's' : '' }} · blindes {{ t.smallBlind }}/{{ t.bigBlind }} ¥</span>
+            </div>
+            <button
+              class="btn-close-table"
+              :disabled="!!tablesClosing['pk_' + t.id]"
+              @click="doClosePoker(t.id)"
+            >
+              {{ tablesClosing['pk_' + t.id] ? '…' : 'Fermer' }}
+            </button>
           </div>
         </div>
       </template>
@@ -725,6 +773,7 @@ import {
   getCasinoGames, updateCasinoGames,
   getBjConfig, saveBjConfig, toggleMalchance, getMalchanceLogs,
   getOniSymbols, uploadOniSymbol, updateOniSymbolName, SERVER_URL,
+  closeBjTable, closePokerTable, getPokerTables, getBlackjackTables,
 } from '../api.js'
 
 const isAdmin  = computed(() => currentUser.value?.role === 'admin')
@@ -860,6 +909,52 @@ async function chargerOniSymbols() {
     oniImages.value = imgs
     oniNames.value  = names
   } catch {}
+}
+
+// ── Tables actives ────────────────────────────────────────────────────────────
+const bjTables      = ref([])
+const pokerTables   = ref([])
+const tablesClosing = ref({})
+const tablesErreur  = ref('')
+
+async function chargerTables() {
+  tablesErreur.value = ''
+  try {
+    const tables = await getBlackjackTables()
+    bjTables.value = tables.map(t => ({
+      id: t.id,
+      statut: t.statut,
+      joueurs: t.sieges?.filter(s => s.statut !== 'vide').length ?? 0,
+    }))
+  } catch {}
+  try {
+    pokerTables.value = await getPokerTables()
+  } catch {}
+}
+
+async function doCloseBj(tableId) {
+  tablesClosing.value['bj_' + tableId] = true
+  tablesErreur.value = ''
+  try {
+    await closeBjTable(tableId)
+    await chargerTables()
+  } catch (e) {
+    tablesErreur.value = e.message
+  } finally {
+    tablesClosing.value['bj_' + tableId] = false
+  }
+}
+
+async function doClosePoker(tableId) {
+  tablesClosing.value['pk_' + tableId] = true
+  try {
+    await closePokerTable(tableId)
+    await chargerTables()
+  } catch (e) {
+    tablesErreur.value = e.message
+  } finally {
+    tablesClosing.value['pk_' + tableId] = false
+  }
 }
 
 async function saveOniName(sym) {
@@ -2145,6 +2240,35 @@ onMounted(async () => {
 .mult-table tr:last-child td { border-bottom: none; }
 .gain--pos { color: #6fcf97; }
 .gain--neg { color: #e07070; }
+
+/* ── Tables actives ────────────────────────────────────────────────────────── */
+.table-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.table-info { display: flex; flex-direction: column; gap: 2px; }
+.table-name { font-size: 0.8rem; color: #e8d5b0; letter-spacing: 0.06em; }
+.table-meta { font-size: 0.68rem; color: rgba(232,213,176,0.4); letter-spacing: 0.04em; }
+.btn-close-table {
+  padding: 6px 14px;
+  background: rgba(201,53,79,0.15);
+  border: 1px solid rgba(201,53,79,0.35);
+  border-radius: 4px;
+  color: #e07070;
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-close-table:hover:not(:disabled) { background: rgba(201,53,79,0.3); }
+.btn-close-table:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Oni 243 symboles ──────────────────────────────────────────────────────── */
 .oni-symbols-grid {

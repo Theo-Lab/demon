@@ -445,6 +445,11 @@ function initSocket() {
     actionLoading.value = false
     setTimeout(() => { erreur.value = '' }, 4000)
   })
+
+  socket.on('table_closed', () => {
+    socket.disconnect()
+    router.push('/blackjack/lobby')
+  })
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────

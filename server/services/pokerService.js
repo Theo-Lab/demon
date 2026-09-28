@@ -130,6 +130,17 @@ function joinTable(tableId, userId, nom, buyIn) {
   return { solde: user.solde - buyIn }
 }
 
+// ── closeTable (groupier) ─────────────────────────────────────────────────────
+function closeTable(tableId) {
+  const t = getTable(tableId)
+  for (const player of t.players) {
+    if (player.chips > 0) {
+      db.prepare('UPDATE users SET solde = solde + ? WHERE id = ?').run(player.chips, player.userId)
+    }
+  }
+  tables.delete(tableId)
+}
+
 function cashOut(tableId, userId) {
   const t = getTable(tableId)
   if (t.status !== 'waiting') throw new Error('Impossible de partir pendant une main.')
@@ -365,7 +376,7 @@ function getTableState(tableId, forUserId) {
 
 module.exports = {
   createTable, listTables, getTable, tables,
-  joinTable, cashOut,
+  joinTable, cashOut, closeTable,
   startHand, playerAction, advancePhase, resolveHand, resetForNextHand,
   getTableState,
 }

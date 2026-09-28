@@ -402,6 +402,30 @@ function resetTable(tableId) {
   return _resetTable(tableId)
 }
 
+// ── closeTable (groupier) ─────────────────────────────────────────────────────
+// Rembourse les mises de tous les joueurs et vide la table.
+
+const _closeTable = db.transaction((tableId) => {
+  const sieges = db.prepare("SELECT * FROM bj_sieges WHERE table_id = ? AND statut != 'vide'").all(tableId)
+  for (const siege of sieges) {
+    if (!siege.user_id) continue
+    // Rembourser la mise initiale si une partie est en cours, sinon la mise réservée
+    const rembours = siege.mise_initiale > 0 ? siege.mise_initiale : siege.mise
+    if (rembours > 0) {
+      db.prepare('UPDATE users SET solde = solde + ? WHERE id = ?').run(rembours, siege.user_id)
+    }
+    db.prepare(`UPDATE bj_sieges SET
+      user_id = NULL, user_nom = NULL, mise = 0, mise_initiale = 0,
+      statut = 'vide', main = '[]', resultat = NULL, gain_net = 0
+      WHERE id = ?`).run(siege.id)
+  }
+  db.prepare("UPDATE bj_tables SET statut = 'attente', deck = '[]', main_dealer = '[]', siege_actif = NULL WHERE id = ?").run(tableId)
+})
+
+function closeTable(tableId) {
+  _closeTable(tableId)
+}
+
 // ── nbJoueursAssis ────────────────────────────────────────────────────────────
 
 function nbJoueursAssis(tableId) {
@@ -421,5 +445,6 @@ module.exports = {
   jouerDealer,
   resoudrePartie,
   resetTable,
+  closeTable,
   nbJoueursAssis,
 }

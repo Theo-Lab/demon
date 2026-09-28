@@ -556,6 +556,27 @@ export async function getBlackjackTables() {
   return data.tables
 }
 
+export async function closeBjTable(tableId) {
+  const res = await apiFetch(`${BASE}/blackjack-lobby/tables/${tableId}/close`, { method: 'POST' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function getPokerTables() {
+  const res = await apiFetch(`${BASE}/poker/tables`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function closePokerTable(tableId) {
+  const res = await apiFetch(`${BASE}/poker/tables/${tableId}`, { method: 'DELETE' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 // ── Roulette ───────────────────────────────────────────────────────────────
 
 // ── Blackjack ──────────────────────────────────────────────────────────────────
