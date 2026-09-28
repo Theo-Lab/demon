@@ -838,7 +838,7 @@ onMounted(() => {
   transition: filter 0.2s;
 }
 .spin-icon--spinning {
-  animation: spinIcon 0.7s linear infinite;
+  animation: spinIcon 0.35s linear infinite;
   filter: drop-shadow(0 0 12px rgba(201,168,76,0.9));
 }
 @keyframes spinIcon { to { transform: rotate(360deg); } }
