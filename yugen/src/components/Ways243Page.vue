@@ -159,8 +159,12 @@
               @click="doSpin"
               :disabled="spinning || solde < mise"
             >
-              <span v-if="!spinning">SPIN</span>
-              <span v-else class="spin-loader">◈</span>
+              <img
+                src="/favicon.png"
+                class="spin-icon"
+                :class="spinning ? 'spin-icon--spinning' : ''"
+                alt="spin"
+              />
             </button>
           </div>
         </div>
@@ -830,7 +834,17 @@ onMounted(() => {
   from { box-shadow: 0 0 18px rgba(201,53,79,0.3); }
   to   { box-shadow: 0 0 48px rgba(201,53,79,0.75); }
 }
-.spin-loader { display: inline-block; animation: spinIcon 0.4s linear infinite; }
+.spin-icon {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(232,213,176,0.5));
+  transition: filter 0.2s;
+}
+.spin-icon--spinning {
+  animation: spinIcon 0.7s linear infinite;
+  filter: drop-shadow(0 0 12px rgba(201,168,76,0.9));
+}
 @keyframes spinIcon { to { transform: rotate(360deg); } }
 
 /* ── Erreur ─────────────────────────────────────────────────────────────────── */
