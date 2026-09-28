@@ -146,6 +146,13 @@
             <button class="btn-step" @click="changeMise(+1)" :disabled="spinning">+</button>
           </div>
 
+          <div class="last-gain-box">
+            <span class="bet-label">Gain</span>
+            <span :class="['bet-value', lastWin > 0 ? 'bet-value--win' : lastWin < 0 ? 'bet-value--lose' : '']">
+              {{ lastWin >= 0 ? '+' : '' }}{{ lastWin.toLocaleString('fr-FR') }} ¥
+            </span>
+          </div>
+
           <button
             :class="['btn-spin', spinning ? 'btn-spin--spinning' : '']"
             @click="doSpin"
@@ -154,13 +161,6 @@
             <span v-if="!spinning">SPIN</span>
             <span v-else class="spin-loader">◈</span>
           </button>
-
-          <div class="last-gain-box">
-            <span class="bet-label">Gain</span>
-            <span :class="['bet-value', lastWin > 0 ? 'bet-value--win' : lastWin < 0 ? 'bet-value--lose' : '']">
-              {{ lastWin >= 0 ? '+' : '' }}{{ lastWin.toLocaleString('fr-FR') }} ¥
-            </span>
-          </div>
         </div>
 
         <div v-if="erreur" class="err-msg">{{ erreur }}</div>
