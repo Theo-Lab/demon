@@ -153,14 +153,16 @@
             </span>
           </div>
 
-          <button
-            :class="['btn-spin', spinning ? 'btn-spin--spinning' : '']"
-            @click="doSpin"
-            :disabled="spinning || solde < mise"
-          >
-            <span v-if="!spinning">SPIN</span>
-            <span v-else class="spin-loader">◈</span>
-          </button>
+          <div class="spin-wrap">
+            <button
+              :class="['btn-spin', spinning ? 'btn-spin--spinning' : '']"
+              @click="doSpin"
+              :disabled="spinning || solde < mise"
+            >
+              <span v-if="!spinning">SPIN</span>
+              <span v-else class="spin-loader">◈</span>
+            </button>
+          </div>
         </div>
 
         <div v-if="erreur" class="err-msg">{{ erreur }}</div>
@@ -778,9 +780,17 @@ onMounted(() => {
 .way-pay   { color: #c9a84c; font-weight: 600; }
 
 /* ── Contrôles ─────────────────────────────────────────────────────────────── */
-.controls { display: flex; align-items: center; gap: 2rem; margin-top: 0.5rem; }
-.bet-group, .last-gain-box { display: flex; align-items: center; gap: 0.5rem; }
-.bet-display, .last-gain-box { display: flex; flex-direction: column; align-items: center; min-width: 100px; }
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 680px;
+  margin-top: 0.5rem;
+}
+.bet-group { display: flex; align-items: center; gap: 0.5rem; flex: 1; justify-content: flex-start; }
+.last-gain-box { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.bet-display { display: flex; flex-direction: column; align-items: center; min-width: 100px; }
 .bet-label { font-size: 0.62rem; letter-spacing: 0.15em; color: rgba(232,213,176,0.4); text-transform: uppercase; }
 .bet-value { font-size: 1rem; color: #e8d5b0; }
 .bet-value--win  { color: #c9a84c; }
@@ -795,6 +805,11 @@ onMounted(() => {
 .btn-step:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* ── Bouton SPIN ────────────────────────────────────────────────────────────── */
+.spin-wrap {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
 .btn-spin {
   width: 110px; height: 110px; border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #c9354f, #7a1428);
