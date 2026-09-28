@@ -29,6 +29,13 @@
               </div>
               <span class="game-item-cta">Jouer →</span>
             </RouterLink>
+            <RouterLink to="/newslot" class="game-item">
+              <div class="game-item-body">
+                <span class="game-item-name">Oni 243</span>
+                <span class="game-item-desc">243 Ways · Rouleaux Jumeaux</span>
+              </div>
+              <span class="game-item-cta">Jouer →</span>
+            </RouterLink>
             <RouterLink to="/blackjack" class="game-item">
               <div class="game-item-body">
                 <span class="game-item-name">Blackjack</span>

@@ -685,6 +685,16 @@ export async function saveBjConfig(payload) {
   return data
 }
 
+export async function spinWays243(mise) {
+  const res = await apiFetch(`${BASE}/ways243/spin`, {
+    method: 'POST',
+    body: JSON.stringify({ mise }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function spinRoulette(mises) {
   const res = await apiFetch(`${BASE}/roulette/spin`, {
     method: 'POST',

@@ -26,6 +26,7 @@ import WheelPage from '../components/WheelPage.vue'
 import SlotsMultiPage from '../components/SlotsMultiPage.vue'
 import PokerLobbyPage from '../components/PokerLobbyPage.vue'
 import PokerTablePage from '../components/PokerTablePage.vue'
+import Ways243Page from '../components/Ways243Page.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -54,6 +55,7 @@ const routes = [
   { path: '/slots/multi',       component: SlotsMultiPage     },
   { path: '/poker',             component: PokerLobbyPage     },
   { path: '/poker/:id',         component: PokerTablePage     },
+  { path: '/newslot',           component: Ways243Page        },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

@@ -30,6 +30,7 @@ app.use('/api/crossroad',      require('./routes/crossroad'))
 app.use('/api/mines',          require('./routes/mines'))
 app.use('/api/wheel',          require('./routes/wheel'))
 app.use('/api/casino',         require('./routes/casino'))
+app.use('/api/ways243',        require('./routes/ways243'))
 app.use('/api/poker',          require('./routes/pokerLobby'))
 app.use('/uploads', require('express').static('./uploads'))
 
