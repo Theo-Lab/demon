@@ -85,7 +85,7 @@
           <!-- Near miss label -->
           <Transition name="fade">
             <div v-if="nearMissActive" class="nearmiss-badge">
-              🔥 {{ nearMissMatchedReels.length }}× {{ nearMissSymbol }} — SI PROCHE…
+              🔥 {{ nearMissMatchedReels.length }}× {{ nearMissSymbol }} — PROCHE…
             </div>
           </Transition>
 
