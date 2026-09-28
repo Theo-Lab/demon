@@ -716,6 +716,16 @@ export async function uploadOniSymbol(sym, file) {
   return data
 }
 
+export async function updateOniSymbolName(sym, name) {
+  const res = await apiFetch(`${BASE}/ways243/symbols/${sym}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function spinRoulette(mises) {
   const res = await apiFetch(`${BASE}/roulette/spin`, {
     method: 'POST',

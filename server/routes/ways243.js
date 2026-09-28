@@ -38,13 +38,13 @@ const VALID_SYMS = ['KUNAI', 'MASQUE', 'TALISMAN', 'FLEUR', 'HASHIRA', 'KATANA',
 
 // ── GET /api/ways243/symbols ───────────────────────────────────────────────────
 router.get('/symbols', requireAuth, (req, res) => {
-  const rows = db.prepare('SELECT sym, url FROM oni_symbols').all()
+  const rows = db.prepare('SELECT sym, url, name FROM oni_symbols').all()
   const map = {}
-  rows.forEach(r => { map[r.sym] = r.url })
+  rows.forEach(r => { map[r.sym] = { url: r.url, name: r.name } })
   res.json(map)
 })
 
-// ── POST /api/ways243/symbols/:sym ─────────────────────────────────────────────
+// ── POST /api/ways243/symbols/:sym — upload image ──────────────────────────────
 router.post('/symbols/:sym', requireAuth, requireAdmin, (req, res) => {
   const { sym } = req.params
   if (!VALID_SYMS.includes(sym)) return res.status(400).json({ message: 'Symbole invalide.' })
@@ -53,9 +53,24 @@ router.post('/symbols/:sym', requireAuth, requireAdmin, (req, res) => {
     if (err) return res.status(400).json({ message: err.message })
     if (!req.file) return res.status(400).json({ message: 'Aucun fichier reçu.' })
     const url = `/uploads/${req.file.filename}`
-    db.prepare('INSERT OR REPLACE INTO oni_symbols (sym, url) VALUES (?, ?)').run(sym, url)
+    db.prepare(`
+      INSERT INTO oni_symbols (sym, url, name) VALUES (?, ?, '')
+      ON CONFLICT(sym) DO UPDATE SET url = excluded.url
+    `).run(sym, url)
     res.json({ ok: true, sym, url })
   })
+})
+
+// ── PATCH /api/ways243/symbols/:sym — modifier le nom ─────────────────────────
+router.patch('/symbols/:sym', requireAuth, requireAdmin, (req, res) => {
+  const { sym } = req.params
+  if (!VALID_SYMS.includes(sym)) return res.status(400).json({ message: 'Symbole invalide.' })
+  const name = String(req.body.name ?? '').trim().slice(0, 40)
+  db.prepare(`
+    INSERT INTO oni_symbols (sym, url, name) VALUES (?, '', ?)
+    ON CONFLICT(sym) DO UPDATE SET name = excluded.name
+  `).run(sym, name)
+  res.json({ ok: true, sym, name })
 })
 
 // ── POST /api/ways243/spin ─────────────────────────────────────────────────────

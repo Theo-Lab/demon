@@ -343,9 +343,21 @@
                 />
                 <span v-else class="oni-sym-emoji">{{ ONI_EMOJI[sym] }}</span>
               </div>
-              <span class="oni-sym-name">{{ sym }}</span>
+              <div class="oni-name-row">
+                <input
+                  class="oni-name-input"
+                  type="text"
+                  :placeholder="sym"
+                  v-model="oniNames[sym]"
+                  maxlength="40"
+                  @keydown.enter="saveOniName(sym)"
+                />
+                <button class="oni-name-save" :disabled="!!oniNameSaving[sym]" @click="saveOniName(sym)">
+                  {{ oniNameSaving[sym] ? '…' : '✓' }}
+                </button>
+              </div>
               <label class="oni-upload-btn">
-                {{ oniUploading[sym] ? '…' : 'Changer' }}
+                {{ oniUploading[sym] ? '…' : 'Image' }}
                 <input
                   type="file"
                   accept="image/*"
@@ -712,7 +724,7 @@ import {
   getCrossroadConfig, updateCrossroadConfig,
   getCasinoGames, updateCasinoGames,
   getBjConfig, saveBjConfig, toggleMalchance, getMalchanceLogs,
-  getOniSymbols, uploadOniSymbol, SERVER_URL,
+  getOniSymbols, uploadOniSymbol, updateOniSymbolName, SERVER_URL,
 } from '../api.js'
 
 const isAdmin  = computed(() => currentUser.value?.role === 'admin')
@@ -830,19 +842,36 @@ async function chargerWebhook() {
 // ── Oni 243 — Symboles ────────────────────────────────────────────────────────
 const ONI_SYMS  = ['KUNAI', 'MASQUE', 'TALISMAN', 'FLEUR', 'HASHIRA', 'KATANA', 'DEMON', 'WILD']
 const ONI_EMOJI = { KUNAI:'🗡️', MASQUE:'🎭', TALISMAN:'📿', FLEUR:'🌸', HASHIRA:'⚔️', KATANA:'🔱', DEMON:'👹', WILD:'⭐' }
-const oniImages   = ref({})
+const oniImages    = ref({})
+const oniNames     = ref({})
 const oniUploading = ref({})
-const oniErrors   = ref({})
+const oniErrors    = ref({})
+const oniNameSaving = ref({})
 
 async function chargerOniSymbols() {
   try {
     const raw = await getOniSymbols()
-    const resolved = {}
-    for (const [sym, url] of Object.entries(raw)) {
-      resolved[sym] = url.startsWith('/') ? SERVER_URL + url : url
+    const imgs = {}
+    const names = {}
+    for (const [sym, data] of Object.entries(raw)) {
+      if (data.url) imgs[sym] = data.url.startsWith('/') ? SERVER_URL + data.url : data.url
+      if (data.name) names[sym] = data.name
     }
-    oniImages.value = resolved
+    oniImages.value = imgs
+    oniNames.value  = names
   } catch {}
+}
+
+async function saveOniName(sym) {
+  oniNameSaving.value[sym] = true
+  oniErrors.value[sym] = ''
+  try {
+    await updateOniSymbolName(sym, oniNames.value[sym] ?? '')
+  } catch (e) {
+    oniErrors.value[sym] = e.message
+  } finally {
+    oniNameSaving.value[sym] = false
+  }
 }
 
 async function onOniImageChange(sym, event) {
@@ -2144,12 +2173,37 @@ onMounted(async () => {
 }
 .oni-sym-img  { width: 64px; height: 64px; object-fit: contain; }
 .oni-sym-emoji { font-size: 2.4rem; }
-.oni-sym-name {
-  font-size: 0.62rem;
-  letter-spacing: 0.1em;
-  color: rgba(232,213,176,0.5);
-  text-transform: uppercase;
+.oni-name-row {
+  display: flex;
+  width: 100%;
+  gap: 4px;
 }
+.oni-name-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  color: #e8d5b0;
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+}
+.oni-name-input::placeholder { color: rgba(232,213,176,0.25); }
+.oni-name-input:focus { outline: none; border-color: rgba(201,168,76,0.5); }
+.oni-name-save {
+  padding: 4px 8px;
+  background: rgba(201,168,76,0.15);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 4px;
+  color: #c9a84c;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.oni-name-save:hover:not(:disabled) { background: rgba(201,168,76,0.28); }
+.oni-name-save:disabled { opacity: 0.4; cursor: not-allowed; }
 .oni-upload-btn {
   padding: 5px 12px;
   background: rgba(201,53,79,0.15);

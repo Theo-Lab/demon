@@ -367,10 +367,12 @@ try {
 // Table images symboles Oni 243
 db.exec(`
   CREATE TABLE IF NOT EXISTS oni_symbols (
-    sym TEXT PRIMARY KEY,
-    url TEXT NOT NULL
+    sym  TEXT PRIMARY KEY,
+    url  TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT ''
   )
 `)
+try { db.exec(`ALTER TABLE oni_symbols ADD COLUMN name TEXT NOT NULL DEFAULT ''`) } catch {}
 
 // Génère un token pour les rapports qui n'en ont pas
 const crypto = require('crypto')

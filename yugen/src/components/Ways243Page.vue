@@ -77,7 +77,7 @@
                   :alt="sym"
                 />
                 <span v-else class="sym-emoji">{{ SYM_META[sym]?.emoji ?? '?' }}</span>
-                <span v-if="!symImages[sym]" class="sym-name">{{ sym }}</span>
+                <span class="sym-name">{{ symNames[sym] || sym }}</span>
               </div>
             </div>
           </div>
@@ -128,7 +128,7 @@
             <span class="way-sym">
               <img v-if="symImages[w.symbol]" :src="symImages[w.symbol]" class="way-sym-img" />
               <span v-else>{{ SYM_META[w.symbol]?.emoji }}</span>
-              {{ w.symbol }}
+              {{ symNames[w.symbol] || w.symbol }}
             </span>
             <span class="way-combo">{{ w.reelsCount }}× · {{ w.ways }} way{{ w.ways > 1 ? 's' : '' }}</span>
             <span class="way-pay">+{{ w.payout.toLocaleString('fr-FR') }} ¥</span>
@@ -244,7 +244,8 @@ const mise         = ref(1000)
 const spinning     = ref(false)
 const erreur       = ref('')
 const showPaytable = ref(false)
-const symImages    = ref({})
+const symImages    = ref({})  // sym → URL
+const symNames     = ref({})  // sym → nom custom
 
 const EMPTY_GRID = Array.from({ length: 5 }, () => ['KUNAI', 'MASQUE', 'FLEUR'])
 const displayGrid  = ref(EMPTY_GRID.map(col => [...col]))
@@ -352,11 +353,14 @@ function detectNearMiss(grid, totalWin) {
 async function loadSymImages() {
   try {
     const raw = await getOniSymbols()
-    const resolved = {}
-    for (const [sym, url] of Object.entries(raw)) {
-      resolved[sym] = url.startsWith('/') ? SERVER_URL + url : url
+    const imgs = {}
+    const names = {}
+    for (const [sym, data] of Object.entries(raw)) {
+      if (data.url) imgs[sym] = data.url.startsWith('/') ? SERVER_URL + data.url : data.url
+      if (data.name) names[sym] = data.name
     }
-    symImages.value = resolved
+    symImages.value = imgs
+    symNames.value  = names
   } catch {}
 }
 
