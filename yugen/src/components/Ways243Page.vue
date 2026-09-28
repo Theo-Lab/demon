@@ -181,7 +181,7 @@
                 <td>
                   <img v-if="symImages[sym]" :src="symImages[sym]" class="pay-sym-img" />
                   <span v-else>{{ SYM_META[sym]?.emoji }}</span>
-                  {{ sym }}
+                  {{ symNames[sym] || sym }}
                 </td>
                 <td>{{ row[3] }}u</td>
                 <td>{{ row[4] }}u</td>
