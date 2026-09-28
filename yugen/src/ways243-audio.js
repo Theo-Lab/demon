@@ -177,6 +177,82 @@ export function playJackpot() {
   } catch {}
 }
 
+// Perte — choc sourd
+export function playLoss() {
+  try {
+    const ac = getCtx()
+    const buf  = ac.createBuffer(1, ac.sampleRate * 0.12, ac.sampleRate)
+    const data = buf.getChannelData(0)
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.4)) * 0.6
+    }
+    const src  = ac.createBufferSource()
+    const gain = ac.createGain()
+    src.buffer = buf
+    gain.gain.value = 0.22
+    src.connect(gain)
+    gain.connect(ac.destination)
+    src.start()
+  } catch {}
+}
+
+// Near miss — montée de tension (graves qui montent)
+export function playNearMissStart(reelCount = 3) {
+  try {
+    const ac = getCtx()
+    const freqs = reelCount >= 4
+      ? [80, 100, 130, 160, 200]  // plus dramatique pour 4 reels
+      : [80, 110, 150]
+    freqs.forEach((freq, i) => {
+      const osc  = ac.createOscillator()
+      const gain = ac.createGain()
+      const t    = ac.currentTime + i * 0.14
+      osc.type = 'sawtooth'
+      osc.frequency.setValueAtTime(freq, t)
+      osc.frequency.linearRampToValueAtTime(freq * 1.1, t + 0.25)
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.12, t + 0.04)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28)
+      osc.connect(gain)
+      gain.connect(ac.destination)
+      osc.start(t)
+      osc.stop(t + 0.3)
+    })
+  } catch {}
+}
+
+// Near miss — crash final (descente brutale)
+export function playNearMissCrash() {
+  try {
+    const ac = getCtx()
+    // Bruit blanc court
+    const buf  = ac.createBuffer(1, ac.sampleRate * 0.18, ac.sampleRate)
+    const data = buf.getChannelData(0)
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.3))
+    }
+    const src  = ac.createBufferSource()
+    const gn   = ac.createGain()
+    src.buffer = buf
+    gn.gain.value = 0.35
+    src.connect(gn)
+    gn.connect(ac.destination)
+    src.start()
+    // Note descendante
+    const osc  = ac.createOscillator()
+    const gain = ac.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(220, ac.currentTime)
+    osc.frequency.exponentialRampToValueAtTime(55, ac.currentTime + 0.22)
+    gain.gain.setValueAtTime(0.2, ac.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.25)
+    osc.connect(gain)
+    gain.connect(ac.destination)
+    osc.start()
+    osc.stop(ac.currentTime + 0.28)
+  } catch {}
+}
+
 // Oni Jumeaux — son mystique (deux notes parallèles dérivantes)
 export function playOniJumeaux() {
   try {
