@@ -1,4 +1,6 @@
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+// Base sans le chemin /api, pour construire les URLs d'uploads
+export const SERVER_URL = BASE.replace(/\/api$/, '')
 
 // Wrapper central : ajoute credentials, Content-Type, et gère le refresh automatique.
 // Sur un 401, on tente POST /auth/refresh une fois (nouveau access token via cookie),

@@ -712,7 +712,7 @@ import {
   getCrossroadConfig, updateCrossroadConfig,
   getCasinoGames, updateCasinoGames,
   getBjConfig, saveBjConfig, toggleMalchance, getMalchanceLogs,
-  getOniSymbols, uploadOniSymbol,
+  getOniSymbols, uploadOniSymbol, SERVER_URL,
 } from '../api.js'
 
 const isAdmin  = computed(() => currentUser.value?.role === 'admin')
@@ -835,7 +835,14 @@ const oniUploading = ref({})
 const oniErrors   = ref({})
 
 async function chargerOniSymbols() {
-  try { oniImages.value = await getOniSymbols() } catch {}
+  try {
+    const raw = await getOniSymbols()
+    const resolved = {}
+    for (const [sym, url] of Object.entries(raw)) {
+      resolved[sym] = url.startsWith('/') ? SERVER_URL + url : url
+    }
+    oniImages.value = resolved
+  } catch {}
 }
 
 async function onOniImageChange(sym, event) {
@@ -845,7 +852,8 @@ async function onOniImageChange(sym, event) {
   oniUploading.value[sym] = true
   try {
     const res = await uploadOniSymbol(sym, file)
-    oniImages.value[sym] = res.url
+    const url = res.url.startsWith('/') ? SERVER_URL + res.url : res.url
+    oniImages.value[sym] = url
   } catch (e) {
     oniErrors.value[sym] = e.message
   } finally {

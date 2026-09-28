@@ -8,10 +8,21 @@ const jwt = require('jsonwebtoken')
 
 const app = express()
 const PORT = process.env.PORT || 3001
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173'
+const CORS_ORIGIN = process.env.CORS_ORIGIN || null
 const JWT_SECRET = process.env.JWT_SECRET || 'yugen_ordre_demoniaque_secret'
 
-app.use(cors({ origin: CORS_ORIGIN, credentials: true }))
+const corsOriginFn = CORS_ORIGIN
+  ? CORS_ORIGIN
+  : (origin, cb) => {
+      // En dev local : accepte tout localhost/127.0.0.1 quel que soit le port
+      if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        cb(null, true)
+      } else {
+        cb(new Error('CORS refusé'))
+      }
+    }
+
+app.use(cors({ origin: corsOriginFn, credentials: true }))
 app.use(express.json())
 app.use(cookieParser())
 

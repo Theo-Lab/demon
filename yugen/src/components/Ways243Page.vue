@@ -175,7 +175,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
-import { spinWays243, getOniSymbols } from '../api.js'
+import { spinWays243, getOniSymbols, SERVER_URL } from '../api.js'
 import { currentUser } from '../auth.js'
 import {
   resumeAudio, playSpinStart, playColStop,
@@ -236,7 +236,13 @@ const bigWinActive = ref(false)
 // ── Chargement images symboles ───────────────────────────────────────────────
 async function loadSymImages() {
   try {
-    symImages.value = await getOniSymbols()
+    const raw = await getOniSymbols()
+    // Préfixer les URLs relatives avec l'URL du serveur
+    const resolved = {}
+    for (const [sym, url] of Object.entries(raw)) {
+      resolved[sym] = url.startsWith('/') ? SERVER_URL + url : url
+    }
+    symImages.value = resolved
   } catch {}
 }
 
