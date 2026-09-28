@@ -70,6 +70,8 @@ const _avancer = db.transaction((userId) => {
     db.prepare("UPDATE crossroad_games SET statut = 'fini', lane_actuelle = ?, gain_net = ? WHERE id = ?")
       .run(nextLane, -game.mise, game.id)
     const solde = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
+    db.prepare(`INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres)
+      VALUES (?, 'crossroad', ?, 'bust', ?, ?, ?)`).run(userId, game.mise, -game.mise, game.solde_avant, solde)
     return { statut: 'bust', lane_actuelle: nextLane, gain_net: -game.mise, solde }
   }
 
@@ -83,6 +85,8 @@ const _avancer = db.transaction((userId) => {
     db.prepare('UPDATE users SET solde = solde + ? WHERE id = ?').run(gain_brut, userId)
     db.prepare("UPDATE crossroad_games SET statut = 'fini', gain_net = ? WHERE id = ?").run(gain_net, game.id)
     const soldeFinal = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
+    db.prepare(`INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres)
+      VALUES (?, 'crossroad', ?, 'victoire_totale', ?, ?, ?)`).run(userId, game.mise, gain_net, game.solde_avant, soldeFinal)
     return { statut: 'victoire_totale', lane_actuelle: nextLane, mult_actuel: mult, gain_net, solde: soldeFinal }
   }
 
@@ -104,6 +108,8 @@ const _encaisser = db.transaction((userId) => {
   db.prepare("UPDATE crossroad_games SET statut = 'fini', gain_net = ? WHERE id = ?").run(gain_net, game.id)
 
   const solde = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
+  db.prepare(`INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres)
+    VALUES (?, 'crossroad', ?, 'encaisse', ?, ?, ?)`).run(userId, game.mise, gain_net, game.solde_avant, solde)
   return { statut: 'fini', lane_actuelle: game.lane_actuelle, mult_actuel: mult, gain_net, solde }
 })
 
