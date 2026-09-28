@@ -364,6 +364,14 @@ try {
   }
 } catch {}
 
+// Table images symboles Oni 243
+db.exec(`
+  CREATE TABLE IF NOT EXISTS oni_symbols (
+    sym TEXT PRIMARY KEY,
+    url TEXT NOT NULL
+  )
+`)
+
 // Génère un token pour les rapports qui n'en ont pas
 const crypto = require('crypto')
 const sansToken = db.prepare(`SELECT id FROM rapports WHERE token IS NULL`).all()

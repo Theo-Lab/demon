@@ -695,6 +695,25 @@ export async function spinWays243(mise) {
   return data
 }
 
+export async function getOniSymbols() {
+  const res = await apiFetch(`${BASE}/ways243/symbols`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function uploadOniSymbol(sym, file) {
+  const form = new FormData()
+  form.append('image', file)
+  const res = await apiFetch(`${BASE}/ways243/symbols/${sym}`, {
+    method: 'POST',
+    body: form,
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
 export async function spinRoulette(mises) {
   const res = await apiFetch(`${BASE}/roulette/spin`, {
     method: 'POST',

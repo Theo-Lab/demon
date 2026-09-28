@@ -28,6 +28,9 @@
         <button v-if="isAdmin" :class="['jeu-tab', jeu === 'blackjack' ? 'jeu-tab--actif' : '']" @click="jeu = 'blackjack'; chargerBjConfig()">
           Blackjack
         </button>
+        <button v-if="isAdmin" :class="['jeu-tab', jeu === 'oni243' ? 'jeu-tab--actif' : '']" @click="jeu = 'oni243'; chargerOniSymbols()">
+          Oni 243
+        </button>
         <button v-if="isCasino" :class="['jeu-tab', jeu === 'admin' ? 'jeu-tab--actif' : '']" @click="jeu = 'admin'">
           Admin
         </button>
@@ -319,6 +322,42 @@
 
         <div v-if="configOk" class="form-ok">Configuration enregistrée.</div>
 
+      </template>
+
+      <!-- ── Oni 243 — Symboles ── -->
+      <template v-if="jeu === 'oni243' && isAdmin">
+        <div class="form-card">
+          <h2 class="form-title">Symboles Oni 243</h2>
+          <p class="field-hint" style="margin-bottom:18px">
+            Remplacez les emojis par vos propres images. PNG ou WebP recommandé, fond transparent.
+          </p>
+
+          <div class="oni-symbols-grid">
+            <div v-for="sym in ONI_SYMS" :key="sym" class="oni-sym-card">
+              <div class="oni-sym-preview">
+                <img
+                  v-if="oniImages[sym]"
+                  :src="oniImages[sym]"
+                  class="oni-sym-img"
+                  :alt="sym"
+                />
+                <span v-else class="oni-sym-emoji">{{ ONI_EMOJI[sym] }}</span>
+              </div>
+              <span class="oni-sym-name">{{ sym }}</span>
+              <label class="oni-upload-btn">
+                {{ oniUploading[sym] ? '…' : 'Changer' }}
+                <input
+                  type="file"
+                  accept="image/*"
+                  style="display:none"
+                  @change="(e) => onOniImageChange(sym, e)"
+                  :disabled="!!oniUploading[sym]"
+                />
+              </label>
+              <div v-if="oniErrors[sym]" class="oni-sym-err">{{ oniErrors[sym] }}</div>
+            </div>
+          </div>
+        </div>
       </template>
 
       <!-- ── Onglet Joueurs ── -->
@@ -673,6 +712,7 @@ import {
   getCrossroadConfig, updateCrossroadConfig,
   getCasinoGames, updateCasinoGames,
   getBjConfig, saveBjConfig, toggleMalchance, getMalchanceLogs,
+  getOniSymbols, uploadOniSymbol,
 } from '../api.js'
 
 const isAdmin  = computed(() => currentUser.value?.role === 'admin')
@@ -785,6 +825,33 @@ const webhookOk      = ref('')
 
 async function chargerWebhook() {
   try { webhookForm.value.url = await getSlotsWebhook() } catch {}
+}
+
+// ── Oni 243 — Symboles ────────────────────────────────────────────────────────
+const ONI_SYMS  = ['KUNAI', 'MASQUE', 'TALISMAN', 'FLEUR', 'HASHIRA', 'KATANA', 'DEMON', 'WILD']
+const ONI_EMOJI = { KUNAI:'🗡️', MASQUE:'🎭', TALISMAN:'📿', FLEUR:'🌸', HASHIRA:'⚔️', KATANA:'🔱', DEMON:'👹', WILD:'⭐' }
+const oniImages   = ref({})
+const oniUploading = ref({})
+const oniErrors   = ref({})
+
+async function chargerOniSymbols() {
+  try { oniImages.value = await getOniSymbols() } catch {}
+}
+
+async function onOniImageChange(sym, event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  oniErrors.value[sym]    = ''
+  oniUploading.value[sym] = true
+  try {
+    const res = await uploadOniSymbol(sym, file)
+    oniImages.value[sym] = res.url
+  } catch (e) {
+    oniErrors.value[sym] = e.message
+  } finally {
+    oniUploading.value[sym] = false
+    event.target.value = ''
+  }
 }
 
 async function sauvegarderWebhook() {
@@ -2041,4 +2108,56 @@ onMounted(async () => {
 .mult-table tr:last-child td { border-bottom: none; }
 .gain--pos { color: #6fcf97; }
 .gain--neg { color: #e07070; }
+
+/* ── Oni 243 symboles ──────────────────────────────────────────────────────── */
+.oni-symbols-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px;
+}
+.oni-sym-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 14px 10px;
+}
+.oni-sym-preview {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+}
+.oni-sym-img  { width: 64px; height: 64px; object-fit: contain; }
+.oni-sym-emoji { font-size: 2.4rem; }
+.oni-sym-name {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: rgba(232,213,176,0.5);
+  text-transform: uppercase;
+}
+.oni-upload-btn {
+  padding: 5px 12px;
+  background: rgba(201,53,79,0.15);
+  border: 1px solid rgba(201,53,79,0.3);
+  border-radius: 4px;
+  color: #e8d5b0;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: 'Cinzel', serif;
+}
+.oni-upload-btn:hover { background: rgba(201,53,79,0.28); }
+.oni-sym-err {
+  font-size: 0.6rem;
+  color: rgba(201,53,79,0.8);
+  text-align: center;
+}
 </style>

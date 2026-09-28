@@ -50,8 +50,14 @@
                   spinning && !colStopped[r] ? 'reel-cell--blur' : '',
                 ]"
               >
-                <span class="sym-emoji">{{ SYM_META[sym]?.emoji ?? '?' }}</span>
-                <span class="sym-name">{{ sym }}</span>
+                <img
+                  v-if="symImages[sym]"
+                  :src="symImages[sym]"
+                  class="sym-img"
+                  :alt="sym"
+                />
+                <span v-else class="sym-emoji">{{ SYM_META[sym]?.emoji ?? '?' }}</span>
+                <span v-if="!symImages[sym]" class="sym-name">{{ sym }}</span>
               </div>
             </div>
           </div>
@@ -90,7 +96,11 @@
             class="way-row"
             :style="{ animationDelay: `${i * 120}ms` }"
           >
-            <span class="way-sym">{{ SYM_META[w.symbol]?.emoji }} {{ w.symbol }}</span>
+            <span class="way-sym">
+              <img v-if="symImages[w.symbol]" :src="symImages[w.symbol]" class="way-sym-img" />
+              <span v-else>{{ SYM_META[w.symbol]?.emoji }}</span>
+              {{ w.symbol }}
+            </span>
             <span class="way-combo">{{ w.reelsCount }}× · {{ w.ways }} way{{ w.ways > 1 ? 's' : '' }}</span>
             <span class="way-pay">+{{ w.payout.toLocaleString('fr-FR') }} ¥</span>
           </div>
@@ -143,7 +153,11 @@
             </thead>
             <tbody>
               <tr v-for="(row, sym) in PAYTABLE" :key="sym">
-                <td>{{ SYM_META[sym]?.emoji }} {{ sym }}</td>
+                <td>
+                  <img v-if="symImages[sym]" :src="symImages[sym]" class="pay-sym-img" />
+                  <span v-else>{{ SYM_META[sym]?.emoji }}</span>
+                  {{ sym }}
+                </td>
                 <td>{{ row[3] }}u</td>
                 <td>{{ row[4] }}u</td>
                 <td>{{ row[5] }}u</td>
@@ -159,12 +173,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
-import { spinWays243 } from '../api.js'
+import { spinWays243, getOniSymbols } from '../api.js'
 import { currentUser } from '../auth.js'
+import {
+  resumeAudio, playSpinStart, playColStop,
+  playWin, playBigWin, playMegaWin, playJackpot, playOniJumeaux,
+} from '../ways243-audio.js'
 
-// ── Métadonnées symboles (placeholders — remplacer par assets) ───────────────
+// ── Métadonnées symboles (fallback emoji) ────────────────────────────────────
 const SYM_META = {
   KUNAI:    { emoji: '🗡️' },
   MASQUE:   { emoji: '🎭' },
@@ -201,6 +219,7 @@ const mise         = ref(1000)
 const spinning     = ref(false)
 const erreur       = ref('')
 const showPaytable = ref(false)
+const symImages    = ref({})  // sym → URL (chargé depuis l'API)
 
 // Grille affichée (5 cols × 3 rows)
 const EMPTY_GRID = Array.from({ length: 5 }, () => ['KUNAI', 'MASQUE', 'FLEUR'])
@@ -213,6 +232,13 @@ const twinReels    = ref(null)
 const lastWin      = ref(0)
 const bigWinTier   = ref(null)
 const bigWinActive = ref(false)
+
+// ── Chargement images symboles ───────────────────────────────────────────────
+async function loadSymImages() {
+  try {
+    symImages.value = await getOniSymbols()
+  } catch {}
+}
 
 // ── Sélecteur de mise ────────────────────────────────────────────────────────
 function changeMise(dir) {
@@ -231,8 +257,6 @@ function isWinCell(col, row) {
 }
 
 // ── Animation arrêt en cascade ───────────────────────────────────────────────
-// Pendant le spin, on affiche une grille aléatoire animée (CSS).
-// Les colonnes s'arrêtent une par une sur le résultat réel.
 const RANDOM_SYMS = ['KUNAI', 'MASQUE', 'TALISMAN', 'FLEUR', 'HASHIRA', 'KATANA', 'DEMON']
 let randomInterval = null
 
@@ -255,14 +279,16 @@ function stopColumn(r, finalCol) {
     setTimeout(() => {
       colStopped.value[r] = true
       displayGrid.value[r] = [...finalCol]
+      playColStop(r)
       resolve()
-    }, r * 220)
+    }, r * 240)
   })
 }
 
 // ── Spin ─────────────────────────────────────────────────────────────────────
 async function doSpin() {
   if (spinning.value || solde.value < mise.value) return
+  resumeAudio()
   erreur.value      = ''
   spinning.value    = true
   bigWinActive.value = false
@@ -272,17 +298,18 @@ async function doSpin() {
   bigWinTier.value  = null
   colStopped.value  = [false, false, false, false, false]
 
+  playSpinStart()
   startRandomLoop()
 
   try {
     const result = await spinWays243(mise.value)
 
-    // Attendre un minimum d'animation (600ms)
-    await new Promise(r => setTimeout(r, 600))
+    // Attendre un minimum d'animation
+    await new Promise(r => setTimeout(r, 650))
     stopRandomLoop()
 
-    // Stopper les colonnes en cascade sur la grille résultat
-    const finalGrid = result.grid  // grid[reel][row]
+    // Stopper les colonnes en cascade
+    const finalGrid = result.grid
     await Promise.all(
       Array.from({ length: 5 }, (_, r) => stopColumn(r, finalGrid[r]))
     )
@@ -292,7 +319,24 @@ async function doSpin() {
     winningWays.value = result.winningWays
     twinReels.value   = result.twinReels
     lastWin.value     = result.totalWin - mise.value
+
+    // Son Oni Jumeaux si applicable
+    if (result.twinReels && result.twinReels.length >= 2) {
+      setTimeout(() => playOniJumeaux(), 100)
+    }
+
     bigWinTier.value  = result.bigWinTier
+
+    // Son de gain
+    if (result.bigWinTier === 'JACKPOT') {
+      setTimeout(() => playJackpot(), 200)
+    } else if (result.bigWinTier === 'MEGA_WIN') {
+      setTimeout(() => playMegaWin(), 200)
+    } else if (result.bigWinTier === 'BIG_WIN') {
+      setTimeout(() => playBigWin(), 200)
+    } else if (result.totalWin > 0) {
+      setTimeout(() => playWin(), 200)
+    }
 
     // Big win overlay
     if (result.bigWinTier && result.bigWinTier !== 'WIN') {
@@ -311,6 +355,7 @@ async function doSpin() {
 
 onMounted(() => {
   solde.value = currentUser.value?.solde ?? 0
+  loadSymImages()
 })
 </script>
 
@@ -326,7 +371,7 @@ onMounted(() => {
 .page--bigwin { background: #0e080a; }
 
 .page-inner {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 1.5rem 1rem 3rem;
 }
@@ -343,7 +388,7 @@ onMounted(() => {
 .back-link:hover { color: #c9a84c; }
 .header-center { text-align: center; }
 .page-label { font-size: 0.7rem; letter-spacing: 0.2em; color: rgba(232,213,176,0.4); margin: 0 0 0.2rem; text-transform: uppercase; }
-.page-title { font-size: 2rem; margin: 0; color: #e8d5b0; letter-spacing: 0.05em; }
+.page-title { font-size: 2.2rem; margin: 0; color: #e8d5b0; letter-spacing: 0.05em; }
 .title-accent { color: #c9354f; }
 .page-sub { font-size: 0.65rem; letter-spacing: 0.15em; color: rgba(232,213,176,0.3); margin: 0.2rem 0 0; }
 .solde-box { text-align: right; }
@@ -351,26 +396,26 @@ onMounted(() => {
 .solde-value { font-size: 1.1rem; color: #c9a84c; }
 
 /* ── Machine ────────────────────────────────────────────────────────────────── */
-.machine-wrap { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+.machine-wrap { display: flex; flex-direction: column; align-items: center; gap: 1.2rem; }
 
 .machine-frame {
   position: relative;
   border: 2px solid rgba(201,53,79,0.3);
-  border-radius: 12px;
-  padding: 1.5rem 1rem;
-  background: rgba(20,8,12,0.95);
+  border-radius: 14px;
+  padding: 2rem 1.5rem;
+  background: rgba(20,8,12,0.97);
   box-shadow:
-    0 0 30px rgba(201,53,79,0.12),
-    inset 0 0 40px rgba(0,0,0,0.6);
+    0 0 40px rgba(201,53,79,0.12),
+    inset 0 0 50px rgba(0,0,0,0.6);
   transition: box-shadow 0.3s, border-color 0.3s;
 }
 .machine-frame--spinning {
   border-color: rgba(201,53,79,0.6);
-  box-shadow: 0 0 50px rgba(201,53,79,0.25), inset 0 0 40px rgba(0,0,0,0.6);
+  box-shadow: 0 0 60px rgba(201,53,79,0.28), inset 0 0 50px rgba(0,0,0,0.6);
 }
 .machine-frame--bigwin {
   border-color: #c9a84c;
-  box-shadow: 0 0 80px rgba(201,168,76,0.4), inset 0 0 40px rgba(0,0,0,0.6);
+  box-shadow: 0 0 90px rgba(201,168,76,0.45), inset 0 0 50px rgba(0,0,0,0.6);
 }
 
 /* ── Badge 243 WAYS ─────────────────────────────────────────────────────────── */
@@ -378,7 +423,7 @@ onMounted(() => {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   color: #c9354f;
@@ -386,48 +431,48 @@ onMounted(() => {
   line-height: 1.2;
   opacity: 0.8;
 }
-.ways-badge span { font-size: 0.55rem; letter-spacing: 0.15em; }
-.ways-badge--left  { left: 0.4rem; }
-.ways-badge--right { right: 0.4rem; }
+.ways-badge span { font-size: 0.58rem; letter-spacing: 0.15em; }
+.ways-badge--left  { left: 0.5rem; }
+.ways-badge--right { right: 0.5rem; }
 
 /* ── Grille ─────────────────────────────────────────────────────────────────── */
 .reels-grid {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .reel-col {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  border-radius: 6px;
+  gap: 6px;
+  border-radius: 8px;
   overflow: hidden;
   border: 2px solid transparent;
   transition: border-color 0.3s;
 }
 .reel-col--twin {
   border-color: #8b5cf6;
-  box-shadow: 0 0 14px rgba(139,92,246,0.45);
+  box-shadow: 0 0 18px rgba(139,92,246,0.5);
 }
 .reel-col--landing {
   animation: colLand 0.25s cubic-bezier(0.34,1.56,0.64,1);
 }
 
 @keyframes colLand {
-  0%   { transform: translateY(-8px); }
+  0%   { transform: translateY(-10px); }
   100% { transform: translateY(0); }
 }
 
 .reel-cell {
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
   background: rgba(255,255,255,0.03);
-  border-radius: 4px;
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   transition: background 0.2s, box-shadow 0.2s;
   position: relative;
   overflow: hidden;
@@ -437,42 +482,51 @@ onMounted(() => {
   animation: cellSpin 0.08s steps(1) infinite;
 }
 @keyframes cellSpin {
-  0%   { filter: blur(3px) brightness(0.7); }
-  50%  { filter: blur(5px) brightness(0.5); }
-  100% { filter: blur(3px) brightness(0.7); }
+  0%   { filter: blur(4px) brightness(0.6); }
+  50%  { filter: blur(6px) brightness(0.4); }
+  100% { filter: blur(4px) brightness(0.6); }
 }
 
 .reel-cell--wild {
   background: rgba(255,200,0,0.08);
   border: 1px solid rgba(255,200,0,0.3);
 }
-.reel-cell--wild .sym-emoji { filter: drop-shadow(0 0 6px gold); }
+.reel-cell--wild .sym-emoji { filter: drop-shadow(0 0 8px gold); }
+.reel-cell--wild .sym-img   { filter: drop-shadow(0 0 8px gold); }
 
 .reel-cell--win {
   background: rgba(201,168,76,0.12);
-  box-shadow: inset 0 0 12px rgba(201,168,76,0.25);
+  box-shadow: inset 0 0 14px rgba(201,168,76,0.25);
   animation: winPulse 0.8s ease-in-out infinite alternate;
 }
 @keyframes winPulse {
   from { box-shadow: inset 0 0 8px rgba(201,168,76,0.2); }
-  to   { box-shadow: inset 0 0 22px rgba(201,168,76,0.5), 0 0 10px rgba(201,168,76,0.3); }
+  to   { box-shadow: inset 0 0 26px rgba(201,168,76,0.55), 0 0 12px rgba(201,168,76,0.3); }
 }
 
-.sym-emoji { font-size: 1.8rem; line-height: 1; }
-.sym-name  { font-size: 0.45rem; letter-spacing: 0.1em; color: rgba(232,213,176,0.4); text-transform: uppercase; }
+/* Image symbole */
+.sym-img {
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
+  image-rendering: crisp-edges;
+}
+
+.sym-emoji { font-size: 2.6rem; line-height: 1; }
+.sym-name  { font-size: 0.42rem; letter-spacing: 0.1em; color: rgba(232,213,176,0.35); text-transform: uppercase; }
 
 /* ── Oni Jumeaux badge ──────────────────────────────────────────────────────── */
 .oni-badge {
   text-align: center;
-  margin-top: 0.75rem;
-  font-size: 0.65rem;
+  margin-top: 0.9rem;
+  font-size: 0.68rem;
   letter-spacing: 0.2em;
   color: #a78bfa;
   animation: oniGlow 1s ease-in-out infinite alternate;
 }
 @keyframes oniGlow {
   from { opacity: 0.7; text-shadow: none; }
-  to   { opacity: 1; text-shadow: 0 0 10px rgba(167,139,250,0.8); }
+  to   { opacity: 1; text-shadow: 0 0 12px rgba(167,139,250,0.85); }
 }
 
 /* ── Big Win Overlay ────────────────────────────────────────────────────────── */
@@ -491,7 +545,7 @@ onMounted(() => {
 .bigwin-overlay--jackpot  { background: rgba(15,5,0,0.88); }
 
 .bigwin-text {
-  font-size: 3.5rem;
+  font-size: 4rem;
   font-weight: 700;
   letter-spacing: 0.15em;
   color: #c9a84c;
@@ -499,7 +553,7 @@ onMounted(() => {
   animation: bigwinBounce 0.5s cubic-bezier(0.34,1.56,0.64,1);
 }
 .bigwin-amount {
-  font-size: 1.8rem;
+  font-size: 2rem;
   color: #e8d5b0;
   margin-top: 0.5rem;
   letter-spacing: 0.1em;
@@ -514,7 +568,7 @@ onMounted(() => {
 
 /* ── Win banner ─────────────────────────────────────────────────────────────── */
 .win-banner {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   color: #c9a84c;
   letter-spacing: 0.1em;
   animation: winFade 0.4s ease;
@@ -530,32 +584,33 @@ onMounted(() => {
   flex-direction: column;
   gap: 5px;
   width: 100%;
-  max-width: 460px;
+  max-width: 560px;
 }
 .way-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.3rem 0.6rem;
+  padding: 0.3rem 0.7rem;
   background: rgba(255,255,255,0.03);
   border-radius: 4px;
   border-left: 2px solid rgba(201,168,76,0.4);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   animation: waySlide 0.3s ease both;
 }
 @keyframes waySlide {
   from { transform: translateX(-8px); opacity: 0; }
   to   { transform: translateX(0);    opacity: 1; }
 }
-.way-sym   { color: #e8d5b0; }
-.way-combo { color: rgba(232,213,176,0.5); font-size: 0.7rem; }
+.way-sym   { color: #e8d5b0; display: flex; align-items: center; gap: 6px; }
+.way-sym-img { width: 20px; height: 20px; object-fit: contain; }
+.way-combo { color: rgba(232,213,176,0.5); font-size: 0.72rem; }
 .way-pay   { color: #c9a84c; font-weight: 600; }
 
 /* ── Contrôles ─────────────────────────────────────────────────────────────── */
 .controls {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 2rem;
   margin-top: 0.5rem;
 }
 
@@ -568,28 +623,28 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 90px;
+  min-width: 100px;
 }
 .bet-label {
-  font-size: 0.6rem;
+  font-size: 0.62rem;
   letter-spacing: 0.15em;
   color: rgba(232,213,176,0.4);
   text-transform: uppercase;
 }
 .bet-value {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: #e8d5b0;
 }
 .bet-value--win  { color: #c9a84c; }
 .bet-value--lose { color: rgba(201,53,79,0.8); }
 
 .btn-step {
-  width: 32px; height: 32px;
+  width: 36px; height: 36px;
   border-radius: 50%;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
   color: #e8d5b0;
-  font-size: 1rem;
+  font-size: 1.1rem;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.15s;
@@ -599,22 +654,22 @@ onMounted(() => {
 
 /* ── Bouton SPIN ────────────────────────────────────────────────────────────── */
 .btn-spin {
-  width: 90px; height: 90px;
+  width: 110px; height: 110px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #c9354f, #7a1428);
   border: 2px solid rgba(201,53,79,0.6);
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   cursor: pointer;
-  box-shadow: 0 0 20px rgba(201,53,79,0.4), inset 0 0 15px rgba(0,0,0,0.4);
+  box-shadow: 0 0 24px rgba(201,53,79,0.4), inset 0 0 18px rgba(0,0,0,0.4);
   transition: transform 0.15s, box-shadow 0.15s;
   display: flex; align-items: center; justify-content: center;
 }
 .btn-spin:hover:not(:disabled) {
   transform: scale(1.06);
-  box-shadow: 0 0 35px rgba(201,53,79,0.6), inset 0 0 15px rgba(0,0,0,0.4);
+  box-shadow: 0 0 40px rgba(201,53,79,0.65), inset 0 0 18px rgba(0,0,0,0.4);
 }
 .btn-spin:active:not(:disabled) { transform: scale(0.97); }
 .btn-spin:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -622,8 +677,8 @@ onMounted(() => {
   animation: spinPulse 0.6s ease-in-out infinite alternate;
 }
 @keyframes spinPulse {
-  from { box-shadow: 0 0 15px rgba(201,53,79,0.3); }
-  to   { box-shadow: 0 0 40px rgba(201,53,79,0.7); }
+  from { box-shadow: 0 0 18px rgba(201,53,79,0.3); }
+  to   { box-shadow: 0 0 48px rgba(201,53,79,0.75); }
 }
 .spin-loader {
   display: inline-block;
@@ -662,15 +717,24 @@ onMounted(() => {
 .paytable table { width: 100%; border-collapse: collapse; }
 .paytable th, .paytable td { padding: 0.3rem 0.5rem; text-align: center; }
 .paytable th { color: rgba(232,213,176,0.4); font-weight: normal; letter-spacing: 0.1em; }
-.paytable td:first-child { text-align: left; }
+.paytable td:first-child { text-align: left; display: flex; align-items: center; gap: 6px; }
 .paytable tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
 .paytable-note { color: rgba(232,213,176,0.3); font-size: 0.6rem; margin: 0.5rem 0 0; letter-spacing: 0.05em; }
+.pay-sym-img { width: 18px; height: 18px; object-fit: contain; }
 
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
-@media (max-width: 520px) {
-  .reel-cell { width: 56px; height: 56px; }
-  .sym-emoji { font-size: 1.3rem; }
-  .btn-spin  { width: 70px; height: 70px; font-size: 0.8rem; }
+@media (max-width: 700px) {
+  .reel-cell { width: 58px; height: 58px; }
+  .sym-img   { width: 36px; height: 36px; }
+  .sym-emoji { font-size: 1.4rem; }
+  .btn-spin  { width: 80px; height: 80px; font-size: 0.85rem; }
   .ways-badge { display: none; }
+  .controls  { gap: 1rem; }
+}
+
+@media (max-width: 480px) {
+  .reel-cell { width: 46px; height: 46px; }
+  .sym-img   { width: 28px; height: 28px; }
+  .sym-emoji { font-size: 1.1rem; }
 }
 </style>
