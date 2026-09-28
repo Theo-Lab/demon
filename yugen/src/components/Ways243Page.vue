@@ -159,12 +159,8 @@
               @click="doSpin"
               :disabled="spinning || solde < mise"
             >
-              <img
-                src="/favicon.png"
-                class="spin-icon"
-                :class="spinning ? 'spin-icon--spinning' : ''"
-                alt="spin"
-              />
+              <span v-if="!spinning">SPIN</span>
+              <img v-else src="/favicon.png" class="spin-icon spin-icon--spinning" alt="spin" />
             </button>
           </div>
         </div>
