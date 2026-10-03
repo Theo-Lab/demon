@@ -6,6 +6,10 @@
       <p class="effet-erreur-sub">{{ erreur }}</p>
     </div>
     <div v-else-if="effet" class="effet-inner">
+      <div class="effet-avertissement">
+        <p class="effet-avertissement-text">Si vous lisez ceci, c'est que vous êtes victime de cette potion — merci de prendre tout cela en compte dans votre jeu.</p>
+      </div>
+
       <div class="effet-header">
         <div class="effet-header-meta">
           <span class="effet-type-badge">{{ typeLabel(effet.type) }}</span>
@@ -30,10 +34,6 @@
         <ul class="effet-symptomes">
           <li v-for="(s, i) in parsedSymptomes" :key="i" class="effet-symptome">{{ s }}</li>
         </ul>
-      </div>
-
-      <div class="effet-avertissement">
-        <p class="effet-avertissement-text">Si vous lisez ceci, c'est que vous êtes victime de cette potion — merci de prendre tout cela en compte dans votre jeu.</p>
       </div>
 
       <div class="effet-footer">
