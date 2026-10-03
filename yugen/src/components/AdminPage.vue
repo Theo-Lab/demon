@@ -187,7 +187,7 @@ async function sauvegarder(m) {
     if (!fields.mot_de_passe) delete fields.mot_de_passe
     const updated = await adminUpdateUser(m.id, fields)
     const idx = membres.value.findIndex(x => x.id === m.id)
-    if (idx !== -1) membres.value[idx] = { ...membres.value[idx], ...updated }
+    if (idx !== -1) membres.value[idx] = { ...membres.value[idx], ...(updated.user ?? updated) }
     form.value.mot_de_passe = ''
     ok.value = true
     setTimeout(() => { ok.value = false }, 3000)
