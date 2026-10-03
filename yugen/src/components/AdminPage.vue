@@ -86,6 +86,13 @@
                 <label class="field-label">Signature</label>
                 <textarea v-model="form.signature" class="field-input field-textarea" rows="3" placeholder="Texte affiché sous le nom dans les rapports…" />
               </div>
+              <div class="field field--full">
+                <label class="field-label">Scientifique</label>
+                <label class="field-check">
+                  <input type="checkbox" v-model="form.sci_dirigeant" />
+                  Dirigeant de la Scientifique
+                </label>
+              </div>
             </div>
 
             <div v-if="erreur" class="edit-erreur">{{ erreur }}</div>
@@ -149,13 +156,14 @@ function toggleOuvrir(m) {
   erreur.value = ''
   ok.value = false
   form.value = {
-    nom:          m.nom         ?? '',
-    identifiant:  m.identifiant ?? '',
-    mot_de_passe: '',
-    grade:        m.grade       ?? '',
-    pouvoir_nom:  m.pouvoir_nom ?? '',
-    role:         m.role        ?? 'membre',
-    signature:    m.signature   ?? '',
+    nom:           m.nom          ?? '',
+    identifiant:   m.identifiant  ?? '',
+    mot_de_passe:  '',
+    grade:         m.grade        ?? '',
+    pouvoir_nom:   m.pouvoir_nom  ?? '',
+    role:          m.role         ?? 'membre',
+    signature:     m.signature    ?? '',
+    sci_dirigeant: !!m.sci_dirigeant,
   }
 }
 
@@ -380,6 +388,18 @@ async function sauvegarder(m) {
   font-style: italic;
   line-height: 1.45;
 }
+
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+}
+.field-check input { accent-color: #8b1a1a; cursor: pointer; }
 
 .edit-erreur {
   font-family: 'Crimson Text', Georgia, serif;
