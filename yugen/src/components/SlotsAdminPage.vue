@@ -974,13 +974,16 @@ const ongletAdmin = ref('joueurs')
 
 // ── Gestion des jeux ─────────────────────────────────────────────────────────
 const jeusList = [
-  { key: 'slots',     label: 'Machine à Sous',       route: '/slots'     },
-  { key: 'blackjack', label: 'Blackjack',             route: '/blackjack' },
-  { key: 'roulette',  label: 'Roulette',              route: '/roulette'  },
-  { key: 'crossroad', label: 'Traversée Démoniaque',  route: '/crossroad' },
-  { key: 'mines',     label: 'Champ Maudit',          route: '/mines'     },
+  { key: 'slots',       label: 'Machine à Sous',       route: '/slots'       },
+  { key: 'blackjack',   label: 'Blackjack',             route: '/blackjack'   },
+  { key: 'roulette',    label: 'Roulette',              route: '/roulette'    },
+  { key: 'crossroad',   label: 'Traversée Démoniaque',  route: '/crossroad'   },
+  { key: 'mines',       label: 'Champ Maudit',          route: '/mines'       },
+  { key: 'wheel',       label: 'Roue du Destin',        route: '/wheel'       },
+  { key: 'demons_gate', label: "Demon's Gate",          route: '/demons-gate' },
+  { key: 'corps',       label: 'Corps Démoniaque',      route: '/corps'       },
 ]
-const gestionForm    = ref({ slots: true, blackjack: true, roulette: true, crossroad: true, mines: true })
+const gestionForm    = ref({ slots: true, blackjack: true, roulette: true, crossroad: true, mines: true, wheel: true, demons_gate: true, corps: true })
 const loadingGestion = ref(false)
 const gestionErreur  = ref('')
 const gestionOk      = ref(false)

@@ -425,6 +425,9 @@ db.exec(`
 `)
 try { db.exec('ALTER TABLE corps_games ADD COLUMN pump_step REAL NOT NULL DEFAULT 0.12') } catch {}
 try { db.exec("ALTER TABLE corps_games ADD COLUMN difficulte TEXT NOT NULL DEFAULT 'demoniaque'") } catch {}
+// Migrations : activation des nouveaux jeux
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN demons_gate_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
+try { db.prepare('ALTER TABLE slots_config ADD COLUMN corps_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
 
 // Table images symboles Oni 243
 db.exec(`

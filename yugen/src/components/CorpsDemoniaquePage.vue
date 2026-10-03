@@ -2,7 +2,13 @@
   <div class="page" :class="{ 'page--shake': isShaking }">
     <AppNavbar />
 
-    <div class="page-inner">
+    <div v-if="jeuIndisponible" class="jeu-indispo">
+      <p class="jeu-indispo-title">Jeu indisponible</p>
+      <p class="jeu-indispo-sub">Le Corps Démoniaque est temporairement fermé.</p>
+      <RouterLink to="/casino" class="jeu-indispo-link">← Retour au casino</RouterLink>
+    </div>
+
+    <div v-if="!jeuIndisponible" class="page-inner">
 
       <!-- Barre haute -->
       <div class="top-bar">
@@ -159,7 +165,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
-import { corpsState, corpsStart, corpsPump, corpsSceller } from '../api.js'
+import { corpsState, corpsStart, corpsPump, corpsSceller, getCasinoGames } from '../api.js'
 
 const PRESETS = [500, 1000, 5000, 10000]
 
@@ -409,7 +415,10 @@ function addHist(entry) {
   if (historique.value.length > 16) historique.value.pop()
 }
 
+const jeuIndisponible = ref(false)
+
 onMounted(async () => {
+  try { const g = await getCasinoGames(); if (!g.corps) jeuIndisponible.value = true } catch {}
   try {
     const r = await corpsState()
     if (r.solde != null) solde.value = r.solde
@@ -433,6 +442,11 @@ onUnmounted(() => {
 <style scoped>
 /* ── Base ──────────────────────────────────────────────────────────────────── */
 .page { min-height: 100vh; background: #080b11; color: #fff; }
+.jeu-indispo { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 60px); gap:12px; text-align:center; padding:40px; }
+.jeu-indispo-title { font-family:'Cinzel',serif; font-size:1.4rem; letter-spacing:0.06em; color:rgba(255,255,255,0.7); }
+.jeu-indispo-sub { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:rgba(255,255,255,0.3); font-size:1rem; }
+.jeu-indispo-link { margin-top:16px; font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:0.15em; text-transform:uppercase; color:rgba(139,26,26,0.7); text-decoration:none; }
+.jeu-indispo-link:hover { color:rgba(139,26,26,1); }
 
 .page--shake { animation: s-shake 0.45s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes s-shake {

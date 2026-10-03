@@ -14,7 +14,13 @@
   <div :class="['dg-page', shaking ? 'dg-page--shake' : '']">
     <AppNavbar />
 
-    <div class="dg-inner">
+    <div v-if="jeuIndisponible" class="jeu-indispo">
+      <p class="jeu-indispo-title">Jeu indisponible</p>
+      <p class="jeu-indispo-sub">Demon's Gate est temporairement fermé.</p>
+      <RouterLink to="/casino" class="jeu-indispo-link">← Retour au casino</RouterLink>
+    </div>
+
+    <div v-if="!jeuIndisponible" class="dg-inner">
 
       <!-- En-tête -->
       <div class="dg-header">
@@ -293,7 +299,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
-import { demonsGateSpin, demonsGateRespin, demonsGateGetState, getDgSymbols, demonsGateBuyCredits, demonsGateCashout, demonsGateHistory, SERVER_URL } from '../api.js'
+import { demonsGateSpin, demonsGateRespin, demonsGateGetState, getDgSymbols, demonsGateBuyCredits, demonsGateCashout, demonsGateHistory, SERVER_URL, getCasinoGames } from '../api.js'
 import {
   resumeAudio,
   playReelSpin,
@@ -767,7 +773,10 @@ async function handleGateBlow() {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+const jeuIndisponible = ref(false)
+
 onMounted(async () => {
+  try { const g = await getCasinoGames(); if (!g.demons_gate) jeuIndisponible.value = true } catch {}
   await loadSymbols()
   try {
     const state = await demonsGateGetState()
@@ -783,6 +792,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.jeu-indispo { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 60px); gap:12px; text-align:center; padding:40px; }
+.jeu-indispo-title { font-family:'Cinzel',serif; font-size:1.4rem; letter-spacing:0.06em; color:rgba(255,255,255,0.7); }
+.jeu-indispo-sub { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:rgba(255,255,255,0.3); font-size:1rem; }
+.jeu-indispo-link { margin-top:16px; font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:0.15em; text-transform:uppercase; color:rgba(139,26,26,0.7); text-decoration:none; }
+.jeu-indispo-link:hover { color:rgba(139,26,26,1); }
+
 /* ── Base page ──────────────────────────────────────────────────────────────── */
 .dg-page {
   min-height: 100vh;
