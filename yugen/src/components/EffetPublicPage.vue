@@ -240,4 +240,26 @@ function typeLabel(t) {
   text-transform: uppercase;
   color: rgba(255,255,255,0.12);
 }
+
+@media (max-width: 600px) {
+  .effet-page { padding: 0 0 60px; }
+  .effet-inner { padding: 0 16px; }
+
+  .effet-avertissement { margin-top: 24px; padding: 12px 14px; }
+  .effet-avertissement-text { font-size: 0.95rem; }
+
+  .effet-header { padding: 32px 0 24px; margin-bottom: 28px; }
+  .effet-header-meta { gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+
+  .effet-titre { font-size: clamp(1.2rem, 6vw, 1.6rem); }
+  .effet-sous-titre { font-size: 1.05rem; }
+
+  .effet-image { max-height: 220px; margin-bottom: 28px; }
+
+  .effet-section { margin-bottom: 28px; }
+  .effet-contenu { font-size: 1.05rem; }
+  .effet-symptome { font-size: 1rem; padding: 6px 0; }
+
+  .effet-footer { margin-top: 40px; }
+}
 </style>
