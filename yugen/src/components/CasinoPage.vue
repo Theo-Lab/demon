@@ -36,6 +36,20 @@
               </div>
               <span class="game-item-cta">Jouer →</span>
             </RouterLink>
+            <RouterLink to="/demons-gate" class="game-item">
+              <div class="game-item-body">
+                <span class="game-item-name">Demon's Gate</span>
+                <span class="game-item-desc">Collect &amp; Blow · 243 Ways</span>
+              </div>
+              <span class="game-item-cta">Jouer →</span>
+            </RouterLink>
+            <RouterLink to="/corps" class="game-item">
+              <div class="game-item-body">
+                <span class="game-item-name">Corps Démoniaque</span>
+                <span class="game-item-desc">Amplifiez les cellules de Muzan — avant la rupture</span>
+              </div>
+              <span class="game-item-cta">Jouer →</span>
+            </RouterLink>
             <RouterLink to="/blackjack" class="game-item">
               <div class="game-item-body">
                 <span class="game-item-name">Blackjack</span>

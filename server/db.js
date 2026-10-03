@@ -338,6 +338,35 @@ if (misesCols.includes('user_id')) {
   `)
 }
 
+// Table Demon's Gate sessions
+db.exec(`
+  CREATE TABLE IF NOT EXISTS demons_gate_sessions (
+    user_id              INTEGER PRIMARY KEY,
+    flame_count          INTEGER DEFAULT 0,
+    gate_level           INTEGER DEFAULT 1,
+    free_spins_remaining INTEGER DEFAULT 0,
+    fs_mult_accumulated  INTEGER DEFAULT 1,
+    respin_active        INTEGER DEFAULT 0,
+    respin_held          TEXT    DEFAULT '[]',
+    current_mise         INTEGER DEFAULT 0,
+    solde_avant          INTEGER DEFAULT 0,
+    chain_count          INTEGER DEFAULT 0,
+    credits              INTEGER DEFAULT 0,
+    updated_at           DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
+try { db.exec('ALTER TABLE demons_gate_sessions ADD COLUMN chain_count INTEGER DEFAULT 0') } catch {}
+try { db.exec('ALTER TABLE demons_gate_sessions ADD COLUMN credits INTEGER DEFAULT 0') } catch {}
+
+// Table Demon's Gate symboles
+db.exec(`
+  CREATE TABLE IF NOT EXISTS dg_symbols (
+    sym  TEXT PRIMARY KEY,
+    url  TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT ''
+  )
+`)
+
 // Migration game_rounds : supprimer la contrainte CHECK sur jeu
 try {
   const cols = db.prepare("PRAGMA table_info(game_rounds)").all()
@@ -363,6 +392,39 @@ try {
     `)
   }
 } catch {}
+
+// Table logs crédits Demon's Gate (buy-in / cashout)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS dg_credits_logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id),
+    type        TEXT NOT NULL CHECK(type IN ('buy', 'cashout')),
+    credits     INTEGER NOT NULL,
+    montant_yen INTEGER NOT NULL,
+    solde_avant INTEGER NOT NULL,
+    solde_apres INTEGER NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
+
+// Table Corps Démoniaque (jeu de gonflage / crash)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS corps_games (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id),
+    statut      TEXT NOT NULL DEFAULT 'en_cours' CHECK(statut IN ('en_cours', 'rupture', 'scelle')),
+    mise        INTEGER NOT NULL,
+    pumps_done  INTEGER NOT NULL DEFAULT 0,
+    bust_mult   REAL NOT NULL,
+    pump_step   REAL NOT NULL DEFAULT 0.12,
+    difficulte  TEXT NOT NULL DEFAULT 'demoniaque',
+    solde_avant INTEGER NOT NULL,
+    gain_net    INTEGER NOT NULL DEFAULT 0,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
+try { db.exec('ALTER TABLE corps_games ADD COLUMN pump_step REAL NOT NULL DEFAULT 0.12') } catch {}
+try { db.exec("ALTER TABLE corps_games ADD COLUMN difficulte TEXT NOT NULL DEFAULT 'demoniaque'") } catch {}
 
 // Table images symboles Oni 243
 db.exec(`

@@ -521,9 +521,14 @@ export async function getSlotsAdminStats() {
   return data
 }
 
-export async function getSlotsAdminLogs({ limit = 100, offset = 0, joueur = '' } = {}) {
+export async function getSlotsAdminLogs({ limit = 100, offset = 0, joueur = '', source = '', jeu = '', operation = '', date_from = '', date_to = '' } = {}) {
   const params = new URLSearchParams({ limit, offset })
-  if (joueur) params.set('joueur', joueur)
+  if (joueur)    params.set('joueur',    joueur)
+  if (source)    params.set('source',    source)
+  if (jeu)       params.set('jeu',       jeu)
+  if (operation) params.set('operation', operation)
+  if (date_from) params.set('date_from', date_from)
+  if (date_to)   params.set('date_to',   date_to)
   const res = await apiFetch(`${BASE}/slots/admin/logs?${params}`)
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
@@ -742,6 +747,125 @@ export async function updateOniSymbolName(sym, name) {
     method: 'PATCH',
     body: JSON.stringify({ name }),
   })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function demonsGateSpin(mise) {
+  const res = await apiFetch(`${BASE}/demons-gate/spin`, {
+    method: 'POST',
+    body: JSON.stringify({ mise }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function demonsGateRespin() {
+  const res = await apiFetch(`${BASE}/demons-gate/respin`, { method: 'POST' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function demonsGateGetState() {
+  const res = await apiFetch(`${BASE}/demons-gate/state`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function getDgSymbols() {
+  const res = await apiFetch(`${BASE}/demons-gate/symbols`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function uploadDgSymbol(sym, file) {
+  const form = new FormData()
+  form.append('image', file)
+  const res = await apiFetch(`${BASE}/demons-gate/symbols/${sym}`, { method: 'POST', body: form })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function updateDgSymbolName(sym, name) {
+  const res = await apiFetch(`${BASE}/demons-gate/symbols/${sym}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function getDgAdminLogs(params = {}) {
+  const q = new URLSearchParams()
+  if (params.joueur)    q.set('joueur', params.joueur)
+  if (params.date_from) q.set('date_from', params.date_from)
+  if (params.date_to)   q.set('date_to', params.date_to)
+  if (params.limit)     q.set('limit', params.limit)
+  const res = await apiFetch(`${BASE}/demons-gate/admin/logs?${q}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function demonsGateHistory(limit = 30) {
+  const res = await apiFetch(`${BASE}/demons-gate/history?limit=${limit}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function demonsGateBuyCredits(montant) {
+  const res = await apiFetch(`${BASE}/demons-gate/buy-credits`, {
+    method: 'POST',
+    body: JSON.stringify({ montant }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function demonsGateCashout() {
+  const res = await apiFetch(`${BASE}/demons-gate/cashout`, { method: 'POST' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+// ── Corps Démoniaque ──────────────────────────────────────────────────────────
+
+export async function corpsState() {
+  const res = await apiFetch(`${BASE}/corps/state`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function corpsStart(mise, difficulte = 'demoniaque') {
+  const res = await apiFetch(`${BASE}/corps/start`, {
+    method: 'POST',
+    body: JSON.stringify({ mise, difficulte }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function corpsPump() {
+  const res = await apiFetch(`${BASE}/corps/pump`, { method: 'POST' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function corpsSceller() {
+  const res = await apiFetch(`${BASE}/corps/sceller`, { method: 'POST' })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
   return data

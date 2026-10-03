@@ -31,6 +31,9 @@
         <button v-if="isAdmin" :class="['jeu-tab', jeu === 'oni243' ? 'jeu-tab--actif' : '']" @click="jeu = 'oni243'; chargerOniSymbols()">
           Oni 243
         </button>
+        <button v-if="isAdmin" :class="['jeu-tab', jeu === 'dg' ? 'jeu-tab--actif' : '']" @click="jeu = 'dg'; chargerDgSymbols()">
+          Demon's Gate
+        </button>
         <button v-if="isCasino" :class="['jeu-tab', jeu === 'tables' ? 'jeu-tab--actif' : '']" @click="jeu = 'tables'; chargerTables()">
           Tables
         </button>
@@ -375,6 +378,164 @@
         </div>
       </template>
 
+      <!-- ── Demon's Gate ── -->
+      <template v-if="jeu === 'dg' && isAdmin">
+
+        <div class="onglets">
+          <button :class="['onglet', dgOnglet === 'symboles' ? 'onglet--actif' : '']" @click="dgOnglet = 'symboles'">Symboles</button>
+          <button :class="['onglet', dgOnglet === 'analyse' ? 'onglet--actif' : '']" @click="dgOnglet = 'analyse'; chargerDgLogs()">Analyse</button>
+        </div>
+
+        <!-- Symboles -->
+        <template v-if="dgOnglet === 'symboles'">
+          <div class="form-card">
+            <h2 class="form-title">Symboles Demon's Gate</h2>
+            <p class="field-hint" style="margin-bottom:18px">
+              Remplacez les emojis par vos propres images. PNG ou WebP recommandé, fond transparent.
+            </p>
+            <div class="oni-symbols-grid">
+              <div v-for="sym in DG_SYMS" :key="sym" class="oni-sym-card">
+                <div class="oni-sym-preview">
+                  <img v-if="dgImages[sym]" :src="dgImages[sym]" class="oni-sym-img" :alt="sym" />
+                  <span v-else class="oni-sym-emoji">{{ DG_EMOJI[sym] }}</span>
+                </div>
+                <div class="oni-name-row">
+                  <input
+                    class="oni-name-input"
+                    type="text"
+                    :placeholder="sym"
+                    v-model="dgNames[sym]"
+                    maxlength="40"
+                    @keydown.enter="saveDgName(sym)"
+                  />
+                  <button class="oni-name-save" :disabled="!!dgNameSaving[sym]" @click="saveDgName(sym)">
+                    {{ dgNameSaving[sym] ? '…' : '✓' }}
+                  </button>
+                </div>
+                <label class="oni-upload-btn">
+                  {{ dgUploading[sym] ? '…' : 'Image' }}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style="display:none"
+                    @change="(e) => onDgImageChange(sym, e)"
+                    :disabled="!!dgUploading[sym]"
+                  />
+                </label>
+                <div v-if="dgErrors[sym]" class="oni-sym-err">{{ dgErrors[sym] }}</div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Analyse -->
+        <template v-if="dgOnglet === 'analyse'">
+
+          <!-- Filtres -->
+          <div class="form-card dg-analyse-filters">
+            <div class="dg-filter-row">
+              <div class="dg-filter-group">
+                <label class="dg-filter-label">Joueur</label>
+                <input class="dg-filter-input" v-model="dgFiltreJoueur" placeholder="Nom…" @keydown.enter="chargerDgLogs" />
+              </div>
+              <div class="dg-filter-group">
+                <label class="dg-filter-label">Du</label>
+                <input class="dg-filter-input" type="date" v-model="dgFiltreFrom" />
+              </div>
+              <div class="dg-filter-group">
+                <label class="dg-filter-label">Au</label>
+                <input class="dg-filter-input" type="date" v-model="dgFiltreTo" />
+              </div>
+              <button class="btn-secondary" @click="chargerDgLogs" :disabled="dgLogsLoading">
+                {{ dgLogsLoading ? '…' : 'Filtrer' }}
+              </button>
+              <button class="btn-secondary" @click="dgResetFiltres">Reset</button>
+            </div>
+            <div v-if="dgLogsErreur" class="form-erreur">{{ dgLogsErreur }}</div>
+          </div>
+
+          <!-- Stats -->
+          <div v-if="dgStats" class="dg-stats-grid">
+            <div class="dg-stat-card">
+              <span class="dg-stat-label">Parties</span>
+              <span class="dg-stat-value">{{ dgStats.total_rounds?.toLocaleString('fr-FR') ?? 0 }}</span>
+            </div>
+            <div class="dg-stat-card">
+              <span class="dg-stat-label">Taux de gain joueurs</span>
+              <span class="dg-stat-value">
+                {{ dgStats.total_rounds ? Math.round(dgStats.win_rounds / dgStats.total_rounds * 100) : 0 }}%
+              </span>
+            </div>
+            <div class="dg-stat-card">
+              <span class="dg-stat-label">Total misé</span>
+              <span class="dg-stat-value">{{ ((dgStats.total_wagered ?? 0) / 10).toLocaleString('fr-FR') }} cr</span>
+            </div>
+            <div class="dg-stat-card">
+              <span class="dg-stat-label">Total reversé</span>
+              <span class="dg-stat-value">{{ ((dgStats.total_paid_out ?? 0) / 10).toLocaleString('fr-FR') }} cr</span>
+            </div>
+            <div class="dg-stat-card dg-stat-card--house">
+              <span class="dg-stat-label">Gain maison net</span>
+              <span class="dg-stat-value">
+                {{ ((dgStats.total_wagered ?? 0) - (dgStats.total_paid_out ?? 0) > 0 ? '+' : '') }}{{ (((dgStats.total_wagered ?? 0) - (dgStats.total_paid_out ?? 0)) / 10).toLocaleString('fr-FR') }} cr
+              </span>
+            </div>
+            <div class="dg-stat-card">
+              <span class="dg-stat-label">House edge réel</span>
+              <span class="dg-stat-value">
+                {{ dgStats.total_wagered ? Math.round(((dgStats.total_wagered - (dgStats.total_paid_out ?? 0)) / dgStats.total_wagered) * 100) : 0 }}%
+              </span>
+            </div>
+          </div>
+
+          <!-- Table des parties -->
+          <div class="form-card" style="padding:0; overflow:hidden">
+            <div v-if="dgLogsLoading" class="dg-logs-loading">Chargement…</div>
+            <div v-else-if="dgLogs.length === 0" class="dg-logs-empty">Aucune partie trouvée.</div>
+            <table v-else class="dg-logs-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Joueur</th>
+                  <th>Mise</th>
+                  <th>Résultat net</th>
+                  <th>Combinaisons</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="r in dgLogs"
+                  :key="r.id"
+                  :class="r.gain_net > 0 ? 'dg-row--win' : r.gain_net < 0 ? 'dg-row--lose' : ''"
+                >
+                  <td class="dg-cell-date">{{ formatDt(r.created_at) }}</td>
+                  <td class="dg-cell-joueur">{{ r.user_nom }}</td>
+                  <td class="dg-cell-mise">{{ (r.mise / 10).toLocaleString('fr-FR') }} cr</td>
+                  <td :class="['dg-cell-net', r.gain_net > 0 ? 'dg-net--pos' : r.gain_net < 0 ? 'dg-net--neg' : '']">
+                    {{ r.gain_net >= 0 ? '+' : '' }}{{ (r.gain_net / 10).toLocaleString('fr-FR') }} cr
+                  </td>
+                  <td class="dg-cell-combos">
+                    <template v-if="parseDgCombo(r.resultat).length === 0">
+                      <span class="dg-combo-none">—</span>
+                    </template>
+                    <span
+                      v-for="(c, i) in parseDgCombo(r.resultat)"
+                      :key="i"
+                      class="dg-combo-tag"
+                    >
+                      {{ DG_EMOJI[c.sym] ?? c.sym }} ×{{ c.reels }}
+                      <span class="dg-combo-ways">({{ c.ways }} way{{ c.ways > 1 ? 's' : '' }})</span>
+                      <span class="dg-combo-amount">+{{ (c.amount).toLocaleString('fr-FR') }} cr</span>
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </template>
+      </template>
+
       <!-- ── Tables actives ── -->
       <template v-if="jeu === 'tables' && isCasino">
         <div class="form-card">
@@ -646,10 +807,34 @@
             v-model="logsRecherche"
             class="field-input recherche-input"
             type="text"
-            placeholder="Filtrer par joueur…"
+            placeholder="Joueur…"
             autocomplete="off"
             @input="debounceLogs"
           />
+          <select v-model="logsSource" class="field-input logs-select" @change="resetAndReload">
+            <option value="">Tous (jeux + admin)</option>
+            <option value="jeu">Jeux seulement</option>
+            <option value="admin">Admin seulement</option>
+          </select>
+          <select v-if="logsSource !== 'admin'" v-model="logsJeu" class="field-input logs-select" @change="resetAndReload">
+            <option value="">Tous les jeux</option>
+            <option value="slots">Slots</option>
+            <option value="roulette">Roulette</option>
+            <option value="blackjack">Blackjack</option>
+            <option value="crossroad">Traversée</option>
+            <option value="mines">Mines</option>
+            <option value="wheel">Roue</option>
+            <option value="ways243">Oni 243</option>
+          </select>
+          <select v-if="logsSource === 'admin'" v-model="logsOperation" class="field-input logs-select" @change="resetAndReload">
+            <option value="">Toutes opérations</option>
+            <option value="add">Dépôt</option>
+            <option value="remove">Retrait</option>
+            <option value="set">Définir</option>
+          </select>
+          <input v-model="logsDateFrom" class="field-input logs-date" type="date" title="Depuis" @change="resetAndReload" />
+          <input v-model="logsDateTo"   class="field-input logs-date" type="date" title="Jusqu'à" @change="resetAndReload" />
+          <button class="btn-secondary logs-reset" @click="resetLogs">Réinitialiser</button>
           <span class="recherche-count">{{ logsTotal }} transaction{{ logsTotal !== 1 ? 's' : '' }}</span>
         </div>
 
@@ -773,6 +958,7 @@ import {
   getCasinoGames, updateCasinoGames,
   getBjConfig, saveBjConfig, toggleMalchance, getMalchanceLogs,
   getOniSymbols, uploadOniSymbol, updateOniSymbolName, SERVER_URL,
+  getDgSymbols, uploadDgSymbol, updateDgSymbolName, getDgAdminLogs,
   closeBjTable, closePokerTable, getPokerTables, getBlackjackTables,
 } from '../api.js'
 
@@ -982,6 +1168,114 @@ async function onOniImageChange(sym, event) {
     oniErrors.value[sym] = e.message
   } finally {
     oniUploading.value[sym] = false
+    event.target.value = ''
+  }
+}
+
+// ── Demon's Gate — Symboles ───────────────────────────────────────────────────
+const DG_SYMS  = ['DEMON', 'KNIGHT', 'MAGE', 'MINION', 'LOW1', 'LOW2', 'LOW3', 'FLAME', 'SKULL']
+const DG_EMOJI = { DEMON:'👿', KNIGHT:'⚔️', MAGE:'🔮', MINION:'👹', LOW1:'💀', LOW2:'🦴', LOW3:'🩸', FLAME:'🔥', SKULL:'💎' }
+
+const dgOnglet        = ref('symboles')  // 'symboles' | 'analyse'
+
+// ── Demon's Gate — Analyse ────────────────────────────────────────────────────
+const dgLogs          = ref([])
+const dgStats         = ref(null)
+const dgLogsLoading   = ref(false)
+const dgLogsErreur    = ref('')
+const dgFiltreJoueur  = ref('')
+const dgFiltreFrom    = ref('')
+const dgFiltreTo      = ref('')
+
+async function chargerDgLogs() {
+  dgLogsLoading.value = true
+  dgLogsErreur.value  = ''
+  try {
+    const data = await getDgAdminLogs({
+      joueur:    dgFiltreJoueur.value || undefined,
+      date_from: dgFiltreFrom.value   || undefined,
+      date_to:   dgFiltreTo.value     || undefined,
+      limit:     200,
+    })
+    dgLogs.value  = data.rounds
+    dgStats.value = data.stats
+  } catch (e) {
+    dgLogsErreur.value = e.message
+  } finally {
+    dgLogsLoading.value = false
+  }
+}
+
+function dgResetFiltres() {
+  dgFiltreJoueur.value = ''
+  dgFiltreFrom.value   = ''
+  dgFiltreTo.value     = ''
+  chargerDgLogs()
+}
+
+function parseDgCombo(resultatJson) {
+  try {
+    const r = JSON.parse(resultatJson)
+    if (!r.wins || r.wins.length === 0) return []
+    return r.wins.map(w => ({
+      sym:    w.sym,
+      reels:  w.reels,
+      ways:   w.ways || w.combos || 1,
+      amount: w.amount,
+    }))
+  } catch { return [] }
+}
+
+function formatDt(dt) {
+  const d = new Date(dt)
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+       + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
+const dgImages     = ref({})
+const dgNames      = ref({})
+const dgUploading  = ref({})
+const dgErrors     = ref({})
+const dgNameSaving = ref({})
+
+async function chargerDgSymbols() {
+  try {
+    const raw = await getDgSymbols()
+    const imgs = {}
+    const names = {}
+    for (const [sym, data] of Object.entries(raw)) {
+      if (data.url) imgs[sym] = data.url.startsWith('/') ? SERVER_URL + data.url : data.url
+      if (data.name) names[sym] = data.name
+    }
+    dgImages.value = imgs
+    dgNames.value  = names
+  } catch {}
+}
+
+async function saveDgName(sym) {
+  dgNameSaving.value[sym] = true
+  dgErrors.value[sym] = ''
+  try {
+    await updateDgSymbolName(sym, dgNames.value[sym] ?? '')
+  } catch (e) {
+    dgErrors.value[sym] = e.message
+  } finally {
+    dgNameSaving.value[sym] = false
+  }
+}
+
+async function onDgImageChange(sym, event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  dgErrors.value[sym]    = ''
+  dgUploading.value[sym] = true
+  try {
+    const res = await uploadDgSymbol(sym, file)
+    const url = res.url.startsWith('/') ? SERVER_URL + res.url : res.url
+    dgImages.value[sym] = url
+  } catch (e) {
+    dgErrors.value[sym] = e.message
+  } finally {
+    dgUploading.value[sym] = false
     event.target.value = ''
   }
 }
@@ -1234,18 +1528,32 @@ async function chargerStats() {
 }
 
 // ── Logs ─────────────────────────────────────────────────────────────────────
-const logs          = ref([])
-const logsTotal     = ref(0)
-const loadingLogs   = ref(false)
-const logsRecherche = ref('')
-const logsLimit     = 100
-const logsOffset    = ref(0)
-let   logsTimer     = null
+const logs           = ref([])
+const logsTotal      = ref(0)
+const loadingLogs    = ref(false)
+const logsRecherche  = ref('')
+const logsSource     = ref('')
+const logsJeu        = ref('')
+const logsOperation  = ref('')
+const logsDateFrom   = ref('')
+const logsDateTo     = ref('')
+const logsLimit      = 100
+const logsOffset     = ref(0)
+let   logsTimer      = null
 
 async function chargerLogs() {
   loadingLogs.value = true
   try {
-    const data = await getSlotsAdminLogs({ limit: logsLimit, offset: logsOffset.value, joueur: logsRecherche.value })
+    const data = await getSlotsAdminLogs({
+      limit:     logsLimit,
+      offset:    logsOffset.value,
+      joueur:    logsRecherche.value,
+      source:    logsSource.value,
+      jeu:       logsJeu.value,
+      operation: logsOperation.value,
+      date_from: logsDateFrom.value,
+      date_to:   logsDateTo.value,
+    })
     logs.value      = data.logs
     logsTotal.value = data.total
   } finally {
@@ -1257,6 +1565,22 @@ function debounceLogs() {
   clearTimeout(logsTimer)
   logsOffset.value = 0
   logsTimer = setTimeout(chargerLogs, 300)
+}
+
+function resetAndReload() {
+  logsOffset.value = 0
+  chargerLogs()
+}
+
+function resetLogs() {
+  logsRecherche.value = ''
+  logsSource.value    = ''
+  logsJeu.value       = ''
+  logsOperation.value = ''
+  logsDateFrom.value  = ''
+  logsDateTo.value    = ''
+  logsOffset.value    = 0
+  chargerLogs()
 }
 
 function logsPage(dir) {
@@ -1916,8 +2240,22 @@ onMounted(async () => {
 .logs-toolbar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 16px;
+}
+.logs-select {
+  flex: 1;
+  min-width: 140px;
+  max-width: 200px;
+}
+.logs-date {
+  flex: 1;
+  min-width: 120px;
+  max-width: 150px;
+}
+.logs-reset {
+  white-space: nowrap;
 }
 
 .logs-table-wrap {
@@ -2346,4 +2684,143 @@ onMounted(async () => {
   color: rgba(201,53,79,0.8);
   text-align: center;
 }
+
+/* ── Demon's Gate — Analyse ─────────────────────────────────────────────────── */
+.dg-analyse-filters { padding: 16px 20px; }
+
+.dg-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dg-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dg-filter-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.5rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+}
+
+.dg-filter-input {
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #d4cfc9;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  min-width: 140px;
+}
+
+.dg-filter-input[type="date"] { min-width: 130px; color-scheme: dark; }
+
+.dg-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.dg-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.dg-stat-card--house {
+  border-color: rgba(232,64,40,0.3);
+  background: rgba(80,10,10,0.2);
+}
+
+.dg-stat-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.48rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+}
+
+.dg-stat-value {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  color: #d4cfc9;
+}
+
+.dg-stat-card--house .dg-stat-value { color: #e86040; }
+
+.dg-logs-loading,
+.dg-logs-empty {
+  padding: 24px;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  color: rgba(255,255,255,0.25);
+  text-align: center;
+}
+
+.dg-logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+}
+
+.dg-logs-table thead tr {
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.dg-logs-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.5rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  font-weight: 400;
+}
+
+.dg-logs-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: top;
+}
+
+.dg-row--win  td { background: rgba(80,160,40,0.05); }
+.dg-row--lose td { background: rgba(160,40,40,0.05); }
+
+.dg-cell-date   { color: rgba(255,255,255,0.35); font-size: 0.64rem; white-space: nowrap; }
+.dg-cell-joueur { color: rgba(255,255,255,0.7); }
+.dg-cell-mise   { color: rgba(255,255,255,0.5); white-space: nowrap; }
+
+.dg-cell-net    { font-weight: 600; white-space: nowrap; }
+.dg-net--pos    { color: #7ed44a; }
+.dg-net--neg    { color: rgba(220,80,80,0.8); }
+
+.dg-cell-combos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+.dg-combo-none  { color: rgba(255,255,255,0.15); }
+
+.dg-combo-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.65rem;
+  white-space: nowrap;
+}
+
+.dg-combo-ways   { color: rgba(255,255,255,0.3); font-size: 0.58rem; }
+.dg-combo-amount { color: #7ed44a; font-size: 0.65rem; }
 </style>

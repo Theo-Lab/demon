@@ -27,6 +27,8 @@ import SlotsMultiPage from '../components/SlotsMultiPage.vue'
 import PokerLobbyPage from '../components/PokerLobbyPage.vue'
 import PokerTablePage from '../components/PokerTablePage.vue'
 import Ways243Page from '../components/Ways243Page.vue'
+import DemonsGatePage from '../components/DemonsGatePage.vue'
+import CorpsDemoniaquePage from '../components/CorpsDemoniaquePage.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -56,6 +58,8 @@ const routes = [
   { path: '/poker',             component: PokerLobbyPage     },
   { path: '/poker/:id',         component: PokerTablePage     },
   { path: '/newslot',           component: Ways243Page        },
+  { path: '/demons-gate',       component: DemonsGatePage     },
+  { path: '/corps',             component: CorpsDemoniaquePage },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
