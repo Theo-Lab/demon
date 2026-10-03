@@ -32,6 +32,10 @@
         </ul>
       </div>
 
+      <div class="effet-avertissement">
+        <p class="effet-avertissement-text">Si vous lisez ceci, c'est que vous êtes victime de cette potion — merci de prendre tout cela en compte dans votre jeu.</p>
+      </div>
+
       <div class="effet-footer">
         <span class="effet-footer-text">La Scientifique — Ordre Démoniaque</span>
       </div>
@@ -203,6 +207,23 @@ function typeLabel(t) {
   content: '—';
   color: rgba(139,26,26,0.7);
   flex-shrink: 0;
+}
+
+.effet-avertissement {
+  margin-top: 40px;
+  padding: 16px 20px;
+  border: 1px solid rgba(139,26,26,0.2);
+  background: rgba(139,26,26,0.05);
+  text-align: center;
+}
+
+.effet-avertissement-text {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 1rem;
+  font-style: italic;
+  color: rgba(255,255,255,0.35);
+  margin: 0;
+  line-height: 1.5;
 }
 
 .effet-footer {
