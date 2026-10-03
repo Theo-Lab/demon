@@ -164,7 +164,7 @@ import { corpsState, corpsStart, corpsPump, corpsSceller } from '../api.js'
 const PRESETS = [500, 1000, 5000, 10000]
 
 const DIFFS = {
-  initie:      { label: 'Facile',         pump_step: 0.08, house_edge: 0.15 },
+  initie:      { label: 'Facile',         pump_step: 0.08, house_edge: 0.35 },
   demoniaque:  { label: 'Difficile',      pump_step: 0.12, house_edge: 0.25 },
   experimente: { label: 'Très difficile', pump_step: 0.20, house_edge: 0.45 },
 }

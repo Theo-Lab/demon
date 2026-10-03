@@ -5,7 +5,7 @@ const discord = require('./discordService')
 
 // ── Niveaux de difficulté ─────────────────────────────────────────────────────
 const DIFFICULTIES = {
-  initie:      { label: 'Facile',         pump_step: 0.08, house_edge: 0.15, bust_cap: 20  },
+  initie:      { label: 'Facile',         pump_step: 0.08, house_edge: 0.35, bust_cap: 20  },
   demoniaque:  { label: 'Difficile',      pump_step: 0.12, house_edge: 0.25, bust_cap: 8   },
   experimente: { label: 'Très difficile', pump_step: 0.20, house_edge: 0.45, bust_cap: 3.5 },
 }
