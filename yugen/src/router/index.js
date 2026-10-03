@@ -30,6 +30,7 @@ import Ways243Page from '../components/Ways243Page.vue'
 import DemonsGatePage from '../components/DemonsGatePage.vue'
 import CorpsDemoniaquePage from '../components/CorpsDemoniaquePage.vue'
 import ScientifiquePage from '../components/ScientifiquePage.vue'
+import EffetPublicPage from '../components/EffetPublicPage.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -62,6 +63,7 @@ const routes = [
   { path: '/demons-gate',       component: DemonsGatePage     },
   { path: '/corps',             component: CorpsDemoniaquePage },
   { path: '/scientifique',      component: ScientifiquePage   },
+  { path: '/effets/:token',     component: EffetPublicPage    },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

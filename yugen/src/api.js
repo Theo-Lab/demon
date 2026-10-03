@@ -982,3 +982,145 @@ export async function sciSetDirigeant(userId, actif) {
   const res = await apiFetch(`${BASE}/scientifique/admin/dirigeant`, { method: 'POST', body: JSON.stringify({ userId, actif }) })
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
+
+// ── Encyclopédie Scientifique ─────────────────────────────────────────────────
+export async function encGetScientists() {
+  const res = await apiFetch(`${BASE}/scientifique/enc/scientists`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function encGetScientist(id) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/scientists/${id}`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function encCreateScientist(data) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/scientists`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encUpdateScientist(id, data) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/scientists/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encDeleteScientist(id) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/scientists/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encGetIngredients(categorie) {
+  const url = categorie ? `${BASE}/scientifique/enc/ingredients?categorie=${categorie}` : `${BASE}/scientifique/enc/ingredients`
+  const res = await apiFetch(url)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function encGetIngredient(id) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/ingredients/${id}`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function encCreateIngredient(data) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/ingredients`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encUpdateIngredient(id, data) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/ingredients/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encDeleteIngredient(id) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/ingredients/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encGetPotions() {
+  const res = await apiFetch(`${BASE}/scientifique/enc/potions`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function encGetPotion(id) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/potions/${id}`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function encCreatePotion(data) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/potions`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encUpdatePotion(id, data) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/potions/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encDeletePotion(id) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/potions/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encGetExperiments() {
+  const res = await apiFetch(`${BASE}/scientifique/enc/experiments`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function encGetExperiment(id) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/experiments/${id}`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function encCreateExperiment(data) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/experiments`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encUpdateExperiment(id, data) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/experiments/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encDeleteExperiment(id) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/experiments/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encGetProjects() {
+  const res = await apiFetch(`${BASE}/scientifique/enc/projects`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function encGetProject(id) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/projects/${id}`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function encCreateProject(data) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/projects`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encUpdateProject(id, data) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/projects/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encDeleteProject(id) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/projects/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function encSearch(q) {
+  const res = await apiFetch(`${BASE}/scientifique/enc/search?q=${encodeURIComponent(q)}`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+
+// ── Effets Ressentis ──────────────────────────────────────────────────────────
+export async function sciGetEffets() {
+  const res = await apiFetch(`${BASE}/scientifique/effets`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function sciCreateEffet(data) {
+  const res = await apiFetch(`${BASE}/scientifique/effets`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciUpdateEffet(id, data) {
+  const res = await apiFetch(`${BASE}/scientifique/effets/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciDeleteEffet(id) {
+  const res = await apiFetch(`${BASE}/scientifique/effets/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+// Public — pas d'auth
+export async function sciGetEffetPublic(token) {
+  const res = await fetch(`${BASE}/scientifique/effets/public/${token}`)
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}

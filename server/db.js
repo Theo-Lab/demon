@@ -504,4 +504,218 @@ db.exec(`
 `)
 try { db.prepare('ALTER TABLE users ADD COLUMN sci_dirigeant INTEGER NOT NULL DEFAULT 0').run() } catch {}
 
+// ── Encyclopédie Scientifique ────────────────────────────────────────────────
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sci_scientists (
+    id TEXT PRIMARY KEY,
+    nom TEXT NOT NULL,
+    affinite TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    image_url TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_ingredients (
+    id TEXT PRIMARY KEY,
+    nom TEXT NOT NULL,
+    categorie TEXT NOT NULL DEFAULT 'plante',
+    description TEXT DEFAULT '',
+    image_url TEXT DEFAULT '',
+    proprietes TEXT DEFAULT '',
+    localisation TEXT DEFAULT '',
+    zone TEXT DEFAULT '',
+    obtention TEXT DEFAULT '',
+    danger INTEGER DEFAULT 0,
+    recette_rp TEXT DEFAULT '',
+    utilite_rp TEXT DEFAULT '',
+    effets_rp TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_potions (
+    id TEXT PRIMARY KEY,
+    nom TEXT NOT NULL,
+    image_url TEXT DEFAULT '',
+    createur_id TEXT REFERENCES sci_scientists(id),
+    createur_nom TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    effet_principal TEXT DEFAULT '',
+    effets_secondaires TEXT DEFAULT '',
+    materiel TEXT DEFAULT '',
+    etapes_preparation TEXT DEFAULT '',
+    jet_minimum INTEGER DEFAULT NULL,
+    nb_fioles INTEGER DEFAULT NULL,
+    statut TEXT DEFAULT 'theorique',
+    niveau_danger INTEGER DEFAULT 0,
+    notes TEXT DEFAULT '',
+    date_creation TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_potion_ingredients (
+    potion_id TEXT NOT NULL REFERENCES sci_potions(id) ON DELETE CASCADE,
+    ingredient_id TEXT NOT NULL REFERENCES sci_ingredients(id),
+    quantite TEXT DEFAULT '',
+    PRIMARY KEY (potion_id, ingredient_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_experiments (
+    id TEXT PRIMARY KEY,
+    nom TEXT NOT NULL,
+    responsable_id TEXT REFERENCES sci_scientists(id),
+    responsable_nom TEXT DEFAULT '',
+    participants TEXT DEFAULT '[]',
+    date TEXT DEFAULT '',
+    objectif TEXT DEFAULT '',
+    hypothese TEXT DEFAULT '',
+    sujet_teste TEXT DEFAULT '',
+    protocole TEXT DEFAULT '',
+    jets TEXT DEFAULT '',
+    observations TEXT DEFAULT '',
+    resultats TEXT DEFAULT '',
+    conclusion TEXT DEFAULT '',
+    statut TEXT DEFAULT 'proposition',
+    ressources_utilisees TEXT DEFAULT '[]',
+    potions_utilisees TEXT DEFAULT '[]',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_projects (
+    id TEXT PRIMARY KEY,
+    nom TEXT NOT NULL,
+    responsable_id TEXT REFERENCES sci_scientists(id),
+    responsable_nom TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    principe TEXT DEFAULT '',
+    architecture TEXT DEFAULT '',
+    objectifs TEXT DEFAULT '[]',
+    etapes TEXT DEFAULT '[]',
+    statut TEXT DEFAULT 'en_cours',
+    progression INTEGER DEFAULT 0,
+    notes TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_project_experiments (
+    project_id TEXT NOT NULL REFERENCES sci_projects(id) ON DELETE CASCADE,
+    experiment_id TEXT NOT NULL REFERENCES sci_experiments(id),
+    PRIMARY KEY (project_id, experiment_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_project_potions (
+    project_id TEXT NOT NULL REFERENCES sci_projects(id) ON DELETE CASCADE,
+    potion_id TEXT NOT NULL REFERENCES sci_potions(id),
+    PRIMARY KEY (project_id, potion_id)
+  );
+`)
+
+try { db.prepare("ALTER TABLE sci_experiments ADD COLUMN image_url TEXT NOT NULL DEFAULT ''").run() } catch {}
+try { db.prepare("ALTER TABLE sci_projects ADD COLUMN image_url TEXT NOT NULL DEFAULT ''").run() } catch {}
+
+// ── Seed encyclopédie ────────────────────────────────────────────────────────
+
+const _seedScientist = db.prepare(`INSERT OR IGNORE INTO sci_scientists (id, nom, affinite, description) VALUES (?, ?, ?, ?)`)
+const _seedScientists = [
+  { id: 'hanzo', nom: 'Hanzo', affinite: '', description: '' },
+  { id: 'hirozuki', nom: 'Hirozuki', affinite: '', description: '' },
+  { id: 'yagami', nom: 'Yagami', affinite: '', description: '' },
+  { id: 'hawara', nom: 'Hawara', affinite: '', description: '' },
+  { id: 'sasaki-lionheart', nom: 'Sasaki Lionheart', affinite: '', description: '' },
+  { id: 'shiki', nom: 'Shiki', affinite: '', description: '' },
+  { id: 'sun-tzu', nom: 'Sun Tzu', affinite: '', description: '' },
+  { id: 'getsu-fushiguro', nom: 'Getsu Fushiguro', affinite: '', description: '' },
+  { id: 'yokai-z', nom: 'Yokai Z', affinite: '', description: '' },
+  { id: 'baldi', nom: 'Baldi', affinite: 'Glace', description: '' },
+]
+for (const s of _seedScientists) _seedScientist.run(s.id, s.nom, s.affinite, s.description)
+
+const _seedIngredient = db.prepare(`INSERT OR IGNORE INTO sci_ingredients (id, nom, categorie, description, proprietes, localisation, zone, obtention, danger, utilite_rp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+const _seedIngredients = [
+  { id: 'belladone', nom: 'Belladone', categorie: 'plante_toxique', proprietes: 'Agit sur le système nerveux.', localisation: 'Entrée de la Forêt de la Sélection', danger: 4 },
+  { id: 'glycine', nom: 'Glycine', categorie: 'plante_toxique', proprietes: 'Utilisée en poisons et remèdes.', localisation: 'Commune, notamment Forêt de la Sélection', danger: 2 },
+  { id: 'ricin', nom: 'Ricin', categorie: 'plante_toxique', proprietes: 'Perturbe les fonctions cellulaires.', localisation: 'Hauteurs des zones enneigées', danger: 5 },
+  { id: 'curare', nom: 'Curare', categorie: 'plante_toxique', proprietes: 'Provoque une paralysie musculaire.', localisation: 'Zones chaudes comme Magma', danger: 5 },
+  { id: 'colchique', nom: 'Colchique', categorie: 'plante_toxique', proprietes: "Agit sur la cognition, l'apprentissage et la mémoire.", localisation: 'Forêt de la Sélection', danger: 4 },
+  { id: 'morelle-noire', nom: 'Morelle Noire', categorie: 'plante_toxique', proprietes: 'Provoque nausées, douleurs, paralysie et autres symptômes.', localisation: 'Grotte de la Forêt des Araignées', danger: 4 },
+  { id: 'anadenanthera-peregrina', nom: 'Anadenanthera peregrina', categorie: 'plante_toxique', proprietes: 'Hallucinogène.', localisation: 'Profondeurs des marais QDP', danger: 3 },
+  { id: 'plantain', nom: 'Plantain', categorie: 'plante_medicinale', proprietes: 'Aide à arrêter les hémorragies.', localisation: 'Forêts', danger: 0 },
+  { id: 'ginkgo', nom: 'Ginkgo', categorie: 'plante_medicinale', proprietes: 'Soin et neuroprotection.', localisation: 'Clairières de la Capitale et des Plaines', danger: 0 },
+  { id: 'laurier', nom: 'Laurier', categorie: 'plante_medicinale', proprietes: 'Utilisé en remèdes.', localisation: 'Buissons QDP', danger: 0 },
+  { id: 'cigue', nom: 'Ciguë', categorie: 'plante_medicinale', proprietes: 'Effet sédatif.', localisation: 'Sous les arbres enneigés de Snow', danger: 2 },
+  { id: 'aloe-vera', nom: 'Aloe Vera', categorie: 'plante_medicinale', proprietes: 'Accélération de la guérison des brûlures.', localisation: 'Bord des lacs hors lacs gelés', danger: 0 },
+  { id: 'consoude-officinale', nom: 'Consoude Officinale', categorie: 'plante_medicinale', proprietes: 'Soins des blessures et lésions.', localisation: 'Berges humides et cours d\'eau', danger: 0 },
+  { id: 'hamamelis', nom: 'Hamamélis', categorie: 'plante_medicinale', proprietes: 'Régénération des tissus.', localisation: 'Buissons', danger: 0 },
+  { id: 'echinacee', nom: 'Échinacée', categorie: 'plante_medicinale', proprietes: 'Réduction de certains symptômes.', localisation: 'Zones ensoleillées des Plaines', danger: 0 },
+  { id: 'passiflore', nom: 'Passiflore', categorie: 'plante_medicinale', proprietes: 'Traumatismes physiques, fractures, douleurs musculaires.', localisation: 'Zones très chaudes de Magma', danger: 0 },
+  { id: 'estragon', nom: 'Estragon', categorie: 'plante_medicinale', proprietes: "Insomnie et troubles de l'humeur.", localisation: 'Bord de Magma près des rochers chauds', danger: 0 },
+  { id: 'curcuma', nom: 'Curcuma', categorie: 'plante_medicinale', proprietes: 'Antidouleur puissant.', localisation: 'Zone froide Snow près des arbres', danger: 0 },
+  { id: 'millepertuis', nom: 'Millepertuis', categorie: 'plante_medicinale', proprietes: 'Anti-inflammatoire et plante polyvalente.', localisation: 'Forêts', danger: 0 },
+  { id: 'racine-gelee', nom: 'Racine Gelée', categorie: 'ressource', localisation: 'Snow', obtention: 'Arbres' },
+  { id: 'cristaux-givre-noir', nom: 'Cristaux de Givre Noir', categorie: 'ressource', localisation: 'Snow', obtention: 'Glaciers / lac gelé' },
+  { id: 'venin-araignee', nom: "Venin d'Araignée concentré", categorie: 'ressource', localisation: 'Grotte de la Forêt des Araignées', danger: 4 },
+  { id: 'soie-corrompue', nom: 'Soie Corrompue', categorie: 'ressource', localisation: 'Forêt des Araignées, maison suspendue' },
+  { id: 'plantes-instables', nom: 'Plantes Instables', categorie: 'ressource', localisation: 'Clairière de la Forêt de la Sélection', danger: 3 },
+  { id: 'champignons-sombres', nom: 'Champignons Sombres', categorie: 'ressource', localisation: 'Plaine de la Forêt de la Sélection' },
+  { id: 'fragment-pierre-magmatique', nom: 'Fragment de Pierre Magmatique', categorie: 'ressource', localisation: 'Magma' },
+  { id: 'cendres-brulees', nom: 'Cendres Brûlées', categorie: 'ressource', localisation: 'Magma, arbres proches de la lave' },
+  { id: 'ebonite', nom: 'Ébonite', categorie: 'ressource', localisation: "Fond d'une grotte de la Capitale" },
+  { id: 'nirnroot', nom: 'Nirnroot', categorie: 'ressource', localisation: "Sous les ponts / bords d'eau" },
+  { id: 'givreboise', nom: 'Givreboise', categorie: 'ressource', localisation: 'Pieds des arbres de Snow' },
+  { id: 'algue-rouge', nom: 'Algue rouge agar-agar', categorie: 'ressource', localisation: 'Rivières japonaises' },
+  { id: 'acide-sulfurique-rp', nom: 'Acide sulfurique RP', categorie: 'produit_chimique', description: 'Substance fictive RP. Ne pas confondre avec un produit réel.', utilite_rp: 'Utilisé dans certaines potions comme réactif RP.', danger: 4 },
+  { id: 'chlorure-sodium-rp', nom: 'Chlorure de sodium RP', categorie: 'produit_chimique', description: 'Substance fictive RP. Ne pas confondre avec un produit réel.', utilite_rp: 'Utilisé dans certaines potions comme stabilisant RP.', danger: 1 },
+  { id: 'ammoniac-rp', nom: 'Ammoniac RP', categorie: 'produit_chimique', description: 'Substance fictive RP. Ne pas confondre avec un produit réel.', utilite_rp: 'Utilisé dans certaines potions.', danger: 3 },
+]
+for (const i of _seedIngredients) _seedIngredient.run(i.id, i.nom, i.categorie, i.description || '', i.proprietes || '', i.localisation || '', i.zone || '', i.obtention || '', i.danger || 0, i.utilite_rp || '')
+
+const _seedPotion = db.prepare(`INSERT OR IGNORE INTO sci_potions (id, nom, createur_id, createur_nom, description, effet_principal, effets_secondaires, jet_minimum, nb_fioles, statut, niveau_danger, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+const _seedPotionIngredient = db.prepare(`INSERT OR IGNORE INTO sci_potion_ingredients (potion_id, ingredient_id, quantite) VALUES (?, ?, ?)`)
+const _seedPotions = [
+  { id: 'potion-oubli', nom: "Potion de l'Oubli", createur_nom: 'Inconnu', effet_principal: 'Fait oublier environ les 15 dernières minutes.', effets_secondaires: 'Forte migraine.', jet_minimum: 50, nb_fioles: 5, statut: 'validee', ingredients: [{ id: 'belladone', quantite: '4' },{ id: 'ricin', quantite: '1' },{ id: 'colchique', quantite: '2' },{ id: 'plantain', quantite: '2' },{ id: 'ginkgo', quantite: '3' }] },
+  { id: 'potion-illusion', nom: "Potion d'Illusion", createur_id: 'hanzo', createur_nom: 'Hanzo', effet_principal: 'Désorientation, vision trouble et hallucinations.', effets_secondaires: "Une utilisation excessive peut provoquer des troubles importants et empêcher temporairement la cible de parler correctement.", jet_minimum: 50, nb_fioles: 5, statut: 'validee', ingredients: [{ id: 'anadenanthera-peregrina', quantite: '3' },{ id: 'belladone', quantite: '2' },{ id: 'plantain', quantite: '2' }] },
+  { id: 'sang-chaos', nom: 'Sang du Chaos', createur_id: 'hirozuki', createur_nom: 'Hirozuki', effet_principal: "Les odeurs attirent les pourfendeurs expérimentés. Les vapeurs provoquent de la désorientation. Peut provoquer une fausse sensation de victoire après avoir blessé un démon. Ingéré par un démon : augmentation temporaire de la régénération.", effets_secondaires: 'Abus = rage. Attaque possible des alliés comme des ennemis. Mutation possible.', statut: 'validee', niveau_danger: 4, ingredients: [] },
+  { id: 'larmes-lune', nom: 'Larmes de la Lune', createur_id: 'yagami', createur_nom: 'Yagami', effet_principal: 'Régénération des blessures.', notes: 'En cas de mauvais jet, la blessure peut être aggravée.', nb_fioles: 1, statut: 'validee', ingredients: [{ id: 'glycine', quantite: '0,1 g' },{ id: 'passiflore', quantite: '1' }] },
+  { id: 'resistance-glycine', nom: 'Résistance à la Glycine', createur_id: 'hawara', createur_nom: 'Hawara', effet_principal: "Augmentation de la résistance aux effets toxiques de la Glycine.", effets_secondaires: 'Une utilisation excessive peut provoquer de graves blessures au torse.', statut: 'validee', ingredients: [{ id: 'glycine', quantite: '5 feuilles' },{ id: 'belladone', quantite: '3' },{ id: 'ricin', quantite: '2' },{ id: 'curare', quantite: '1' },{ id: 'hamamelis', quantite: '2' },{ id: 'millepertuis', quantite: '10' }] },
+  { id: 'essence-neant', nom: 'Essence du Néant', createur_id: 'sasaki-lionheart', createur_nom: 'Sasaki Lionheart', description: 'Version retravaillée par Sasaki Lionheart.', effet_principal: 'Réaction immédiate, pression interne, désintégration.', effets_secondaires: 'Propagation incontrôlée. Instabilité. Résultat imprévisible.', statut: 'instable', niveau_danger: 5, ingredients: [{ id: 'racine-gelee', quantite: '250 mg' },{ id: 'cristaux-givre-noir', quantite: '100 mg' },{ id: 'venin-araignee', quantite: '50 mg' },{ id: 'soie-corrompue', quantite: '200 mg' },{ id: 'plantes-instables', quantite: '300 mg' },{ id: 'champignons-sombres', quantite: '200 mg' },{ id: 'fragment-pierre-magmatique', quantite: '150 mg' },{ id: 'cendres-brulees', quantite: '250 mg' }] },
+  { id: 'potion-effets-superieurs', nom: "Potion d'Effets Supérieurs", createur_id: 'shiki', createur_nom: 'Shiki', effet_principal: 'Augmentation temporaire de la vitesse, force et endurance.', effets_secondaires: "Fatigue et dégradation physique accélérée après l'effet.", statut: 'validee', ingredients: [{ id: 'aloe-vera', quantite: '3' },{ id: 'cigue', quantite: '2' },{ id: 'acide-sulfurique-rp', quantite: '15 ml' }] },
+  { id: 'potion-effets-negatifs', nom: "Potion d'Effets Négatifs", createur_id: 'shiki', createur_nom: 'Shiki', effet_principal: 'Effets encore inconnus.', statut: 'experimentale', ingredients: [{ id: 'belladone', quantite: '4' },{ id: 'morelle-noire', quantite: '1' },{ id: 'chlorure-sodium-rp', quantite: '15 ml' }] },
+  { id: 'potion-mortelle', nom: 'Potion Mortelle', createur_id: 'shiki', createur_nom: 'Shiki', effet_principal: 'Affaiblissement important de la personne qui la consomme.', effets_secondaires: 'Encore à déterminer.', statut: 'experimentale', niveau_danger: 5, ingredients: [{ id: 'colchique', quantite: '6' },{ id: 'ricin', quantite: '3' },{ id: 'ammoniac-rp', quantite: '15 ml' }] },
+  { id: 'glacies-ignis', nom: 'Glacies Ignis', createur_id: 'sun-tzu', createur_nom: 'Sun Tzu', effet_principal: 'Inconnus.', statut: 'experimentale', ingredients: [{ id: 'ginkgo', quantite: '5' },{ id: 'aloe-vera', quantite: '4' }] },
+  { id: 'respira-null', nom: 'Respira-Null', createur_id: 'getsu-fushiguro', createur_nom: 'Getsu Fushiguro', effet_principal: "Gaz vert. Perturbe le rythme respiratoire. Perturbe la concentration. Panique immédiate chez un pourfendeur.", effets_secondaires: 'Une exposition excessive peut être extrêmement dangereuse.', statut: 'validee', niveau_danger: 4, ingredients: [{ id: 'belladone', quantite: '4' },{ id: 'ricin', quantite: '6' },{ id: 'colchique', quantite: '2' },{ id: 'curare', quantite: '1' }] },
+  { id: 'croissant-noir', nom: 'Croissant Noir', createur_id: 'yokai-z', createur_nom: 'Yokai Z', effet_principal: 'Inconnus.', statut: 'theorique', ingredients: [{ id: 'belladone', quantite: '4' },{ id: 'glycine', quantite: '5' },{ id: 'ricin', quantite: '3' },{ id: 'curare', quantite: '1' },{ id: 'colchique', quantite: '2' },{ id: 'morelle-noire', quantite: '3' },{ id: 'anadenanthera-peregrina', quantite: '1' }] },
+  { id: 'esprit-traque', nom: 'Esprit Traqué — Essai n°1', createur_id: 'baldi', createur_nom: 'Baldi', description: 'But : provoquer une paranoïa progressive chez un pourfendeur.', effet_principal: "Méfiance, impression d'être suivi et observé, hallucinations légères, difficulté à différencier certaines menaces réelles et imaginaires. La cible reste capable de se déplacer et de combattre.", statut: 'experimentale', notes: 'Cette potion est liée au projet KYŌFU.', ingredients: [{ id: 'anadenanthera-peregrina', quantite: '' },{ id: 'belladone', quantite: '' },{ id: 'colchique', quantite: '' },{ id: 'cigue', quantite: '' },{ id: 'ginkgo', quantite: '' },{ id: 'soie-corrompue', quantite: '' }] },
+]
+for (const p of _seedPotions) {
+  _seedPotion.run(p.id, p.nom, p.createur_id || null, p.createur_nom || '', p.description || '', p.effet_principal || '', p.effets_secondaires || '', p.jet_minimum ?? null, p.nb_fioles ?? null, p.statut || 'theorique', p.niveau_danger || 0, p.notes || '')
+  for (const ing of (p.ingredients || [])) _seedPotionIngredient.run(p.id, ing.id, ing.quantite || '')
+}
+
+const _seedExperiment = db.prepare(`INSERT OR IGNORE INTO sci_experiments (id, nom, responsable_id, responsable_nom, objectif, statut, potions_utilisees) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+_seedExperiment.run('esprit-traque-essai-1', 'Esprit Traqué — Essai n°1', 'baldi', 'Baldi', 'Provoquer une paranoïa progressive chez un pourfendeur.', 'proposition', JSON.stringify(['esprit-traque']))
+
+const _seedProject = db.prepare(`INSERT OR IGNORE INTO sci_projects (id, nom, responsable_id, responsable_nom, description, principe, architecture, statut, progression) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+_seedProject.run('kyofu', 'KYŌFU', 'baldi', 'Baldi', 'Créer un totem utilisant un réceptacle particulier capable de conserver et canaliser différentes substances ou énergies.', 'Créer un totem utilisant un réceptacle particulier capable de conserver et canaliser différentes substances ou énergies.', "Totem / réceptacle — Esprit Traqué comme noyau scientifique — Intervention de la Sphère Occulte pour l'énergie et la diffusion. Le totem seul ne provoque aucun effet. Il sert uniquement de réceptacle exceptionnel.", 'en_cours', 10)
+
+db.prepare(`INSERT OR IGNORE INTO sci_project_experiments (project_id, experiment_id) VALUES (?, ?)`).run('kyofu', 'esprit-traque-essai-1')
+db.prepare(`INSERT OR IGNORE INTO sci_project_potions (project_id, potion_id) VALUES (?, ?)`).run('kyofu', 'esprit-traque')
+
+// ── Effets Ressentis ─────────────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sci_effets (
+    id TEXT PRIMARY KEY,
+    token TEXT UNIQUE NOT NULL,
+    titre TEXT NOT NULL,
+    sous_titre TEXT DEFAULT '',
+    contenu TEXT DEFAULT '',
+    symptomes TEXT DEFAULT '',
+    duree TEXT DEFAULT '',
+    intensite INTEGER DEFAULT 1,
+    type TEXT DEFAULT 'general',
+    image_url TEXT DEFAULT '',
+    actif INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
+
 module.exports = db
