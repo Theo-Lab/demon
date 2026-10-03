@@ -139,7 +139,7 @@ router.delete('/admin/symbols/:id', requireAuth, requireAdmin, (req, res) => {
 // GET /api/slots/admin/joueurs
 router.get('/admin/joueurs', requireAuth, requireCasino, (req, res) => {
   const joueurs = db.prepare(`
-    SELECT id, nom, identifiant, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(malchance, 0) as malchance, COALESCE(malchance_prob, 0.60) as malchance_prob
+    SELECT id, nom, identifiant, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(malchance, 0) as malchance, COALESCE(malchance_prob, 0.60) as malchance_prob, COALESCE(sci_dirigeant, 0) as sci_dirigeant
     FROM users ORDER BY nom ASC
   `).all()
   res.json({ joueurs })
@@ -179,52 +179,77 @@ router.patch('/admin/joueurs/:id/solde', requireAuth, requireCasino, (req, res) 
   res.json({ joueur: { ...user, solde: newSolde } })
 })
 
-// GET /api/slots/admin/logs?limit=100&offset=0&joueur=
+// GET /api/slots/admin/logs?limit=100&offset=0&joueur=&source=&jeu=&operation=&date_from=&date_to=
 router.get('/admin/logs', requireAuth, requireCasino, (req, res) => {
-  const limit  = Math.min(parseInt(req.query.limit)  || 100, 500)
-  const offset = parseInt(req.query.offset) || 0
-  const joueur = req.query.joueur ? `%${req.query.joueur}%` : null
+  const limit     = Math.min(parseInt(req.query.limit) || 100, 500)
+  const offset    = parseInt(req.query.offset) || 0
+  const joueur    = req.query.joueur    ? `%${req.query.joueur}%` : null
+  const source    = req.query.source    || null   // 'jeu' | 'admin'
+  const jeu       = req.query.jeu       || null   // ex: 'slots', 'blackjack'...
+  const operation = req.query.operation || null   // 'add' | 'remove' | 'set'
+  const dateFrom  = req.query.date_from || null   // ISO date string
+  const dateTo    = req.query.date_to   || null
 
-  const filterClause = joueur ? 'AND (u.nom LIKE ? OR u.identifiant LIKE ?)' : ''
-  const filterParams = joueur ? [joueur, joueur] : []
+  // Filters for game_rounds (source = jeu)
+  const jeuClauses = []
+  const jeuParams  = []
+  if (joueur)   { jeuClauses.push('(u.nom LIKE ? OR u.identifiant LIKE ?)'); jeuParams.push(joueur, joueur) }
+  if (jeu)      { jeuClauses.push('g.jeu = ?');         jeuParams.push(jeu) }
+  if (dateFrom) { jeuClauses.push('g.created_at >= ?'); jeuParams.push(dateFrom) }
+  if (dateTo)   { jeuClauses.push('g.created_at <= ?'); jeuParams.push(dateTo + ' 23:59:59') }
+  const jeuWhere = jeuClauses.length ? 'AND ' + jeuClauses.join(' AND ') : ''
 
-  const logs = db.prepare(`
-    SELECT id, 'jeu' as source, jeu, mise, gain_net, solde_avant, solde_apres,
-           resultat, NULL as operation, NULL as admin_nom, created_at,
-           joueur_nom, joueur_identifiant
-    FROM (
-      SELECT g.id, g.jeu, g.mise, g.gain_net, g.solde_avant, g.solde_apres,
-             g.resultat, g.created_at,
+  // Filters for solde_logs (source = admin)
+  const adClauses = []
+  const adParams  = []
+  if (joueur)    { adClauses.push('(u.nom LIKE ? OR u.identifiant LIKE ?)'); adParams.push(joueur, joueur) }
+  if (operation) { adClauses.push('s.operation = ?');  adParams.push(operation) }
+  if (dateFrom)  { adClauses.push('s.created_at >= ?'); adParams.push(dateFrom) }
+  if (dateTo)    { adClauses.push('s.created_at <= ?'); adParams.push(dateTo + ' 23:59:59') }
+  const adWhere = adClauses.length ? 'AND ' + adClauses.join(' AND ') : ''
+
+  // Build UNION depending on source filter
+  const parts = []
+  const allParams = []
+
+  if (!source || source === 'jeu') {
+    parts.push(`
+      SELECT g.id, 'jeu' as source, g.jeu, g.mise, g.gain_net, g.solde_avant, g.solde_apres,
+             g.resultat, NULL as operation, NULL as admin_nom, g.created_at,
              u.nom as joueur_nom, u.identifiant as joueur_identifiant
       FROM game_rounds g
       JOIN users u ON u.id = g.user_id
-      WHERE 1=1 ${filterClause}
-    )
-    UNION ALL
-    SELECT id, 'admin' as source, 'admin' as jeu, montant as mise, gain_net, solde_avant, solde_apres,
-           NULL as resultat, operation, admin_nom, created_at,
-           joueur_nom, joueur_identifiant
-    FROM (
-      SELECT s.id, s.montant, s.gain_net, s.solde_avant, s.solde_apres,
-             s.operation, s.created_at,
-             u.nom as joueur_nom, u.identifiant as joueur_identifiant,
-             a.nom as admin_nom
+      WHERE 1=1 ${jeuWhere}
+    `)
+    allParams.push(...jeuParams)
+  }
+
+  if (!source || source === 'admin') {
+    parts.push(`
+      SELECT s.id, 'admin' as source, 'admin' as jeu, s.montant as mise, s.gain_net, s.solde_avant, s.solde_apres,
+             NULL as resultat, s.operation, a.nom as admin_nom, s.created_at,
+             u.nom as joueur_nom, u.identifiant as joueur_identifiant
       FROM solde_logs s
       JOIN users u ON u.id = s.user_id
       JOIN users a ON a.id = s.admin_id
-      WHERE 1=1 ${filterClause}
-    )
-    ORDER BY created_at DESC, id DESC
-    LIMIT ? OFFSET ?
-  `).all(...filterParams, ...filterParams, limit, offset)
+      WHERE 1=1 ${adWhere}
+    `)
+    allParams.push(...adParams)
+  }
 
-  const total = db.prepare(`
-    SELECT (
-      SELECT COUNT(*) FROM game_rounds g JOIN users u ON u.id = g.user_id WHERE 1=1 ${filterClause}
-    ) + (
-      SELECT COUNT(*) FROM solde_logs s JOIN users u ON u.id = s.user_id WHERE 1=1 ${filterClause}
-    ) as n
-  `).get(...filterParams, ...filterParams).n
+  const union = parts.join(' UNION ALL ')
+
+  const logs = db.prepare(`
+    SELECT * FROM (${union}) ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
+  `).all(...allParams, limit, offset)
+
+  let total = 0
+  if (!source || source === 'jeu') {
+    total += db.prepare(`SELECT COUNT(*) as n FROM game_rounds g JOIN users u ON u.id = g.user_id WHERE 1=1 ${jeuWhere}`).get(...jeuParams).n
+  }
+  if (!source || source === 'admin') {
+    total += db.prepare(`SELECT COUNT(*) as n FROM solde_logs s JOIN users u ON u.id = s.user_id JOIN users a ON a.id = s.admin_id WHERE 1=1 ${adWhere}`).get(...adParams).n
+  }
 
   res.json({ logs, total })
 })

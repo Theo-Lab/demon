@@ -880,3 +880,105 @@ export async function spinRoulette(mises) {
   if (!res.ok) throw new Error(data.message)
   return data
 }
+
+// ── Scientifique ──────────────────────────────────────────────────────────────
+export async function sciMe() {
+  const res = await apiFetch(`${BASE}/scientifique/me`)
+  if (!res.ok) return null
+  return res.json()
+}
+export async function sciGetRoles() {
+  const res = await apiFetch(`${BASE}/scientifique/roles`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function sciCreateRole(data) {
+  const res = await apiFetch(`${BASE}/scientifique/roles`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciUpdateRole(id, data) {
+  const res = await apiFetch(`${BASE}/scientifique/roles/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciDeleteRole(id) {
+  const res = await apiFetch(`${BASE}/scientifique/roles/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciGetMembres() {
+  const res = await apiFetch(`${BASE}/scientifique/membres`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function sciAddMembre(userId, roleId) {
+  const res = await apiFetch(`${BASE}/scientifique/membres`, { method: 'POST', body: JSON.stringify({ userId, roleId }) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciUpdateMembre(userId, roleId) {
+  const res = await apiFetch(`${BASE}/scientifique/membres/${userId}`, { method: 'PATCH', body: JSON.stringify({ roleId }) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciRemoveMembre(userId) {
+  const res = await apiFetch(`${BASE}/scientifique/membres/${userId}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciGetCategories() {
+  const res = await apiFetch(`${BASE}/scientifique/categories`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function sciCreateCategorie(data) {
+  const res = await apiFetch(`${BASE}/scientifique/categories`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciUpdateCategorie(id, data) {
+  const res = await apiFetch(`${BASE}/scientifique/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciDeleteCategorie(id) {
+  const res = await apiFetch(`${BASE}/scientifique/categories/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciAddChamp(catId, data) {
+  const res = await apiFetch(`${BASE}/scientifique/categories/${catId}/champs`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciUpdateChamp(id, data) {
+  const res = await apiFetch(`${BASE}/scientifique/champs/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciDeleteChamp(id) {
+  const res = await apiFetch(`${BASE}/scientifique/champs/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciGetItems(categorieId) {
+  const url = categorieId ? `${BASE}/scientifique/items?categorie_id=${categorieId}` : `${BASE}/scientifique/items`
+  const res = await apiFetch(url)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function sciGetItem(id) {
+  const res = await apiFetch(`${BASE}/scientifique/items/${id}`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function sciCreateItem(data) {
+  const res = await apiFetch(`${BASE}/scientifique/items`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciUpdateItem(id, data) {
+  const res = await apiFetch(`${BASE}/scientifique/items/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciDeleteItem(id) {
+  const res = await apiFetch(`${BASE}/scientifique/items/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function sciGetUsers() {
+  const res = await apiFetch(`${BASE}/scientifique/users`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function sciSetDirigeant(userId, actif) {
+  const res = await apiFetch(`${BASE}/scientifique/admin/dirigeant`, { method: 'POST', body: JSON.stringify({ userId, actif }) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}

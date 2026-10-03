@@ -447,4 +447,61 @@ for (const r of sansToken) {
   setToken.run(crypto.randomBytes(6).toString('hex'), r.id)
 }
 
+// Tables Scientifique
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sci_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom TEXT NOT NULL,
+    ordre INTEGER NOT NULL DEFAULT 0,
+    can_create_items INTEGER NOT NULL DEFAULT 0,
+    can_edit_items INTEGER NOT NULL DEFAULT 0,
+    can_delete_items INTEGER NOT NULL DEFAULT 0,
+    can_add_members INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_membres (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    role_id INTEGER NOT NULL REFERENCES sci_roles(id),
+    assigned_by INTEGER REFERENCES users(id),
+    assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom TEXT NOT NULL,
+    icone TEXT NOT NULL DEFAULT '',
+    ordre INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_champs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    categorie_id INTEGER NOT NULL REFERENCES sci_categories(id) ON DELETE CASCADE,
+    nom TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'texte',
+    options TEXT NOT NULL DEFAULT '[]',
+    requis INTEGER NOT NULL DEFAULT 0,
+    ordre INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    categorie_id INTEGER NOT NULL REFERENCES sci_categories(id),
+    nom TEXT NOT NULL,
+    created_by INTEGER REFERENCES users(id),
+    updated_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sci_item_valeurs (
+    item_id INTEGER NOT NULL REFERENCES sci_items(id) ON DELETE CASCADE,
+    champ_id INTEGER NOT NULL REFERENCES sci_champs(id) ON DELETE CASCADE,
+    valeur TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (item_id, champ_id)
+  );
+`)
+try { db.prepare('ALTER TABLE users ADD COLUMN sci_dirigeant INTEGER NOT NULL DEFAULT 0').run() } catch {}
+
 module.exports = db

@@ -78,6 +78,7 @@
         <button :class="['onglet', ongletAdmin === 'logs' ? 'onglet--actif' : '']" @click="ongletAdmin = 'logs'; chargerLogs()">Logs</button>
         <button :class="['onglet', ongletAdmin === 'stats' ? 'onglet--actif' : '']" @click="ongletAdmin = 'stats'; chargerStats()">Statistiques</button>
         <button v-if="isCasino" :class="['onglet', ongletAdmin === 'notifications' ? 'onglet--actif' : '']" @click="ongletAdmin = 'notifications'; chargerWebhook()">Notifications</button>
+        <button v-if="isAdmin" :class="['onglet', ongletAdmin === 'scientifique' ? 'onglet--actif' : '']" @click="ongletAdmin = 'scientifique'; chargerSciUsers()">Scientifique</button>
       </div>
 
       <!-- ── Sous-onglets Machine à Sous ── -->
@@ -940,6 +941,37 @@
 
       </template>
 
+      <!-- ── Onglet Scientifique ── -->
+      <template v-if="jeu === 'admin' && ongletAdmin === 'scientifique' && isAdmin">
+
+        <div class="form-card">
+          <h2 class="form-title">Dirigeant de la Scientifique</h2>
+          <p class="form-desc">Nomme ou retire le Dirigeant de la Scientifique. Il peut ensuite créer des rôles, des catégories et gérer les membres.</p>
+
+          <div v-if="loadingSciUsers" class="loading">Chargement…</div>
+          <div v-else-if="sciUsersErr" class="form-erreur">{{ sciUsersErr }}</div>
+          <div v-else class="sci-admin-list">
+            <div v-for="u in sciAllUsers" :key="u.id" class="sci-admin-row">
+              <div class="sci-admin-info">
+                <span class="sci-admin-nom">{{ u.nom }}</span>
+                <span class="sci-admin-grade">{{ u.identifiant }} — {{ u.grade }}</span>
+              </div>
+              <div class="sci-admin-actions">
+                <span v-if="u.sci_dirigeant" class="sci-admin-badge">Dirigeant</span>
+                <button
+                  class="btn-secondary"
+                  :disabled="sciTogglingId === u.id"
+                  @click="toggleDirigeant(u)"
+                >
+                  {{ sciTogglingId === u.id ? '…' : (u.sci_dirigeant ? 'Retirer' : 'Nommer Dirigeant') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </template>
+
     </div>
   </div>
 </template>
@@ -960,6 +992,7 @@ import {
   getOniSymbols, uploadOniSymbol, updateOniSymbolName, SERVER_URL,
   getDgSymbols, uploadDgSymbol, updateDgSymbolName, getDgAdminLogs,
   closeBjTable, closePokerTable, getPokerTables, getBlackjackTables,
+  sciSetDirigeant,
 } from '../api.js'
 
 const isAdmin  = computed(() => currentUser.value?.role === 'admin')
@@ -1604,6 +1637,39 @@ function formatResultat(json) {
     if (r.type === 'two')   return `×2 identiques (×${r.multiplicateur})`
     return 'Pas de combinaison'
   } catch { return '—' }
+}
+
+// ── Scientifique admin ────────────────────────────────────────────────────────
+const sciAllUsers    = ref([])
+const loadingSciUsers = ref(false)
+const sciUsersErr    = ref('')
+const sciTogglingId  = ref(null)
+
+async function chargerSciUsers() {
+  if (sciAllUsers.value.length) return
+  loadingSciUsers.value = true
+  sciUsersErr.value     = ''
+  try {
+    const data = await getSlotsAdminJoueurs()
+    sciAllUsers.value = data
+  } catch (e) {
+    sciUsersErr.value = e.message
+  } finally {
+    loadingSciUsers.value = false
+  }
+}
+
+async function toggleDirigeant(u) {
+  sciTogglingId.value = u.id
+  try {
+    await sciSetDirigeant(u.id, !u.sci_dirigeant)
+    const idx = sciAllUsers.value.findIndex(x => x.id === u.id)
+    if (idx !== -1) sciAllUsers.value[idx] = { ...sciAllUsers.value[idx], sci_dirigeant: u.sci_dirigeant ? 0 : 1 }
+  } catch (e) {
+    sciUsersErr.value = e.message
+  } finally {
+    sciTogglingId.value = null
+  }
 }
 
 onMounted(async () => {
@@ -2826,4 +2892,13 @@ onMounted(async () => {
 
 .dg-combo-ways   { color: rgba(255,255,255,0.3); font-size: 0.58rem; }
 .dg-combo-amount { color: #7ed44a; font-size: 0.65rem; }
+
+/* ── Scientifique admin ──────────────────────────────────────────── */
+.sci-admin-list { display: flex; flex-direction: column; gap: 2px; margin-top: 16px; }
+.sci-admin-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); gap: 12px; }
+.sci-admin-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.sci-admin-nom { font-family: 'Cinzel', serif; font-size: 0.72rem; color: rgba(255,255,255,0.85); }
+.sci-admin-grade { font-size: 0.78rem; color: rgba(255,255,255,0.3); font-style: italic; }
+.sci-admin-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.sci-admin-badge { font-family: 'Cinzel', serif; font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid rgba(201,168,76,0.4); color: #c9a84c; padding: 2px 8px; }
 </style>

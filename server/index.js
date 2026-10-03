@@ -54,6 +54,7 @@ app.use('/api/casino',         require('./routes/casino'))
 app.use('/api/ways243',        require('./routes/ways243'))
 app.use('/api/demons-gate',   require('./routes/demonsGate'))
 app.use('/api/corps',         require('./routes/corps'))
+app.use('/api/scientifique', require('./routes/scientifique'))
 app.delete('/api/poker/tables/:id', (req, res, next) => {
   res.on('finish', () => {
     if (res.statusCode === 200) {
