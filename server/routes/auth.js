@@ -185,7 +185,7 @@ router.patch('/users/:id', requireAuth, (req, res) => {
   const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id)
   if (!target) return res.status(404).json({ message: 'Utilisateur introuvable.' })
 
-  const { nom, identifiant, mot_de_passe, grade, pouvoir_nom, role, signature, sci_dirigeant } = req.body
+  const { nom, identifiant, mot_de_passe, grade, pouvoir_nom, role, signature, sci_dirigeant, glace_dirigeant } = req.body
 
   if (role && !['admin', 'groupier', 'membre'].includes(role))
     return res.status(400).json({ message: 'Rôle invalide.' })
@@ -197,28 +197,30 @@ router.patch('/users/:id', requireAuth, (req, res) => {
 
   db.prepare(`
     UPDATE users SET
-      nom          = ?,
-      identifiant  = ?,
-      mot_de_passe = ?,
-      grade        = ?,
-      pouvoir_nom  = ?,
-      role         = ?,
-      signature    = ?,
-      sci_dirigeant = ?
+      nom            = ?,
+      identifiant    = ?,
+      mot_de_passe   = ?,
+      grade          = ?,
+      pouvoir_nom    = ?,
+      role           = ?,
+      signature      = ?,
+      sci_dirigeant  = ?,
+      glace_dirigeant = ?
     WHERE id = ?
   `).run(
-    nom           !== undefined ? nom           : target.nom,
-    identifiant   !== undefined ? identifiant   : target.identifiant,
+    nom             !== undefined ? nom             : target.nom,
+    identifiant     !== undefined ? identifiant     : target.identifiant,
     password_hash,
-    grade         !== undefined ? grade         : target.grade,
-    pouvoir_nom   !== undefined ? pouvoir_nom   : target.pouvoir_nom,
-    role          !== undefined ? role          : target.role,
-    signature     !== undefined ? signature     : target.signature,
-    sci_dirigeant !== undefined ? (sci_dirigeant ? 1 : 0) : (target.sci_dirigeant || 0),
+    grade           !== undefined ? grade           : target.grade,
+    pouvoir_nom     !== undefined ? pouvoir_nom     : target.pouvoir_nom,
+    role            !== undefined ? role            : target.role,
+    signature       !== undefined ? signature       : target.signature,
+    sci_dirigeant   !== undefined ? (sci_dirigeant   ? 1 : 0) : (target.sci_dirigeant   || 0),
+    glace_dirigeant !== undefined ? (glace_dirigeant ? 1 : 0) : (target.glace_dirigeant || 0),
     target.id
   )
 
-  const updated = db.prepare('SELECT id, nom, identifiant, grade, pouvoir_nom, role, signature, COALESCE(solde,0) as solde, COALESCE(sci_dirigeant,0) as sci_dirigeant FROM users WHERE id = ?').get(target.id)
+  const updated = db.prepare('SELECT id, nom, identifiant, grade, pouvoir_nom, role, signature, COALESCE(solde,0) as solde, COALESCE(sci_dirigeant,0) as sci_dirigeant, COALESCE(glace_dirigeant,0) as glace_dirigeant FROM users WHERE id = ?').get(target.id)
   res.json({ user: updated })
 })
 

@@ -718,4 +718,43 @@ db.exec(`
   )
 `)
 
+// ── Glace ────────────────────────────────────────────────────────────────────
+try { db.prepare('ALTER TABLE users ADD COLUMN glace_dirigeant INTEGER DEFAULT 0').run() } catch {}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS glace_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom TEXT NOT NULL,
+    couleur TEXT DEFAULT '#ffffff',
+    can_see_all INTEGER DEFAULT 0,
+    can_delete_others INTEGER DEFAULT 0
+  )
+`)
+try { db.prepare('ALTER TABLE glace_roles ADD COLUMN can_see_all INTEGER DEFAULT 0').run() } catch {}
+try { db.prepare('ALTER TABLE glace_roles ADD COLUMN can_delete_others INTEGER DEFAULT 0').run() } catch {}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS glace_membres (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    role_id INTEGER REFERENCES glace_roles(id) ON DELETE SET NULL,
+    assigned_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS glace_activites (
+    id TEXT PRIMARY KEY,
+    titre TEXT NOT NULL,
+    type TEXT DEFAULT 'entrainement',
+    date_activite TEXT DEFAULT '',
+    nb_participants INTEGER DEFAULT 0,
+    participants TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    image_url TEXT DEFAULT '',
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
+
 module.exports = db

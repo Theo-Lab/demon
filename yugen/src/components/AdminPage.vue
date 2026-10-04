@@ -93,6 +93,13 @@
                   Dirigeant de la Scientifique
                 </label>
               </div>
+              <div class="field field--full">
+                <label class="field-label">Glace</label>
+                <label class="field-check">
+                  <input type="checkbox" v-model="form.glace_dirigeant" />
+                  Dirigeant de la Glace
+                </label>
+              </div>
             </div>
 
             <div v-if="erreur" class="edit-erreur">{{ erreur }}</div>
@@ -156,14 +163,15 @@ function toggleOuvrir(m) {
   erreur.value = ''
   ok.value = false
   form.value = {
-    nom:           m.nom          ?? '',
-    identifiant:   m.identifiant  ?? '',
-    mot_de_passe:  '',
-    grade:         m.grade        ?? '',
-    pouvoir_nom:   m.pouvoir_nom  ?? '',
-    role:          m.role         ?? 'membre',
-    signature:     m.signature    ?? '',
-    sci_dirigeant: !!m.sci_dirigeant,
+    nom:             m.nom             ?? '',
+    identifiant:     m.identifiant     ?? '',
+    mot_de_passe:    '',
+    grade:           m.grade           ?? '',
+    pouvoir_nom:     m.pouvoir_nom     ?? '',
+    role:            m.role            ?? 'membre',
+    signature:       m.signature       ?? '',
+    sci_dirigeant:   !!m.sci_dirigeant,
+    glace_dirigeant: !!m.glace_dirigeant,
   }
 }
 

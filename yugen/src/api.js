@@ -1124,3 +1124,70 @@ export async function sciGetEffetPublic(token) {
   const res = await fetch(`${BASE}/scientifique/effets/public/${token}`)
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
+
+// ── Glace ─────────────────────────────────────────────────────────────────────
+export async function glaceMe() {
+  const res = await apiFetch(`${BASE}/glace/me`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function glaceGetMembres() {
+  const res = await apiFetch(`${BASE}/glace/membres`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function glaceAddMembre(data) {
+  const res = await apiFetch(`${BASE}/glace/membres`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function glaceUpdateMembre(userId, data) {
+  const res = await apiFetch(`${BASE}/glace/membres/${userId}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function glaceDeleteMembre(userId) {
+  const res = await apiFetch(`${BASE}/glace/membres/${userId}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function glaceGetRoles() {
+  const res = await apiFetch(`${BASE}/glace/roles`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function glaceCreateRole(data) {
+  const res = await apiFetch(`${BASE}/glace/roles`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function glaceUpdateRole(id, data) {
+  const res = await apiFetch(`${BASE}/glace/roles/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function glaceDeleteRole(id) {
+  const res = await apiFetch(`${BASE}/glace/roles/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function glaceGetUsers() {
+  const res = await apiFetch(`${BASE}/glace/users`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function glaceGetActivites() {
+  const res = await apiFetch(`${BASE}/glace/activites`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function glaceCreateActivite(data) {
+  const res = await apiFetch(`${BASE}/glace/activites`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function glaceUpdateActivite(id, data) {
+  const res = await apiFetch(`${BASE}/glace/activites/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function glaceDeleteActivite(id) {
+  const res = await apiFetch(`${BASE}/glace/activites/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function glaceSetDirigeant(userId, actif) {
+  const res = await apiFetch(`${BASE}/glace/admin/dirigeant`, { method: 'POST', body: JSON.stringify({ userId, actif }) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
