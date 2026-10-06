@@ -27,10 +27,11 @@ function currentMult(pumps, pump_step) {
 
 // ── start ─────────────────────────────────────────────────────────────────────
 
-const _start = db.transaction((userId, mise, difficulte) => {
-  const user = db.prepare('SELECT id, solde FROM users WHERE id = ?').get(userId)
+const _start = db.transaction((userId, mise, difficulte, currency = 'yens') => {
+  const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
+  const user = db.prepare(`SELECT id, ${soldeCol} as solde_cur FROM users WHERE id = ?`).get(userId)
   if (!user) throw new Error('Utilisateur introuvable.')
-  if (user.solde < mise) throw new Error('Solde insuffisant.')
+  if (user.solde_cur < mise) throw new Error('Solde insuffisant.')
 
   const diff = getDiff(difficulte)
 
@@ -41,22 +42,25 @@ const _start = db.transaction((userId, mise, difficulte) => {
   }
 
   const bust_mult   = newBustMult(diff.house_edge, diff.bust_cap)
-  const solde_avant = user.solde
+  const solde_avant = user.solde_cur
 
-  db.prepare('UPDATE users SET solde = solde - ? WHERE id = ?').run(mise, userId)
+  db.prepare(`UPDATE users SET ${soldeCol} = ${soldeCol} - ? WHERE id = ?`).run(mise, userId)
   db.prepare(`
-    INSERT INTO corps_games (user_id, statut, mise, pumps_done, bust_mult, pump_step, difficulte, solde_avant, gain_net)
-    VALUES (?, 'en_cours', ?, 0, ?, ?, ?, ?, 0)
-  `).run(userId, mise, bust_mult, diff.pump_step, difficulte || DEFAULT_DIFF, solde_avant)
+    INSERT INTO corps_games (user_id, statut, mise, pumps_done, bust_mult, pump_step, difficulte, solde_avant, gain_net, currency)
+    VALUES (?, 'en_cours', ?, 0, ?, ?, ?, ?, 0, ?)
+  `).run(userId, mise, bust_mult, diff.pump_step, difficulte || DEFAULT_DIFF, solde_avant, currency)
 
-  return {
+  const retval = {
     statut:     'en_cours',
     pumps:      0,
     mult:       1.0,
     pump_step:  diff.pump_step,
     difficulte: difficulte || DEFAULT_DIFF,
-    solde:      solde_avant - mise,
+    currency,
   }
+  if (currency === 'bonbons') retval.bonbons = solde_avant - mise
+  else retval.solde = solde_avant - mise
+  return retval
 })
 
 // ── pump ──────────────────────────────────────────────────────────────────────
@@ -65,6 +69,8 @@ const _pump = db.transaction((userId) => {
   const game = db.prepare("SELECT * FROM corps_games WHERE user_id = ? AND statut = 'en_cours'").get(userId)
   if (!game) throw new Error('Aucune infusion en cours.')
 
+  const currency = game.currency || 'yens'
+  const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
   const pump_step = game.pump_step || 0.12
   const pumps     = game.pumps_done + 1
   const mult      = currentMult(pumps, pump_step)
@@ -73,34 +79,41 @@ const _pump = db.transaction((userId) => {
     db.prepare("UPDATE corps_games SET statut = 'rupture', pumps_done = ?, gain_net = -? WHERE id = ?")
       .run(pumps, game.mise, game.id)
 
-    const solde = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
+    const soldeCur = db.prepare(`SELECT ${soldeCol} as cur FROM users WHERE id = ?`).get(userId).cur
     db.prepare(`
-      INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres)
-      VALUES (?, 'corps_demoniaque', ?, ?, ?, ?, ?)
+      INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres, currency)
+      VALUES (?, 'corps_demoniaque', ?, ?, ?, ?, ?, ?)
     `).run(
       userId,
       game.mise,
       JSON.stringify({ pumps, mult, bust_mult: parseFloat(game.bust_mult.toFixed(2)), difficulte: game.difficulte, resultat: 'rupture' }),
       -game.mise,
       game.solde_avant,
-      solde,
+      soldeCur,
+      currency,
     )
 
-    return {
+    const retval = {
       statut:    'rupture',
       pumps,
       mult,
       pump_step,
       bust_mult: parseFloat(game.bust_mult.toFixed(2)),
       gain_net:  -game.mise,
-      solde,
+      currency,
     }
+    if (currency === 'bonbons') retval.bonbons = soldeCur
+    else retval.solde = soldeCur
+    return retval
   }
 
   db.prepare('UPDATE corps_games SET pumps_done = ? WHERE id = ?').run(pumps, game.id)
-  const solde = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
+  const soldeCur = db.prepare(`SELECT ${soldeCol} as cur FROM users WHERE id = ?`).get(userId).cur
 
-  return { statut: 'en_cours', pumps, mult, pump_step, solde }
+  const retval = { statut: 'en_cours', pumps, mult, pump_step, currency }
+  if (currency === 'bonbons') retval.bonbons = soldeCur
+  else retval.solde = soldeCur
+  return retval
 })
 
 // ── sceller ───────────────────────────────────────────────────────────────────
@@ -110,44 +123,55 @@ const _sceller = db.transaction((userId) => {
   if (!game) throw new Error('Aucune infusion en cours.')
   if (game.pumps_done === 0) throw new Error('Amplifiez au moins une fois avant de sceller.')
 
+  const currency = game.currency || 'yens'
+  const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
   const pump_step = game.pump_step || 0.12
   const mult      = currentMult(game.pumps_done, pump_step)
   const gain_brut = Math.floor(game.mise * mult)
   const gain_net  = gain_brut - game.mise
 
-  db.prepare('UPDATE users SET solde = solde + ? WHERE id = ?').run(gain_brut, userId)
+  db.prepare(`UPDATE users SET ${soldeCol} = ${soldeCol} + ? WHERE id = ?`).run(gain_brut, userId)
   db.prepare("UPDATE corps_games SET statut = 'scelle', gain_net = ? WHERE id = ?").run(gain_net, game.id)
 
-  const solde = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
+  const soldeCur = db.prepare(`SELECT ${soldeCol} as cur FROM users WHERE id = ?`).get(userId).cur
   db.prepare(`
-    INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres)
-    VALUES (?, 'corps_demoniaque', ?, ?, ?, ?, ?)
+    INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres, currency)
+    VALUES (?, 'corps_demoniaque', ?, ?, ?, ?, ?, ?)
   `).run(
     userId,
     game.mise,
     JSON.stringify({ pumps: game.pumps_done, mult, difficulte: game.difficulte, resultat: 'scelle' }),
     gain_net,
     game.solde_avant,
-    solde,
+    soldeCur,
+    currency,
   )
 
-  return { statut: 'scelle', pumps: game.pumps_done, mult, pump_step, gain_net, solde }
+  const retval = { statut: 'scelle', pumps: game.pumps_done, mult, pump_step, gain_net, currency }
+  if (currency === 'bonbons') retval.bonbons = soldeCur
+  else retval.solde = soldeCur
+  return retval
 })
 
 // ── getState ──────────────────────────────────────────────────────────────────
 
 function getState(userId) {
-  const game  = db.prepare("SELECT * FROM corps_games WHERE user_id = ? AND statut = 'en_cours'").get(userId)
-  const solde = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId)?.solde ?? 0
-  if (!game) return { statut: 'idle', solde }
+  const game    = db.prepare("SELECT * FROM corps_games WHERE user_id = ? AND statut = 'en_cours'").get(userId)
+  const userRow = db.prepare('SELECT solde, COALESCE(bonbons,0) as bonbons FROM users WHERE id = ?').get(userId)
+  const solde   = userRow?.solde ?? 0
+  const bonbons = userRow?.bonbons ?? 0
+  if (!game) return { statut: 'idle', solde, bonbons }
   const pump_step = game.pump_step || 0.12
+  const currency  = game.currency || 'yens'
   return {
     statut:     'en_cours',
     pumps:      game.pumps_done,
     mult:       currentMult(game.pumps_done, pump_step),
     pump_step,
     difficulte: game.difficulte || DEFAULT_DIFF,
+    currency,
     solde,
+    bonbons,
   }
 }
 
@@ -165,7 +189,7 @@ function notify(userId, r) {
   })
 }
 
-function start(userId, mise, difficulte)  { return _start(userId, mise, difficulte) }
+function start(userId, mise, difficulte, currency = 'yens')  { return _start(userId, mise, difficulte, currency) }
 function pump(userId)                     { return _pump(userId) }
 function sceller(userId)                  { const r = _sceller(userId); notify(userId, r); return r }
 

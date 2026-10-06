@@ -610,43 +610,71 @@
                   </div>
                   <span class="joueur-id">{{ j.identifiant }}</span>
                 </div>
-                <div class="joueur-solde">
-                  <span class="solde-val">{{ (j.solde ?? 0).toLocaleString('fr-FR') }} ¥</span>
+                <div class="joueur-soldes">
+                  <div class="solde-bloc solde-bloc--yens">
+                    <span class="solde-bloc-label">Yens</span>
+                    <span class="solde-bloc-val">{{ (j.solde ?? 0).toLocaleString('fr-FR') }} ¥</span>
+                  </div>
+                  <div class="solde-bloc solde-bloc--bonbons">
+                    <span class="solde-bloc-label">Bonbons</span>
+                    <span class="solde-bloc-val">{{ (j.bonbons ?? 0).toLocaleString('fr-FR') }} 🍬</span>
+                  </div>
                 </div>
               </div>
-              <div class="joueur-actions">
+              <div class="joueur-currency-grid">
+                <div class="currency-section">
+                  <span class="currency-section-label">¥ Yens</span>
+                  <div class="currency-section-row">
+                    <input
+                      v-model.number="montants[j.id]"
+                      class="field-input solde-input"
+                      type="number"
+                      min="0"
+                      step="10000"
+                      placeholder="Montant"
+                    />
+                    <button class="btn-op btn-add"    @click="opSolde(j, 'add')">+ Ajouter</button>
+                    <button class="btn-op btn-remove" @click="opSolde(j, 'remove')">− Retirer</button>
+                    <button class="btn-op btn-set"    @click="opSolde(j, 'set')">= Définir</button>
+                  </div>
+                </div>
+                <div class="currency-section currency-section--bonbons">
+                  <span class="currency-section-label">🍬 Bonbons</span>
+                  <div class="currency-section-row">
+                    <input
+                      v-model.number="montantsBonbons[j.id]"
+                      class="field-input solde-input"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Montant"
+                    />
+                    <button class="btn-op btn-add"    @click="opBonbons(j, 'add')">+ Ajouter</button>
+                    <button class="btn-op btn-remove" @click="opBonbons(j, 'remove')">− Retirer</button>
+                    <button class="btn-op btn-set"    @click="opBonbons(j, 'set')">= Définir</button>
+                  </div>
+                </div>
+              </div>
+              <div v-if="isAdmin" class="joueur-actions joueur-actions--malchance">
+                <button
+                  :class="['btn-op btn-malchance', j.malchance ? 'btn-malchance--on' : '']"
+                  @click="doToggleMalchance(j)"
+                  :title="j.malchance ? 'Désactiver la malchance' : 'Activer la malchance'"
+                >{{ j.malchance ? '💀 ON' : '💀 OFF' }}</button>
                 <input
-                  v-model.number="montants[j.id]"
-                  class="field-input solde-input"
+                  v-model.number="malchanceProbs[j.id]"
+                  class="field-input malchance-prob-input"
                   type="number"
-                  min="0"
-                  step="10000"
-                  placeholder="Montant"
+                  min="1"
+                  max="99"
+                  step="5"
+                  :placeholder="`${Math.round((j.malchance_prob ?? 0.60) * 100)}%`"
+                  :title="`Probabilité malchance (actuellement ${Math.round((j.malchance_prob ?? 0.60) * 100)}%)`"
+                  @change="doSaveMalchanceProb(j)"
                 />
-                <button class="btn-op btn-add"    @click="opSolde(j, 'add')">+ Ajouter</button>
-                <button class="btn-op btn-remove" @click="opSolde(j, 'remove')">− Retirer</button>
-                <button class="btn-op btn-set"    @click="opSolde(j, 'set')">= Définir</button>
-                <template v-if="isAdmin">
-                  <button
-                    :class="['btn-op btn-malchance', j.malchance ? 'btn-malchance--on' : '']"
-                    @click="doToggleMalchance(j)"
-                    :title="j.malchance ? 'Désactiver la malchance' : 'Activer la malchance'"
-                  >{{ j.malchance ? '💀 ON' : '💀 OFF' }}</button>
-                  <input
-                    v-model.number="malchanceProbs[j.id]"
-                    class="field-input malchance-prob-input"
-                    type="number"
-                    min="1"
-                    max="99"
-                    step="5"
-                    :placeholder="`${Math.round((j.malchance_prob ?? 0.60) * 100)}%`"
-                    :title="`Probabilité malchance (actuellement ${Math.round((j.malchance_prob ?? 0.60) * 100)}%)`"
-                    @change="doSaveMalchanceProb(j)"
-                  />
-                  <button class="btn-op btn-logs-malchance" @click="doToggleLogs(j)" title="Voir les logs malchance">
-                    📋 {{ logsOuverts[j.id] ? 'Masquer' : 'Logs' }}
-                  </button>
-                </template>
+                <button class="btn-op btn-logs-malchance" @click="doToggleLogs(j)" title="Voir les logs malchance">
+                  📋 {{ logsOuverts[j.id] ? 'Masquer' : 'Logs' }}
+                </button>
               </div>
             </div>
             <div v-if="erreurs[j.id]" class="joueur-err">{{ erreurs[j.id] }}</div>
@@ -952,7 +980,7 @@ import { currentUser } from '../auth.js'
 import {
   getSlotsAdminSymbols, createSlotsSymbol, updateSlotsSymbol, deleteSlotsSymbol,
   getSlotsAdminConfig, updateSlotsConfig, IMG_BASE,
-  getSlotsAdminJoueurs, updateJoueurSolde,
+  getSlotsAdminJoueurs, updateJoueurSolde, updateJoueurBonbons,
   getSlotsAdminLogs, getSlotsAdminStats, wipeStats,
   getSlotsWebhook, updateSlotsWebhook, testSlotsWebhook,
   getCrossroadConfig, updateCrossroadConfig,
@@ -1411,11 +1439,12 @@ async function sauvegarderConfig() {
 }
 
 // ── Joueurs ─────────────────────────────────────────────────────────────────
-const joueurs        = ref([])
-const loadingJoueurs = ref(false)
-const montants       = ref({})
-const erreurs        = ref({})
-const recherche      = ref('')
+const joueurs          = ref([])
+const loadingJoueurs   = ref(false)
+const montants         = ref({})
+const montantsBonbons  = ref({})
+const erreurs          = ref({})
+const recherche        = ref('')
 
 const joueursFiltres = computed(() => {
   const q = recherche.value.trim().toLowerCase()
@@ -1447,6 +1476,23 @@ async function opSolde(j, operation) {
     const idx = joueurs.value.findIndex(x => x.id === j.id)
     if (idx !== -1) joueurs.value[idx] = updated
     montants.value[j.id] = null
+  } catch (e) {
+    erreurs.value[j.id] = e.message
+  }
+}
+
+async function opBonbons(j, operation) {
+  erreurs.value[j.id] = ''
+  const m = montantsBonbons.value[j.id]
+  if (m === undefined || m === null || m === '' || isNaN(m) || m < 0) {
+    erreurs.value[j.id] = 'Montant invalide.'
+    return
+  }
+  try {
+    const res = await updateJoueurBonbons(j.id, m, operation)
+    const idx = joueurs.value.findIndex(x => x.id === j.id)
+    if (idx !== -1) joueurs.value[idx] = { ...joueurs.value[idx], bonbons: res.bonbons }
+    montantsBonbons.value[j.id] = null
   } catch (e) {
     erreurs.value[j.id] = e.message
   }
@@ -2171,15 +2217,67 @@ onMounted(async () => {
   text-transform: uppercase;
 }
 
-.joueur-solde {
-  min-width: 130px;
+.joueur-soldes {
+  display: flex;
+  gap: 16px;
+  align-items: center;
 }
 
-.solde-val {
+.solde-bloc {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.solde-bloc-label {
   font-family: 'Cinzel', serif;
-  font-size: 0.88rem;
+  font-size: 0.48rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+}
+
+.solde-bloc-val {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
   letter-spacing: 0.04em;
   color: rgba(255,255,255,0.7);
+}
+
+.solde-bloc--bonbons .solde-bloc-val { color: rgba(255,200,100,0.8); }
+
+.joueur-currency-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+.currency-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.currency-section-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  min-width: 72px;
+}
+
+.currency-section--bonbons .currency-section-label { color: rgba(255,200,100,0.5); }
+
+.currency-section-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
 }
 
 .joueur-actions {
@@ -2187,6 +2285,12 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   flex: 1;
+}
+
+.joueur-actions--malchance {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.04);
 }
 
 .solde-input {

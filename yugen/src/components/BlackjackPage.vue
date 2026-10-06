@@ -9,7 +9,15 @@
     <div v-if="!jeuIndisponible" class="page-inner">
       <div class="top-bar">
         <RouterLink to="/casino" class="back-link">← Casino</RouterLink>
-        <div class="solde-badge">{{ fmtYen(solde) }}</div>
+        <div class="top-bar-right">
+          <div class="currency-toggle">
+            <button :class="['cur-btn', currency === 'yens' ? 'cur-btn--active' : '']" @click="currency = 'yens'">¥</button>
+            <button :class="['cur-btn', currency === 'bonbons' ? 'cur-btn--active' : '']" @click="currency = 'bonbons'">🍬</button>
+          </div>
+          <div class="solde-badge">
+            {{ currency === 'bonbons' ? soldeBonbons.toLocaleString('fr-FR') + ' 🍬' : fmtYen(solde) }}
+          </div>
+        </div>
       </div>
 
       <!-- ── Choix de mode ──────────────────────────── -->
@@ -95,7 +103,7 @@
               type="number"
               class="mise-input"
               :min="bjMin"
-              :max="Math.min(bjMax, solde)"
+              :max="Math.min(bjMax, currency === 'bonbons' ? soldeBonbons : solde)"
               step="1000"
               :disabled="loading"
               @keydown.enter="lancerPartie"
@@ -189,6 +197,8 @@ const mode = ref(null) // null = choix, 'solo' = solo
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const solde          = ref(0)
+const soldeBonbons   = ref(0)
+const currency       = ref('yens')
 const miseInput      = ref(10000)
 const etat           = ref('idle')      // 'idle' | 'en_cours' | 'fini'
 const mainJoueur     = ref([])
@@ -249,7 +259,11 @@ function applyFinalState(data) {
   pTotal.value  = data.pTotal  ?? null
   resultat.value = data.resultat ?? null
   gainNet.value  = data.gain_net ?? 0
-  if (data.solde != null) solde.value = data.solde
+  if (data.currency === 'bonbons') {
+    if (data.bonbons != null) soldeBonbons.value = data.bonbons
+  } else {
+    if (data.solde != null) solde.value = data.solde
+  }
 }
 
 function triggerWin() {
@@ -315,7 +329,7 @@ async function lancerPartie() {
   playChip()
 
   try {
-    const data = await blackjackNew(miseInput.value)
+    const data = await blackjackNew(miseInput.value, currency.value)
     const pCards = data.mainJoueur
     const dCards = data.mainDealer  // [real, {hidden}] ou [real, real] si fin immédiate
 
@@ -349,7 +363,11 @@ async function lancerPartie() {
       etat.value     = 'en_cours'
       pTotal.value   = data.pTotal
       canDouble.value = data.canDouble ?? true
-      if (data.solde != null) solde.value = data.solde
+      if (data.currency === 'bonbons') {
+        if (data.bonbons != null) soldeBonbons.value = data.bonbons
+      } else {
+        if (data.solde != null) solde.value = data.solde
+      }
       loading.value  = false
     } else {
       // Blackjack immédiat — retourner la carte cachée
@@ -401,7 +419,11 @@ async function doHit() {
       await animateDealerReveal(data)
     } else {
       canDouble.value = false
-      if (data.solde != null) solde.value = data.solde
+      if (data.currency === 'bonbons') {
+        if (data.bonbons != null) soldeBonbons.value = data.bonbons
+      } else {
+        if (data.solde != null) solde.value = data.solde
+      }
       loading.value = false
     }
   } catch (e) {
@@ -479,7 +501,10 @@ onMounted(async () => {
     miseInput.value = cfg.soloMin
   } catch {}
   const me = await getMe()
-  if (me) solde.value = me.solde
+  if (me) {
+    solde.value = me.solde
+    soldeBonbons.value = me.bonbons ?? 0
+  }
 })
 </script>
 
@@ -552,6 +577,31 @@ onMounted(async () => {
   align-items: center;
   margin-bottom: 2rem;
 }
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.currency-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.cur-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.3);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.12s;
+  border-radius: 2px;
+}
+.cur-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.6); }
+.cur-btn--active { border-color: rgba(201,168,76,0.4); color: #c9a84c; background: rgba(201,168,76,0.08); }
 
 .back-link {
   font-family: 'Cinzel', serif;

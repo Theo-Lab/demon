@@ -117,8 +117,8 @@ function getState(userId) {
     sess = db.prepare('SELECT * FROM demons_gate_sessions WHERE user_id = ?').get(userId)
   }
   sess.respin_held = JSON.parse(sess.respin_held || '[]')
-  const user = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId)
-  return { ...sess, solde: user?.solde ?? 0 }
+  const user = db.prepare('SELECT solde, COALESCE(bonbons,0) as bonbons FROM users WHERE id = ?').get(userId)
+  return { ...sess, solde: user?.solde ?? 0, bonbons: user?.bonbons ?? 0 }
 }
 
 function saveSession(userId, fields) {
@@ -143,12 +143,14 @@ function randMult(gateLevel) {
 const CREDIT_RATE = 10  // 1 crédit = 10 ¥
 
 // ── buyCreditsDG ──────────────────────────────────────────────────────────────
-const _buyCredits = db.transaction((userId, montantYen) => {
-  const user = db.prepare('SELECT id, solde FROM users WHERE id = ?').get(userId)
+const _buyCredits = db.transaction((userId, montantYen, currency = 'yens') => {
+  const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
+  const sym      = currency === 'bonbons' ? 'B' : '¥'
+  const user = db.prepare(`SELECT id, ${soldeCol} as solde_cur FROM users WHERE id = ?`).get(userId)
   if (!user) throw new Error('Utilisateur introuvable.')
   if (montantYen <= 0 || montantYen % CREDIT_RATE !== 0)
-    throw new Error(`Le montant doit être un multiple de ${CREDIT_RATE} ¥.`)
-  if (user.solde < montantYen) throw new Error('Solde insuffisant.')
+    throw new Error(`Le montant doit être un multiple de ${CREDIT_RATE} ${sym}.`)
+  if (user.solde_cur < montantYen) throw new Error('Solde insuffisant.')
 
   // Interdit si partie en cours
   const sess = db.prepare('SELECT respin_active, free_spins_remaining FROM demons_gate_sessions WHERE user_id = ?').get(userId)
@@ -156,7 +158,7 @@ const _buyCredits = db.transaction((userId, montantYen) => {
     throw new Error('Impossible d\'acheter des crédits pendant une partie en cours.')
 
   const credits = montantYen / CREDIT_RATE
-  db.prepare('UPDATE users SET solde = solde - ? WHERE id = ?').run(montantYen, userId)
+  db.prepare(`UPDATE users SET ${soldeCol} = ${soldeCol} - ? WHERE id = ?`).run(montantYen, userId)
 
   // Upsert session + crédits
   db.prepare(`
@@ -164,33 +166,35 @@ const _buyCredits = db.transaction((userId, montantYen) => {
     ON CONFLICT(user_id) DO UPDATE SET credits = credits + excluded.credits, updated_at = CURRENT_TIMESTAMP
   `).run(userId, credits)
 
-  const newSolde   = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
-  const newCredits = db.prepare('SELECT credits FROM demons_gate_sessions WHERE user_id = ?').get(userId).credits
+  const newSoldeRow = db.prepare(`SELECT ${soldeCol} as cur FROM users WHERE id = ?`).get(userId)
+  const newSolde    = newSoldeRow.cur
+  const newCredits  = db.prepare('SELECT credits FROM demons_gate_sessions WHERE user_id = ?').get(userId).credits
   db.prepare(`
     INSERT INTO dg_credits_logs (user_id, type, credits, montant_yen, solde_avant, solde_apres)
     VALUES (?, 'buy', ?, ?, ?, ?)
-  `).run(userId, credits, montantYen, user.solde, newSolde)
-  return { solde: newSolde, credits: newCredits }
+  `).run(userId, credits, montantYen, user.solde_cur, newSolde)
+  return { solde: newSolde, credits: newCredits, currency }
 })
 
 // ── cashoutDG ─────────────────────────────────────────────────────────────────
-const _cashout = db.transaction((userId) => {
+const _cashout = db.transaction((userId, currency = 'yens') => {
+  const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
   const sess = db.prepare('SELECT * FROM demons_gate_sessions WHERE user_id = ?').get(userId)
   if (!sess || sess.credits <= 0) throw new Error('Aucun crédit à encaisser.')
   if (sess.respin_active || sess.free_spins_remaining > 0)
     throw new Error('Impossible d\'encaisser pendant une partie en cours.')
 
-  const soldeBefore = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
+  const soldeBefore = db.prepare(`SELECT ${soldeCol} as cur FROM users WHERE id = ?`).get(userId).cur
   const montantYen  = sess.credits * CREDIT_RATE
-  db.prepare('UPDATE users SET solde = solde + ? WHERE id = ?').run(montantYen, userId)
+  db.prepare(`UPDATE users SET ${soldeCol} = ${soldeCol} + ? WHERE id = ?`).run(montantYen, userId)
   db.prepare('UPDATE demons_gate_sessions SET credits = 0, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(userId)
 
-  const newSolde = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
+  const newSolde = db.prepare(`SELECT ${soldeCol} as cur FROM users WHERE id = ?`).get(userId).cur
   db.prepare(`
     INSERT INTO dg_credits_logs (user_id, type, credits, montant_yen, solde_avant, solde_apres)
     VALUES (?, 'cashout', ?, ?, ?, ?)
   `).run(userId, sess.credits, montantYen, soldeBefore, newSolde)
-  return { solde: newSolde, credits: 0, montantYen }
+  return { solde: newSolde, credits: 0, montantYen, currency }
 })
 
 // ── spin ──────────────────────────────────────────────────────────────────────
@@ -396,7 +400,7 @@ const _respin = db.transaction((userId) => {
 
 function spin(userId, mise)  { return _spin(userId, mise) }
 function respin(userId)      { return _respin(userId) }
-function buyCredits(userId, montantYen) { return _buyCredits(userId, montantYen) }
-function cashout(userId)     { return _cashout(userId) }
+function buyCredits(userId, montantYen, currency = 'yens') { return _buyCredits(userId, montantYen, currency) }
+function cashout(userId, currency = 'yens')     { return _cashout(userId, currency) }
 
 module.exports = { getState, spin, respin, buyCredits, cashout, CREDIT_RATE }

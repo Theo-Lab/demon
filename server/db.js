@@ -178,6 +178,20 @@ db.exec(`
   )
 `)
 
+// Table logs bonbons admin
+db.exec(`
+  CREATE TABLE IF NOT EXISTS bonbons_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    admin_id INTEGER,
+    operation TEXT NOT NULL,
+    montant INTEGER NOT NULL,
+    bonbons_avant INTEGER,
+    bonbons_apres INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
+
 // Table logs solde admin
 db.exec(`
   CREATE TABLE IF NOT EXISTS solde_logs (
@@ -302,6 +316,7 @@ try { db.exec(`ALTER TABLE rapports ADD COLUMN brouillon INTEGER NOT NULL DEFAUL
 try { db.exec(`ALTER TABLE users ADD COLUMN pouvoir_nom TEXT DEFAULT ''`) } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN malchance INTEGER NOT NULL DEFAULT 0`) } catch {}
 try { db.exec(`ALTER TABLE users ADD COLUMN malchance_prob REAL NOT NULL DEFAULT 0.60`) } catch {}
+try { db.prepare('ALTER TABLE users ADD COLUMN bonbons INTEGER DEFAULT 0').run() } catch {}
 
 // Table logs malchance
 db.exec(`
@@ -428,6 +443,11 @@ try { db.exec("ALTER TABLE corps_games ADD COLUMN difficulte TEXT NOT NULL DEFAU
 // Migrations : activation des nouveaux jeux
 try { db.prepare('ALTER TABLE slots_config ADD COLUMN demons_gate_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
 try { db.prepare('ALTER TABLE slots_config ADD COLUMN corps_actif INTEGER NOT NULL DEFAULT 1').run() } catch {}
+
+// Migration currency sur les tables de jeu
+try { db.prepare('ALTER TABLE game_rounds ADD COLUMN currency TEXT DEFAULT "yens"').run() } catch {}
+try { db.prepare('ALTER TABLE blackjack_games ADD COLUMN currency TEXT DEFAULT "yens"').run() } catch {}
+try { db.prepare('ALTER TABLE corps_games ADD COLUMN currency TEXT DEFAULT "yens"').run() } catch {}
 
 // Table images symboles Oni 243
 db.exec(`

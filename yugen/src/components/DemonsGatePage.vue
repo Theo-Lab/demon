@@ -31,13 +31,19 @@
           <p class="dg-sub">Collect &amp; Blow · 243 Ways to Win</p>
         </div>
         <div class="dg-wallet-box">
+          <div class="dg-currency-toggle">
+            <button :class="['dg-cur-btn', currency === 'yens' ? 'dg-cur-btn--active' : '']" @click="currency = 'yens'">¥</button>
+            <button :class="['dg-cur-btn', currency === 'bonbons' ? 'dg-cur-btn--active' : '']" @click="currency = 'bonbons'">🍬</button>
+          </div>
           <div class="dg-credits-row">
             <span class="dg-credits-label">Crédits</span>
             <span class="dg-credits-value">{{ credits.toLocaleString('fr-FR') }} cr</span>
           </div>
           <div class="dg-solde-row">
             <span class="dg-solde-label">Solde</span>
-            <span class="dg-solde-value">{{ solde.toLocaleString('fr-FR') }} ¥</span>
+            <span class="dg-solde-value">
+              {{ currency === 'bonbons' ? soldeBonbons.toLocaleString('fr-FR') + ' 🍬' : solde.toLocaleString('fr-FR') + ' ¥' }}
+            </span>
           </div>
           <div class="dg-wallet-actions">
             <button class="dg-btn-recharge" @click="showBuyIn = true" :disabled="spinning">+ Recharger</button>
@@ -274,14 +280,17 @@
     <div v-if="showBuyIn" class="dg-modal-overlay" @click.self="showBuyIn = false">
       <div class="dg-modal-box">
         <h2 class="dg-modal-title">Recharger des crédits</h2>
-        <p class="dg-modal-sub">1 crédit = 10 ¥ · Solde : {{ solde.toLocaleString('fr-FR') }} ¥</p>
+        <p class="dg-modal-sub">
+          1 crédit = 10 {{ currency === 'bonbons' ? '🍬' : '¥' }} ·
+          Solde : {{ currency === 'bonbons' ? soldeBonbons.toLocaleString('fr-FR') + ' 🍬' : solde.toLocaleString('fr-FR') + ' ¥' }}
+        </p>
 
         <div class="dg-buyin-options">
           <button
             v-for="opt in [{ cr: 1000, yen: 10000 }, { cr: 5000, yen: 50000 }, { cr: 10000, yen: 100000 }]"
             :key="opt.cr"
             class="dg-buyin-btn"
-            :disabled="buyInLoading || solde < opt.yen"
+            :disabled="buyInLoading || (currency === 'bonbons' ? soldeBonbons : solde) < opt.yen"
             @click="handleBuyIn(opt.yen)"
           >
             <span class="dg-buyin-cr">{{ opt.cr.toLocaleString('fr-FR') }} cr</span>
@@ -377,6 +386,8 @@ const freeSpinsRemaining = ref(0)
 const mise            = ref(100)
 const lastGain        = ref(0)
 const solde           = ref(0)
+const soldeBonbons    = ref(0)
+const currency        = ref('yens')
 const credits         = ref(0)
 const busy            = ref(false)   // true pendant toute la séquence spin (incl. gate blow, big win)
 const autoSpin        = ref(false)
@@ -527,9 +538,13 @@ async function handleBuyIn(montantYen) {
   buyInLoading.value = true
   error.value = ''
   try {
-    const result = await demonsGateBuyCredits(montantYen)
+    const result = await demonsGateBuyCredits(montantYen, currency.value)
     credits.value = result.credits
-    solde.value   = result.solde
+    if (currency.value === 'bonbons') {
+      if (result.bonbons != null) soldeBonbons.value = result.bonbons
+    } else {
+      if (result.solde != null) solde.value = result.solde
+    }
     showBuyIn.value = false
   } catch (e) {
     error.value = e.message
@@ -542,9 +557,13 @@ async function handleCashout() {
   cashoutLoading.value = true
   error.value = ''
   try {
-    const result = await demonsGateCashout()
+    const result = await demonsGateCashout(currency.value)
     credits.value = 0
-    solde.value   = result.solde
+    if (currency.value === 'bonbons') {
+      if (result.bonbons != null) soldeBonbons.value = result.bonbons
+    } else {
+      if (result.solde != null) solde.value = result.solde
+    }
   } catch (e) {
     error.value = e.message
   } finally {
@@ -634,7 +653,8 @@ async function handleSpin() {
 
   try {
     const result = await demonsGateSpin(mise.value)
-    solde.value   = result.solde
+    if (result.solde != null) solde.value = result.solde
+    if (result.bonbons != null) soldeBonbons.value = result.bonbons
     credits.value = result.credits ?? credits.value
     flameCount.value = result.flameCount
     gateLevel.value = result.gateLevel
@@ -736,7 +756,8 @@ async function handleGateBlow() {
 
     await animateSpin(respinResult.grid)
 
-    solde.value   = respinResult.solde
+    if (respinResult.solde != null) solde.value = respinResult.solde
+    if (respinResult.bonbons != null) soldeBonbons.value = respinResult.bonbons
     credits.value = respinResult.credits ?? credits.value
     flameCount.value = respinResult.flameCount
     gateLevel.value = respinResult.gateLevel
@@ -780,8 +801,9 @@ onMounted(async () => {
   await loadSymbols()
   try {
     const state = await demonsGateGetState()
-    solde.value   = state.solde
-    credits.value = state.credits ?? 0
+    solde.value        = state.solde
+    soldeBonbons.value = state.bonbons ?? 0
+    credits.value      = state.credits ?? 0
     flameCount.value = state.flame_count ?? 0
     gateLevel.value = state.gate_level ?? 1
     freeSpinsRemaining.value = state.free_spins_remaining ?? 0
@@ -889,6 +911,26 @@ onMounted(async () => {
   align-items: flex-end;
   gap: 4px;
 }
+
+.dg-currency-toggle {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 2px;
+}
+
+.dg-cur-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(232,216,196,0.3);
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: all 0.12s;
+  border-radius: 2px;
+}
+.dg-cur-btn:hover { border-color: rgba(255,255,255,0.22); color: rgba(232,216,196,0.6); }
+.dg-cur-btn--active { border-color: rgba(255,200,80,0.4); color: #ffd060; background: rgba(255,200,60,0.06); }
 
 .dg-credits-row {
   display: flex;

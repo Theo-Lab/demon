@@ -428,10 +428,10 @@ export async function getSlotsConfig() {
   return data
 }
 
-export async function spinSlots(mise) {
+export async function spinSlots(mise, currency = 'yens') {
   const res = await apiFetch(`${BASE}/slots/spin`, {
     method: 'POST',
-    body: JSON.stringify({ mise }),
+    body: JSON.stringify({ mise, currency }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
@@ -586,10 +586,10 @@ export async function closePokerTable(tableId) {
 
 // ── Blackjack ──────────────────────────────────────────────────────────────────
 
-export async function blackjackNew(mise) {
+export async function blackjackNew(mise, currency = 'yens') {
   const res = await apiFetch(`${BASE}/blackjack/new`, {
     method: 'POST',
-    body: JSON.stringify({ mise }),
+    body: JSON.stringify({ mise, currency }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
@@ -821,18 +821,21 @@ export async function demonsGateHistory(limit = 30) {
   return data
 }
 
-export async function demonsGateBuyCredits(montant) {
+export async function demonsGateBuyCredits(montant, currency = 'yens') {
   const res = await apiFetch(`${BASE}/demons-gate/buy-credits`, {
     method: 'POST',
-    body: JSON.stringify({ montant }),
+    body: JSON.stringify({ montant, currency }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
   return data
 }
 
-export async function demonsGateCashout() {
-  const res = await apiFetch(`${BASE}/demons-gate/cashout`, { method: 'POST' })
+export async function demonsGateCashout(currency = 'yens') {
+  const res = await apiFetch(`${BASE}/demons-gate/cashout`, {
+    method: 'POST',
+    body: JSON.stringify({ currency }),
+  })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
   return data
@@ -847,10 +850,10 @@ export async function corpsState() {
   return data
 }
 
-export async function corpsStart(mise, difficulte = 'demoniaque') {
+export async function corpsStart(mise, difficulte = 'demoniaque', currency = 'yens') {
   const res = await apiFetch(`${BASE}/corps/start`, {
     method: 'POST',
-    body: JSON.stringify({ mise, difficulte }),
+    body: JSON.stringify({ mise, difficulte, currency }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
@@ -1190,4 +1193,14 @@ export async function glaceDeleteActivite(id) {
 export async function glaceSetDirigeant(userId, actif) {
   const res = await apiFetch(`${BASE}/glace/admin/dirigeant`, { method: 'POST', body: JSON.stringify({ userId, actif }) })
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+
+export async function updateJoueurBonbons(id, montant, operation) {
+  const res = await apiFetch(`${BASE}/slots/admin/joueurs/${id}/bonbons`, {
+    method: 'PATCH',
+    body: JSON.stringify({ montant, operation })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
 }

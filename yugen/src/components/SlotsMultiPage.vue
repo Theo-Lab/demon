@@ -15,9 +15,15 @@
           <RouterLink to="/slots" class="back-link">← Machine à Sous</RouterLink>
           <h1 class="page-title">Multi-Spin</h1>
         </div>
-        <div class="solde-display">
-          <span class="solde-label">Solde</span>
-          <span class="solde-value">{{ solde.toLocaleString() }} ¥</span>
+        <div class="header-right-wrap">
+          <div class="currency-toggle">
+            <button :class="['cur-btn', currency === 'yens' ? 'cur-btn--active' : '']" @click="currency = 'yens'">¥</button>
+            <button :class="['cur-btn', currency === 'bonbons' ? 'cur-btn--active' : '']" @click="currency = 'bonbons'">🍬</button>
+          </div>
+          <div class="solde-display">
+            <span class="solde-label">Solde</span>
+            <span class="solde-value">{{ solde.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}</span>
+          </div>
         </div>
       </div>
 
@@ -81,9 +87,9 @@
             <div :class="['machine-result', m.resultat && m.resultat.type !== 'none' ? 'mr--win' : '', !m.resultat || spinning ? 'mr--vide' : '']">
               <template v-if="m.resultat && !spinning">
                 <span v-if="m.resultat.type !== 'none'" class="mr-gain">
-                  +{{ m.resultat.gain.toLocaleString() }} ¥
+                  +{{ m.resultat.gain.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}
                 </span>
-                <span v-else class="mr-loss">−{{ mise.toLocaleString() }} ¥</span>
+                <span v-else class="mr-loss">−{{ mise.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}</span>
               </template>
             </div>
 
@@ -95,18 +101,18 @@
           <div v-if="summary && !spinning" class="summary">
             <div class="sum-item">
               <span class="sum-label">Total misé</span>
-              <span class="sum-val">{{ summary.total_mise.toLocaleString() }} ¥</span>
+              <span class="sum-val">{{ summary.total_mise.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}</span>
             </div>
             <div class="sum-divider"></div>
             <div class="sum-item">
               <span class="sum-label">Total récupéré</span>
-              <span class="sum-val">{{ summary.total_gain.toLocaleString() }} ¥</span>
+              <span class="sum-val">{{ summary.total_gain.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}</span>
             </div>
             <div class="sum-divider"></div>
             <div class="sum-item">
               <span class="sum-label">Gain net</span>
               <span :class="['sum-val', 'sum-net', summary.total_gain_net > 0 ? 'pos' : summary.total_gain_net < 0 ? 'neg' : '']">
-                {{ summary.total_gain_net > 0 ? '+' : '' }}{{ summary.total_gain_net.toLocaleString() }} ¥
+                {{ summary.total_gain_net > 0 ? '+' : '' }}{{ summary.total_gain_net.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}
               </span>
             </div>
           </div>
@@ -117,7 +123,7 @@
           <div v-if="erreur" class="erreur">{{ erreur }}</div>
 
           <div class="mise-field">
-            <label class="field-label">Mise par machine (¥)</label>
+            <label class="field-label">Mise par machine ({{ currency === 'bonbons' ? '🍬' : '¥' }})</label>
             <div class="mise-input-wrap">
               <input v-model.number="mise" type="number" class="field-input"
                 :min="config.mise_min" :max="config.mise_max" :step="config.mise_min"
@@ -129,8 +135,8 @@
                 :disabled="spinning" @click="mise = p">{{ formatPreset(p) }}</button>
             </div>
             <p class="mise-hint">
-              {{ config.mise_min.toLocaleString() }} – {{ config.mise_max.toLocaleString() }} ¥ par machine
-              · <strong>Total : {{ (mise * nbMachines).toLocaleString() }} ¥</strong>
+              {{ config.mise_min.toLocaleString('fr-FR') }} – {{ config.mise_max.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }} par machine
+              · <strong>Total : {{ (mise * nbMachines).toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}</strong>
             </p>
           </div>
 
@@ -149,7 +155,7 @@
 import { ref, computed, onMounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { currentUser } from '../auth.js'
-import { getSlotsConfig, IMG_BASE, getCasinoGames } from '../api.js'
+import { getSlotsConfig, IMG_BASE, getCasinoGames, getMe } from '../api.js'
 import { playTick, playStop, playSmallWin, playBigWin, resumeAudio } from '../slots-audio.js'
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
@@ -174,7 +180,11 @@ const summary      = ref(null)
 const machineStates = ref([])
 const jeuIndisponible = ref(false)
 
-const solde   = computed(() => currentUser.value?.solde ?? 0)
+const currency      = ref('yens')
+const soldeBonbons  = ref(0)
+const solde = computed(() =>
+  currency.value === 'bonbons' ? soldeBonbons.value : (currentUser.value?.solde ?? 0)
+)
 const nbCols  = computed(() => config.value?.nb_colonnes ?? 3)
 const CELL_H  = computed(() => ({ 2: 90, 3: 80, 4: 68, 5: 58 }[nbMachines.value] ?? 80))
 
@@ -249,7 +259,7 @@ async function lancerMultiSpin() {
   try {
     res = await apiFetch(`${BASE}/slots/multispin`, {
       method: 'POST',
-      body: JSON.stringify({ mise: mise.value, nb_machines: nbMachines.value }),
+      body: JSON.stringify({ mise: mise.value, nb_machines: nbMachines.value, currency: currency.value }),
     })
   } catch (e) {
     erreur.value   = e.message
@@ -257,7 +267,11 @@ async function lancerMultiSpin() {
     return
   }
 
-  if (currentUser.value) currentUser.value = { ...currentUser.value, solde: res.solde }
+  if (currency.value === 'bonbons') {
+    if (res.bonbons != null) soldeBonbons.value = res.bonbons
+  } else if (currentUser.value && res.solde != null) {
+    currentUser.value = { ...currentUser.value, solde: res.solde }
+  }
 
   const cols  = nbCols.value
   const cellH = CELL_H.value
@@ -336,6 +350,7 @@ async function lancerMultiSpin() {
 // ── Mount ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   try { const g = await getCasinoGames(); if (!g.slots) jeuIndisponible.value = true } catch {}
+  try { const me = await getMe(); if (me?.bonbons != null) soldeBonbons.value = me.bonbons } catch {}
   try {
     const data     = await getSlotsConfig()
     config.value   = data.config
@@ -374,6 +389,15 @@ onMounted(async () => {
   font-size: 1.7rem; font-weight: 400; margin: 0; letter-spacing: 0.06em;
 }
 .page-divider { height: 1px; background: rgba(255,255,255,0.06); margin-bottom: 32px; }
+.header-right-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.currency-toggle { display: flex; gap: 4px; }
+.cur-btn {
+  font-family: 'Cinzel', serif; font-size: 0.7rem; background: transparent;
+  border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.3);
+  padding: 3px 8px; cursor: pointer; transition: all 0.12s; border-radius: 2px;
+}
+.cur-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.6); }
+.cur-btn--active { border-color: rgba(139,26,26,0.5); color: #c87070; background: rgba(139,26,26,0.08); }
 .solde-display { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .solde-label {
   font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.16em;

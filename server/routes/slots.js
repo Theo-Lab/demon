@@ -48,11 +48,12 @@ router.get('/config', (req, res) => {
 
 // POST /api/slots/spin
 router.post('/spin', requireAuth, (req, res) => {
-  const mise = parseInt(req.body.mise)
+  const mise     = parseInt(req.body.mise)
+  const currency = req.body.currency === 'bonbons' ? 'bonbons' : 'yens'
   if (!mise || mise <= 0) return res.status(400).json({ message: 'Mise invalide.' })
 
   try {
-    const resultat = slotService.jouer(req.user.id, mise)
+    const resultat = slotService.jouer(req.user.id, mise, currency)
     res.json(resultat)
   } catch (e) {
     res.status(400).json({ message: e.message })
@@ -61,11 +62,12 @@ router.post('/spin', requireAuth, (req, res) => {
 
 // POST /api/slots/multispin
 router.post('/multispin', requireAuth, (req, res) => {
-  const mise = parseInt(req.body.mise)
-  const nb   = Math.min(5, Math.max(2, parseInt(req.body.nb_machines) || 2))
+  const mise     = parseInt(req.body.mise)
+  const nb       = Math.min(5, Math.max(2, parseInt(req.body.nb_machines) || 2))
+  const currency = req.body.currency === 'bonbons' ? 'bonbons' : 'yens'
   if (!mise || mise <= 0) return res.status(400).json({ message: 'Mise invalide.' })
   try {
-    res.json(slotService.jouerMulti(req.user.id, mise, nb))
+    res.json(slotService.jouerMulti(req.user.id, mise, nb, currency))
   } catch (e) {
     res.status(400).json({ message: e.message })
   }
@@ -139,7 +141,7 @@ router.delete('/admin/symbols/:id', requireAuth, requireAdmin, (req, res) => {
 // GET /api/slots/admin/joueurs
 router.get('/admin/joueurs', requireAuth, requireCasino, (req, res) => {
   const joueurs = db.prepare(`
-    SELECT id, nom, identifiant, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(malchance, 0) as malchance, COALESCE(malchance_prob, 0.60) as malchance_prob, COALESCE(sci_dirigeant, 0) as sci_dirigeant, COALESCE(glace_dirigeant, 0) as glace_dirigeant
+    SELECT id, nom, identifiant, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(bonbons, 0) as bonbons, COALESCE(malchance, 0) as malchance, COALESCE(malchance_prob, 0.60) as malchance_prob, COALESCE(sci_dirigeant, 0) as sci_dirigeant, COALESCE(glace_dirigeant, 0) as glace_dirigeant
     FROM users ORDER BY nom ASC
   `).all()
   res.json({ joueurs })
@@ -177,6 +179,23 @@ router.patch('/admin/joueurs/:id/solde', requireAuth, requireCasino, (req, res) 
     adminName:   admin?.nom || 'Inconnu',
   })
   res.json({ joueur: { ...user, solde: newSolde } })
+})
+
+// PATCH /api/slots/admin/joueurs/:id/bonbons
+// body: { montant, operation: 'add' | 'remove' | 'set' }
+router.patch('/admin/joueurs/:id/bonbons', requireAuth, requireCasino, (req, res) => {
+  const { montant, operation } = req.body
+  const joueur = db.prepare('SELECT id, bonbons FROM users WHERE id = ?').get(req.params.id)
+  if (!joueur) return res.status(404).json({ message: 'Joueur introuvable.' })
+  const avant = joueur.bonbons || 0
+  let apres
+  if (operation === 'add') apres = avant + montant
+  else if (operation === 'remove') apres = Math.max(0, avant - montant)
+  else if (operation === 'set') apres = Math.max(0, montant)
+  else return res.status(400).json({ message: 'Opération invalide.' })
+  db.prepare('UPDATE users SET bonbons = ? WHERE id = ?').run(apres, joueur.id)
+  db.prepare('INSERT INTO bonbons_logs (user_id, admin_id, operation, montant, bonbons_avant, bonbons_apres) VALUES (?, ?, ?, ?, ?, ?)').run(joueur.id, req.user.id, operation, montant, avant, apres)
+  res.json({ ok: true, bonbons: apres })
 })
 
 // GET /api/slots/admin/logs?limit=100&offset=0&joueur=&source=&jeu=&operation=&date_from=&date_to=

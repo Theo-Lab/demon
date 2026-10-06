@@ -176,11 +176,12 @@ router.get('/history', requireAuth, (req, res) => {
 // POST /api/demons-gate/buy-credits
 router.post('/buy-credits', requireAuth, (req, res) => {
   try {
-    const montant = parseInt(req.body.montant)
+    const montant  = parseInt(req.body.montant)
+    const currency = req.body.currency === 'bonbons' ? 'bonbons' : 'yens'
     if (!montant || isNaN(montant) || montant <= 0) {
       return res.status(400).json({ message: 'Montant invalide.' })
     }
-    const result = demonsGate.buyCredits(req.user.id, montant)
+    const result = demonsGate.buyCredits(req.user.id, montant, currency)
     res.json(result)
   } catch (e) {
     res.status(400).json({ message: e.message })
@@ -190,7 +191,8 @@ router.post('/buy-credits', requireAuth, (req, res) => {
 // POST /api/demons-gate/cashout
 router.post('/cashout', requireAuth, (req, res) => {
   try {
-    const result = demonsGate.cashout(req.user.id)
+    const currency = req.body?.currency === 'bonbons' ? 'bonbons' : 'yens'
+    const result = demonsGate.cashout(req.user.id, currency)
     res.json(result)
   } catch (e) {
     res.status(400).json({ message: e.message })

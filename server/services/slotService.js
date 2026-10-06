@@ -87,15 +87,19 @@ function evaluerLigne(ligne) {
 // 3. Tirage 3×3
 // 4. Calcul gain sur ligne centrale (rangée du milieu)
 // 5. Débit mise → crédit gain → log game_rounds
-const _jouer = db.transaction((userId, mise) => {
+const _jouer = db.transaction((userId, mise, currency = 'yens') => {
+  const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
   const config = db.prepare('SELECT * FROM slots_config WHERE id = 1').get()
-  if (mise < config.mise_min || mise > config.mise_max) {
+  if (currency !== 'bonbons' && (mise < config.mise_min || mise > config.mise_max)) {
     throw new Error(`Mise invalide (min ${config.mise_min.toLocaleString()} ¥, max ${config.mise_max.toLocaleString()} ¥).`)
   }
+  if (currency === 'bonbons' && mise > config.mise_max) {
+    throw new Error(`Mise invalide (max ${config.mise_max.toLocaleString()} 🍬).`)
+  }
 
-  const user = db.prepare('SELECT solde, nom, identifiant FROM users WHERE id = ?').get(userId)
+  const user = db.prepare(`SELECT ${soldeCol} as solde_cur, nom, identifiant FROM users WHERE id = ?`).get(userId)
   if (!user) throw new Error('Utilisateur introuvable.')
-  if (user.solde < mise) throw new Error('Solde insuffisant.')
+  if (user.solde_cur < mise) throw new Error('Solde insuffisant.')
 
   const symboles = db.prepare('SELECT * FROM slots_symbols WHERE actif = 1').all()
   if (symboles.length < 2) throw new Error('Configuration insuffisante : au moins 2 symboles actifs requis.')
@@ -123,16 +127,16 @@ const _jouer = db.transaction((userId, mise) => {
   const lignePayline = grille.slice(nb_colonnes, 2 * nb_colonnes)
   const { multiplicateur, type, run, winning_cols, near_miss, is_jackpot } = evaluerLigne(lignePayline)
 
-  const gain      = Math.floor(mise * multiplicateur)
-  const gain_net  = gain - mise
-  const solde_avant = user.solde
+  const gain        = Math.floor(mise * multiplicateur)
+  const gain_net    = gain - mise
+  const solde_avant = user.solde_cur
   const solde_apres = solde_avant + gain_net
 
-  db.prepare('UPDATE users SET solde = ? WHERE id = ?').run(solde_apres, userId)
+  db.prepare(`UPDATE users SET ${soldeCol} = ? WHERE id = ?`).run(solde_apres, userId)
 
   db.prepare(`
-    INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres)
-    VALUES (?, 'slots', ?, ?, ?, ?, ?)
+    INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres, currency)
+    VALUES (?, 'slots', ?, ?, ?, ?, ?, ?)
   `).run(
     userId,
     mise,
@@ -149,7 +153,8 @@ const _jouer = db.transaction((userId, mise) => {
     }),
     gain_net,
     solde_avant,
-    solde_apres
+    solde_apres,
+    currency
   )
 
   return {
@@ -163,13 +168,15 @@ const _jouer = db.transaction((userId, mise) => {
     is_jackpot,
     gain,
     gain_net,
-    solde: solde_apres,
+    solde: currency === 'yens' ? solde_apres : undefined,
+    bonbons: currency === 'bonbons' ? solde_apres : undefined,
+    currency,
     _player: { nom: user.nom, identifiant: user.identifiant },
   }
 })
 
-function jouer(userId, mise) {
-  const result = _jouer(userId, mise)
+function jouer(userId, mise, currency = 'yens') {
+  const result = _jouer(userId, mise, currency)
   // Fire-and-forget Discord
   discord.logSpin({
     playerName:        result._player.nom,
@@ -185,24 +192,29 @@ function jouer(userId, mise) {
 
 // ── Multi-spin ────────────────────────────────────────────────────────────────
 
-const _jouerMulti = db.transaction((userId, mise, nb) => {
+const _jouerMulti = db.transaction((userId, mise, nb, currency = 'yens') => {
   if (nb < 2 || nb > 5) throw new Error('Nombre de machines invalide (2–5).')
 
-  const config = db.prepare('SELECT * FROM slots_config WHERE id = 1').get()
-  if (mise < config.mise_min || mise > config.mise_max) {
+  const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
+  const sym      = currency === 'bonbons' ? 'B' : '¥'
+  const config   = db.prepare('SELECT * FROM slots_config WHERE id = 1').get()
+  if (currency !== 'bonbons' && (mise < config.mise_min || mise > config.mise_max)) {
     throw new Error(`Mise invalide (${config.mise_min.toLocaleString()} – ${config.mise_max.toLocaleString()} ¥).`)
   }
+  if (currency === 'bonbons' && mise > config.mise_max) {
+    throw new Error(`Mise invalide (max ${config.mise_max.toLocaleString()} 🍬).`)
+  }
 
-  const user = db.prepare('SELECT solde, nom, identifiant FROM users WHERE id = ?').get(userId)
+  const user = db.prepare(`SELECT ${soldeCol} as solde_cur, nom, identifiant FROM users WHERE id = ?`).get(userId)
   if (!user) throw new Error('Utilisateur introuvable.')
-  if (user.solde < mise * nb) throw new Error(`Solde insuffisant (mise totale : ${(mise * nb).toLocaleString()} ¥).`)
+  if (user.solde_cur < mise * nb) throw new Error(`Solde insuffisant (mise totale : ${(mise * nb).toLocaleString()} ${sym}).`)
 
   const symboles = db.prepare('SELECT * FROM slots_symbols WHERE actif = 1').all()
   if (symboles.length < 2) throw new Error('Configuration insuffisante : au moins 2 symboles actifs requis.')
 
   const nb_colonnes = config.nb_colonnes ?? 3
   const resultats   = []
-  let   solde       = user.solde
+  let   solde       = user.solde_cur
 
   for (let i = 0; i < nb; i++) {
     const grille       = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))
@@ -215,8 +227,8 @@ const _jouerMulti = db.transaction((userId, mise, nb) => {
     solde = solde + gain_net
 
     db.prepare(`
-      INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres)
-      VALUES (?, 'slots', ?, ?, ?, ?, ?)
+      INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres, currency)
+      VALUES (?, 'slots', ?, ?, ?, ?, ?, ?)
     `).run(
       userId, mise,
       JSON.stringify({
@@ -225,7 +237,7 @@ const _jouerMulti = db.transaction((userId, mise, nb) => {
         ligne:    lignePayline.map(s => ({ id: s.id, nom: s.nom, image_url: s.image_url, is_wild: !!s.is_wild })),
         multiplicateur, type, run, winning_cols, near_miss, is_jackpot,
       }),
-      gain_net, solde_avant, solde
+      gain_net, solde_avant, solde, currency
     )
 
     resultats.push({
@@ -236,11 +248,13 @@ const _jouerMulti = db.transaction((userId, mise, nb) => {
     })
   }
 
-  db.prepare('UPDATE users SET solde = ? WHERE id = ?').run(solde, userId)
+  db.prepare(`UPDATE users SET ${soldeCol} = ? WHERE id = ?`).run(solde, userId)
 
   return {
     resultats,
-    solde,
+    solde: currency === 'yens' ? solde : undefined,
+    bonbons: currency === 'bonbons' ? solde : undefined,
+    currency,
     total_mise:     mise * nb,
     total_gain:     resultats.reduce((s, r) => s + r.gain,     0),
     total_gain_net: resultats.reduce((s, r) => s + r.gain_net, 0),
@@ -248,8 +262,8 @@ const _jouerMulti = db.transaction((userId, mise, nb) => {
   }
 })
 
-function jouerMulti(userId, mise, nb) {
-  const result = _jouerMulti(userId, mise, nb)
+function jouerMulti(userId, mise, nb, currency = 'yens') {
+  const result = _jouerMulti(userId, mise, nb, currency)
   const { _player, ...clientResult } = result
   return clientResult
 }

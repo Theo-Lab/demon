@@ -15,9 +15,13 @@
         </div>
         <div class="header-right">
           <RouterLink to="/slots/multi" class="btn-multi">Multi-Spin →</RouterLink>
+          <div class="currency-toggle">
+            <button :class="['cur-btn', currency === 'yens' ? 'cur-btn--active' : '']" @click="currency = 'yens'">¥</button>
+            <button :class="['cur-btn', currency === 'bonbons' ? 'cur-btn--active' : '']" @click="currency = 'bonbons'">🍬</button>
+          </div>
           <div class="solde-display">
             <span class="solde-label">Solde</span>
-            <span class="solde-value">{{ solde.toLocaleString() }} ¥</span>
+            <span class="solde-value">{{ solde.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}</span>
           </div>
         </div>
       </div>
@@ -93,12 +97,12 @@
               <template v-if="resultat && !spinning">
                 <template v-if="resultat.type !== 'none'">
                   <span class="resultat-label">Gain</span>
-                  <span class="resultat-montant">+{{ resultat.gain.toLocaleString() }} ¥</span>
+                  <span class="resultat-montant">+{{ resultat.gain.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}</span>
                   <span class="resultat-mult">×{{ resultat.multiplicateur }}</span>
                 </template>
                 <template v-else>
                   <span class="resultat-label resultat-label--lose">Perdu</span>
-                  <span class="resultat-montant resultat-montant--lose">−{{ miseDerniere.toLocaleString() }} ¥</span>
+                  <span class="resultat-montant resultat-montant--lose">−{{ miseDerniere.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}</span>
                 </template>
               </template>
             </div>
@@ -241,7 +245,7 @@
     <div v-if="isJackpot" class="jackpot-overlay" @click="isJackpot = false">
       <div class="jackpot-inner">
         <p class="jackpot-eyebrow">Jackpot</p>
-        <p class="jackpot-gain">+{{ resultat?.gain.toLocaleString() }} ¥</p>
+        <p class="jackpot-gain">+{{ resultat?.gain.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}</p>
         <p class="jackpot-mult">×{{ resultat?.multiplicateur }}</p>
         <p class="jackpot-dismiss">Appuyez pour continuer</p>
       </div>
@@ -253,7 +257,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { currentUser } from '../auth.js'
-import { getSlotsConfig, spinSlots, IMG_BASE, getCasinoGames } from '../api.js'
+import { getSlotsConfig, spinSlots, IMG_BASE, getCasinoGames, getMe } from '../api.js'
 import { playTick, playStop, playSmallWin, playBigWin, playJackpot, playNearMiss, resumeAudio } from '../slots-audio.js'
 
 // ── Constantes animation ──────────────────────────────────────────────────
@@ -381,7 +385,11 @@ const colSpinCounts = computed(() =>
   Array.from({ length: nbCols.value }, (_, i) => 8 + i * 4)
 )
 
-const solde = computed(() => currentUser.value?.solde ?? 0)
+const currency      = ref('yens')
+const soldeBonbons  = ref(0)
+const solde = computed(() =>
+  currency.value === 'bonbons' ? soldeBonbons.value : (currentUser.value?.solde ?? 0)
+)
 const jeuIndisponible = ref(false)
 
 const presets = computed(() => {
@@ -426,7 +434,7 @@ async function lancerSpin() {
   // Récupérer le résultat côté serveur en premier
   let res
   try {
-    res = await spinSlots(mise.value)
+    res = await spinSlots(mise.value, currency.value)
   } catch (e) {
     spinning.value          = false
     autoSpinning.value      = false
@@ -488,7 +496,9 @@ async function lancerSpin() {
           setTimeout(() => {
             resultat.value = res
             spinning.value = false
-            if (currentUser.value) {
+            if (currency.value === 'bonbons') {
+              if (res.bonbons != null) soldeBonbons.value = res.bonbons
+            } else if (currentUser.value && res.solde != null) {
               currentUser.value = { ...currentUser.value, solde: res.solde }
             }
 
@@ -533,6 +543,10 @@ async function lancerSpin() {
 
 onMounted(async () => {
   try { const g = await getCasinoGames(); if (!g.slots) jeuIndisponible.value = true } catch {}
+  try {
+    const me = await getMe()
+    if (me?.bonbons != null) soldeBonbons.value = me.bonbons
+  } catch {}
   try {
     const data = await getSlotsConfig()
     config.value   = data.config
@@ -610,6 +624,24 @@ onMounted(async () => {
   background: rgba(255,255,255,0.06);
   margin-bottom: 40px;
 }
+
+.currency-toggle {
+  display: flex;
+  gap: 4px;
+}
+.cur-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.3);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.12s;
+  border-radius: 2px;
+}
+.cur-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.6); }
+.cur-btn--active { border-color: rgba(139,26,26,0.5); color: #c87070; background: rgba(139,26,26,0.08); }
 
 .solde-display { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 

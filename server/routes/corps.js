@@ -28,12 +28,13 @@ router.post('/start', requireAuth, (req, res) => {
   try {
     const mise       = parseInt(req.body.mise)
     const difficulte = req.body.difficulte || 'demoniaque'
+    const currency   = req.body.currency === 'bonbons' ? 'bonbons' : 'yens'
     if (!mise || isNaN(mise) || mise < MISE_MIN || mise > MISE_MAX) {
       return res.status(400).json({
         message: `Mise invalide. Min ${MISE_MIN.toLocaleString('fr-FR')} ¥ — Max ${MISE_MAX.toLocaleString('fr-FR')} ¥`,
       })
     }
-    res.json(corps.start(req.user.id, mise, difficulte))
+    res.json(corps.start(req.user.id, mise, difficulte, currency))
   } catch (e) {
     res.status(400).json({ message: e.message })
   }

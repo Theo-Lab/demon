@@ -37,7 +37,7 @@ function getAllTables() {
 
 // ── prendreSiege ──────────────────────────────────────────────────────────────
 
-const _prendreSiege = db.transaction((tableId, siegeNumero, userId, userNom, mise) => {
+const _prendreSiege = db.transaction((tableId, siegeNumero, userId, userNom, mise, currency = 'yens') => {
   const table = db.prepare('SELECT * FROM bj_tables WHERE id = ?').get(tableId)
   if (!table) throw new Error('Table introuvable.')
   if (table.statut !== 'attente') throw new Error('La partie est déjà en cours.')
@@ -59,26 +59,29 @@ const _prendreSiege = db.transaction((tableId, siegeNumero, userId, userNom, mis
   if (dejaEnCours) throw new Error('Vous êtes déjà dans une partie en cours.')
 
   if (mise <= 0) throw new Error('Mise invalide.')
-  if (table.mise_min && mise < table.mise_min)
-    throw new Error(`Mise minimum sur cette table : ${table.mise_min.toLocaleString('fr-FR')} ¥`)
-  if (table.mise_max && mise > table.mise_max)
-    throw new Error(`Mise maximum sur cette table : ${table.mise_max.toLocaleString('fr-FR')} ¥`)
+  const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
+  if (currency !== 'bonbons') {
+    if (table.mise_min && mise < table.mise_min)
+      throw new Error(`Mise minimum sur cette table : ${table.mise_min.toLocaleString('fr-FR')} ¥`)
+    if (table.mise_max && mise > table.mise_max)
+      throw new Error(`Mise maximum sur cette table : ${table.mise_max.toLocaleString('fr-FR')} ¥`)
+  }
 
-  const user = db.prepare('SELECT id, solde FROM users WHERE id = ?').get(userId)
+  const user = db.prepare(`SELECT id, ${soldeCol} as solde_cur FROM users WHERE id = ?`).get(userId)
   if (!user) throw new Error('Utilisateur introuvable.')
-  if (user.solde < mise) throw new Error('Solde insuffisant.')
+  if (user.solde_cur < mise) throw new Error('Solde insuffisant.')
 
-  db.prepare('UPDATE users SET solde = solde - ? WHERE id = ?').run(mise, userId)
+  db.prepare(`UPDATE users SET ${soldeCol} = ${soldeCol} - ? WHERE id = ?`).run(mise, userId)
   db.prepare(
     "UPDATE bj_sieges SET user_id = ?, user_nom = ?, mise = ?, mise_initiale = ?, statut = 'assis', main = '[]', resultat = NULL, gain_net = 0 WHERE table_id = ? AND numero = ?"
   ).run(userId, userNom, mise, mise, tableId, siegeNumero)
 
-  const solde = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
+  const solde = db.prepare(`SELECT ${soldeCol} as s FROM users WHERE id = ?`).get(userId).s
   return { solde }
 })
 
-function prendreSiege(tableId, siegeNumero, userId, userNom, mise) {
-  return _prendreSiege(tableId, siegeNumero, userId, userNom, mise)
+function prendreSiege(tableId, siegeNumero, userId, userNom, mise, currency = 'yens') {
+  return _prendreSiege(tableId, siegeNumero, userId, userNom, mise, currency)
 }
 
 // ── modifierMise ──────────────────────────────────────────────────────────────
@@ -92,10 +95,13 @@ const _modifierMise = db.transaction((tableId, userId, nouvelleMise) => {
   if (!siege) throw new Error('Vous n\'êtes pas assis à cette table.')
 
   if (nouvelleMise <= 0) throw new Error('Mise invalide.')
-  if (table.mise_min && nouvelleMise < table.mise_min)
-    throw new Error(`Mise minimum sur cette table : ${table.mise_min.toLocaleString('fr-FR')} ¥`)
-  if (table.mise_max && nouvelleMise > table.mise_max)
-    throw new Error(`Mise maximum sur cette table : ${table.mise_max.toLocaleString('fr-FR')} ¥`)
+  const siegeCurrency = siege.currency || 'yens'
+  if (siegeCurrency !== 'bonbons') {
+    if (table.mise_min && nouvelleMise < table.mise_min)
+      throw new Error(`Mise minimum sur cette table : ${table.mise_min.toLocaleString('fr-FR')} ¥`)
+    if (table.mise_max && nouvelleMise > table.mise_max)
+      throw new Error(`Mise maximum sur cette table : ${table.mise_max.toLocaleString('fr-FR')} ¥`)
+  }
 
   const diff = nouvelleMise - siege.mise
   const user = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId)

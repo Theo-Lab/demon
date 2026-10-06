@@ -13,7 +13,15 @@
       <!-- Barre haute -->
       <div class="top-bar">
         <RouterLink to="/casino" class="back-link">← Casino</RouterLink>
-        <div class="solde-badge">{{ fmtYen(solde) }}</div>
+        <div class="top-bar-right">
+          <div class="currency-toggle" v-if="statut === 'idle'">
+            <button :class="['cur-btn', currency === 'yens' ? 'cur-btn--active' : '']" @click="currency = 'yens'">¥</button>
+            <button :class="['cur-btn', currency === 'bonbons' ? 'cur-btn--active' : '']" @click="currency = 'bonbons'">🍬</button>
+          </div>
+          <div class="solde-badge">
+            {{ currency === 'bonbons' ? soldeBonbons.toLocaleString('fr-FR') + ' 🍬' : fmtYen(solde) }}
+          </div>
+        </div>
       </div>
 
       <h1 class="page-title">Corps Démoniaque</h1>
@@ -38,7 +46,7 @@
             </Transition>
             <span class="orb-phase">{{ phaseLabel }}</span>
             <span v-if="statut === 'en_cours' && pumps > 0" class="orb-gain">
-              +{{ gainPotentiel.toLocaleString('fr-FR') }} ¥
+              +{{ gainPotentiel.toLocaleString('fr-FR') }} {{ currency === 'bonbons' ? '🍬' : '¥' }}
             </span>
           </div>
         </div>
@@ -112,7 +120,7 @@
               Sceller  <span class="btn-sub" v-if="pumps > 0">×{{ multDisplay }}</span>
             </button>
           </div>
-          <p class="action-note">{{ pumps }} amplification{{ pumps > 1 ? 's' : '' }} · mise {{ fmtYen(miseEnCours) }}</p>
+          <p class="action-note">{{ pumps }} amplification{{ pumps > 1 ? 's' : '' }} · mise {{ fmtAmount(miseEnCours) }}</p>
         </template>
 
         <!-- RÉSULTATS -->
@@ -132,12 +140,12 @@
                 </span>
               </div>
               <span class="r-gain" :class="gainNet >= 0 ? 'pos' : 'neg'">
-                {{ gainNet > 0 ? '+' : '' }}{{ fmtYen(gainNet) }}
+                {{ gainNet > 0 ? '+' : '' }}{{ fmtAmount(gainNet) }}
               </span>
             </div>
           </Transition>
           <div class="btns">
-            <button class="btn btn--invoke" @click="rejouer">Rejouer ({{ fmtYen(miseEnCours) }})</button>
+            <button class="btn btn--invoke" @click="rejouer">Rejouer ({{ fmtAmount(miseEnCours) }})</button>
             <button class="btn btn--ghost" @click="reset">Changer</button>
           </div>
         </template>
@@ -182,6 +190,8 @@ const mult        = ref(1.0)
 const mise        = ref(1000)
 const miseEnCours = ref(0)
 const solde       = ref(0)
+const soldeBonbons = ref(0)
+const currency    = ref('yens')
 const gainNet     = ref(0)
 const bustMult    = ref(null)
 const erreur      = ref('')
@@ -338,6 +348,14 @@ function fmtYen(n) {
   if (n == null) return '—'
   return (n < 0 ? '-¥' : '¥') + Math.abs(n).toLocaleString('fr-FR')
 }
+function fmtAmount(n) {
+  if (n == null) return '—'
+  const sym = currency.value === 'bonbons' ? '🍬' : '¥'
+  if (currency.value === 'bonbons') {
+    return (n < 0 ? '-' : '') + Math.abs(n).toLocaleString('fr-FR') + ' ' + sym
+  }
+  return (n < 0 ? '-¥' : '¥') + Math.abs(n).toLocaleString('fr-FR')
+}
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function startGame() {
@@ -345,13 +363,17 @@ async function startGame() {
   if (!mise.value || mise.value < 100) return
   busy.value = true
   try {
-    const r       = await corpsStart(mise.value, difficulte.value)
+    const r       = await corpsStart(mise.value, difficulte.value, currency.value)
     miseEnCours.value = mise.value
     statut.value  = r.statut
     pumps.value   = r.pumps
     mult.value    = r.mult
     pumpStep.value = r.pump_step ?? DIFFS[difficulte.value].pump_step
-    solde.value   = r.solde
+    if (currency.value === 'bonbons') {
+      if (r.bonbons != null) soldeBonbons.value = r.bonbons
+    } else {
+      if (r.solde != null) solde.value = r.solde
+    }
     startHeartbeat()
   } catch (e) { erreur.value = e.message }
   finally { busy.value = false }
@@ -366,7 +388,11 @@ async function doPump() {
     pumps.value  = r.pumps
     mult.value   = r.mult
     if (r.pump_step) pumpStep.value = r.pump_step
-    if (r.solde != null) solde.value = r.solde
+    if (r.currency === 'bonbons') {
+      if (r.bonbons != null) soldeBonbons.value = r.bonbons
+    } else {
+      if (r.solde != null) solde.value = r.solde
+    }
     statut.value = r.statut
     if (r.statut === 'rupture') {
       stopHeartbeat()
@@ -389,7 +415,11 @@ async function doSceller() {
     stopHeartbeat()
     pumps.value   = r.pumps
     mult.value    = r.mult
-    solde.value   = r.solde
+    if (r.currency === 'bonbons') {
+      if (r.bonbons != null) soldeBonbons.value = r.bonbons
+    } else {
+      if (r.solde != null) solde.value = r.solde
+    }
     gainNet.value = r.gain_net
     statut.value  = r.statut
     addHist({ statut: 'scelle', mult: r.mult, gain_net: r.gain_net })
@@ -422,6 +452,7 @@ onMounted(async () => {
   try {
     const r = await corpsState()
     if (r.solde != null) solde.value = r.solde
+    if (r.bonbons != null) soldeBonbons.value = r.bonbons
     if (r.statut === 'en_cours') {
       statut.value      = 'en_cours'
       pumps.value       = r.pumps
@@ -467,6 +498,19 @@ onUnmounted(() => {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 2rem;
 }
+
+.top-bar-right { display: flex; align-items: center; gap: 10px; }
+
+.currency-toggle { display: flex; gap: 4px; }
+
+.cur-btn {
+  font-family: 'Cinzel', serif; font-size: 0.7rem;
+  background: transparent; border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.3); padding: 3px 8px; cursor: pointer;
+  transition: all 0.12s; border-radius: 2px;
+}
+.cur-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.6); }
+.cur-btn--active { border-color: rgba(139,26,26,0.5); color: #c87070; background: rgba(139,26,26,0.08); }
 
 .back-link {
   font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.15em;

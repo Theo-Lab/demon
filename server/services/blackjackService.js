@@ -58,6 +58,9 @@ function dealerPlay(cards, deck) {
 }
 
 function _resoudrePartie(game, mainJoueur, mainDealer, miseTotale) {
+  const currency = game.currency || 'yens'
+  const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
+
   const pTotal = handTotal(mainJoueur)
   const dTotal = handTotal(mainDealer)
 
@@ -74,30 +77,35 @@ function _resoudrePartie(game, mainJoueur, mainDealer, miseTotale) {
 
   const gain_net = gain_brut - miseTotale
   if (gain_brut > 0)
-    db.prepare('UPDATE users SET solde = solde + ? WHERE id = ?').run(gain_brut, game.user_id)
+    db.prepare(`UPDATE users SET ${soldeCol} = ${soldeCol} + ? WHERE id = ?`).run(gain_brut, game.user_id)
 
-  const solde_apres = db.prepare('SELECT solde FROM users WHERE id = ?').get(game.user_id).solde
+  const userRow   = db.prepare(`SELECT ${soldeCol} as cur FROM users WHERE id = ?`).get(game.user_id)
+  const solde_apres = userRow.cur
   db.prepare(`
-    INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres)
-    VALUES (?, 'blackjack', ?, ?, ?, ?, ?)
+    INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres, currency)
+    VALUES (?, 'blackjack', ?, ?, ?, ?, ?, ?)
   `).run(
     game.user_id, miseTotale,
     JSON.stringify({ pTotal, dTotal, resultat }),
-    gain_net, game.solde_avant, solde_apres
+    gain_net, game.solde_avant, solde_apres, currency
   )
   db.prepare('UPDATE blackjack_games SET statut=?, resultat=?, gain_net=?, main_dealer=? WHERE id=?')
     .run('fini', resultat, gain_net, JSON.stringify(mainDealer), game.id)
 
-  return { statut: 'fini', resultat, gain_net, solde: solde_apres, pTotal, dTotal, mainJoueur, mainDealer }
+  const retval = { statut: 'fini', resultat, gain_net, pTotal, dTotal, mainJoueur, mainDealer, currency }
+  if (currency === 'bonbons') retval.bonbons = solde_apres
+  else retval.solde = solde_apres
+  return retval
 }
 
 // ── newGame ───────────────────────────────────────────────────────────────────
 
-const _newGame = db.transaction((userId, mise) => {
-  const user = db.prepare('SELECT id, solde FROM users WHERE id = ?').get(userId)
+const _newGame = db.transaction((userId, mise, currency = 'yens') => {
+  const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
+  const user = db.prepare(`SELECT id, ${soldeCol} as solde_cur FROM users WHERE id = ?`).get(userId)
   if (!user) throw new Error('Utilisateur introuvable.')
   if (mise <= 0) throw new Error('Mise invalide.')
-  if (user.solde < mise) throw new Error('Solde insuffisant.')
+  if (user.solde_cur < mise) throw new Error('Solde insuffisant.')
 
   // Terminer toute partie en cours (abandon)
   const prev = db.prepare("SELECT id, mise FROM blackjack_games WHERE user_id = ? AND statut = 'en_cours'").get(userId)
@@ -123,9 +131,9 @@ const _newGame = db.transaction((userId, mise) => {
 
   const mainJoueur  = [deck.pop(), deck.pop()]
   const mainDealer  = [deck.pop(), deck.pop()]
-  const solde_avant = user.solde
+  const solde_avant = user.solde_cur
 
-  db.prepare('UPDATE users SET solde = solde - ? WHERE id = ?').run(mise, userId)
+  db.prepare(`UPDATE users SET ${soldeCol} = ${soldeCol} - ? WHERE id = ?`).run(mise, userId)
 
   const pTotal     = handTotal(mainJoueur)
   const dTotal     = handTotal(mainDealer)
@@ -143,33 +151,40 @@ const _newGame = db.transaction((userId, mise) => {
     }
     const gain_net = gain_brut - mise
     if (gain_brut > 0)
-      db.prepare('UPDATE users SET solde = solde + ? WHERE id = ?').run(gain_brut, userId)
+      db.prepare(`UPDATE users SET ${soldeCol} = ${soldeCol} + ? WHERE id = ?`).run(gain_brut, userId)
 
-    const solde_apres = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde
+    const userRow2    = db.prepare(`SELECT ${soldeCol} as cur FROM users WHERE id = ?`).get(userId)
+    const solde_apres = userRow2.cur
     db.prepare(`
-      INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres)
-      VALUES (?, 'blackjack', ?, ?, ?, ?, ?)
-    `).run(userId, mise, JSON.stringify({ pTotal, dTotal, resultat }), gain_net, solde_avant, solde_apres)
+      INSERT INTO game_rounds (user_id, jeu, mise, resultat, gain_net, solde_avant, solde_apres, currency)
+      VALUES (?, 'blackjack', ?, ?, ?, ?, ?, ?)
+    `).run(userId, mise, JSON.stringify({ pTotal, dTotal, resultat }), gain_net, solde_avant, solde_apres, currency)
 
     db.prepare(`
-      INSERT INTO blackjack_games (user_id, statut, mise, mise_double, solde_avant, main_joueur, main_dealer, deck, resultat, gain_net)
-      VALUES (?, 'fini', ?, 0, ?, ?, ?, ?, ?, ?)
-    `).run(userId, mise, solde_avant, JSON.stringify(mainJoueur), JSON.stringify(mainDealer), JSON.stringify(deck), resultat, gain_net)
+      INSERT INTO blackjack_games (user_id, statut, mise, mise_double, solde_avant, main_joueur, main_dealer, deck, resultat, gain_net, currency)
+      VALUES (?, 'fini', ?, 0, ?, ?, ?, ?, ?, ?, ?)
+    `).run(userId, mise, solde_avant, JSON.stringify(mainJoueur), JSON.stringify(mainDealer), JSON.stringify(deck), resultat, gain_net, currency)
 
-    return { statut: 'fini', resultat, gain_net, solde: solde_apres, pTotal, dTotal, mainJoueur, mainDealer }
+    const retval = { statut: 'fini', resultat, gain_net, pTotal, dTotal, mainJoueur, mainDealer, currency }
+    if (currency === 'bonbons') retval.bonbons = solde_apres
+    else retval.solde = solde_apres
+    return retval
   }
 
   db.prepare(`
-    INSERT INTO blackjack_games (user_id, statut, mise, mise_double, solde_avant, main_joueur, main_dealer, deck)
-    VALUES (?, 'en_cours', ?, 0, ?, ?, ?, ?)
-  `).run(userId, mise, solde_avant, JSON.stringify(mainJoueur), JSON.stringify(mainDealer), JSON.stringify(deck))
+    INSERT INTO blackjack_games (user_id, statut, mise, mise_double, solde_avant, main_joueur, main_dealer, deck, currency)
+    VALUES (?, 'en_cours', ?, 0, ?, ?, ?, ?, ?)
+  `).run(userId, mise, solde_avant, JSON.stringify(mainJoueur), JSON.stringify(mainDealer), JSON.stringify(deck), currency)
 
-  return {
+  const retval = {
     statut: 'en_cours', pTotal, dTotal: null,
     mainJoueur, mainDealer: [mainDealer[0], { hidden: true }],
     canDouble: true,
-    solde: solde_avant - mise,
+    currency,
   }
+  if (currency === 'bonbons') retval.bonbons = solde_avant - mise
+  else retval.solde = solde_avant - mise
+  return retval
 })
 
 // ── hit ───────────────────────────────────────────────────────────────────────
@@ -202,12 +217,18 @@ const _hit = db.transaction((userId) => {
     return _resoudrePartie(game, mainJoueur, finalDealer, miseTotale)
   }
 
-  return {
+  const currency2  = game.currency || 'yens'
+  const soldeCol2  = currency2 === 'bonbons' ? 'bonbons' : 'solde'
+  const userRow3   = db.prepare(`SELECT ${soldeCol2} as cur FROM users WHERE id = ?`).get(userId)
+  const retval     = {
     statut: 'en_cours', pTotal, dTotal: null,
     mainJoueur, mainDealer: [mainDealer[0], { hidden: true }],
     canDouble: false,
-    solde: db.prepare('SELECT solde FROM users WHERE id = ?').get(userId).solde,
+    currency: currency2,
   }
+  if (currency2 === 'bonbons') retval.bonbons = userRow3.cur
+  else retval.solde = userRow3.cur
+  return retval
 })
 
 // ── stand ─────────────────────────────────────────────────────────────────────
@@ -236,10 +257,11 @@ const _double = db.transaction((userId) => {
   const mainJoueur = JSON.parse(game.main_joueur)
   if (mainJoueur.length !== 2) throw new Error('Double uniquement sur 2 cartes.')
 
-  const user = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId)
-  if (user.solde < game.mise) throw new Error('Solde insuffisant pour doubler.')
+  const soldeCol3 = (game.currency || 'yens') === 'bonbons' ? 'bonbons' : 'solde'
+  const user = db.prepare(`SELECT ${soldeCol3} as cur FROM users WHERE id = ?`).get(userId)
+  if (user.cur < game.mise) throw new Error('Solde insuffisant pour doubler.')
 
-  db.prepare('UPDATE users SET solde = solde - ? WHERE id = ?').run(game.mise, userId)
+  db.prepare(`UPDATE users SET ${soldeCol3} = ${soldeCol3} - ? WHERE id = ?`).run(game.mise, userId)
   db.prepare('UPDATE blackjack_games SET mise_double = ? WHERE id = ?').run(game.mise, game.id)
 
   const mainDealer = JSON.parse(game.main_dealer)
@@ -263,7 +285,7 @@ function _notifyBj(userId, result) {
     playerName:        user?.nom || '?',
     playerIdentifiant: user?.identifiant || '',
     gain_net:          result.gain_net,
-    solde:             result.solde,
+    solde:             result.solde ?? result.bonbons,
     resultat:          result.resultat,
     detail:            `Joueur **${result.pTotal}** — Dealer **${result.dTotal}**`,
   })
