@@ -57,13 +57,20 @@ function dealerPlay(cards, deck) {
   return hand
 }
 
-// Version bonbons : le dealer tire jusqu'à battre le joueur (sans dépasser 21)
+// Version bonbons : le dealer cherche dans le deck une carte qui lui permet de battre le joueur
 function dealerPlayBeat(cards, deck, playerTotal) {
   const hand = dealerPlay([...cards], deck)
-  while (handTotal(hand) <= playerTotal && handTotal(hand) <= 21 && deck.length > 0) {
-    const next = deck[deck.length - 1]
-    if (handTotal([...hand, next]) > 21) break
-    hand.push(deck.pop())
+  const t = handTotal(hand)
+  if (t > playerTotal || t > 21) return hand // déjà gagnant ou bust
+
+  // Chercher n'importe quelle carte dans le deck qui ferait gagner le dealer sans bust
+  const idx = deck.findIndex(c => {
+    const newT = handTotal([...hand, c])
+    return newT > playerTotal && newT <= 21
+  })
+  if (idx >= 0) {
+    const card = deck.splice(idx, 1)[0]
+    hand.push(card)
   }
   return hand
 }
