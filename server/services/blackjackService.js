@@ -291,7 +291,7 @@ function _notifyBj(userId, result) {
   })
 }
 
-function newGame(userId, mise)  { const r = _newGame(userId, mise);  _notifyBj(userId, r); return r }
+function newGame(userId, mise, currency = 'yens')  { const r = _newGame(userId, mise, currency);  _notifyBj(userId, r); return r }
 function hit(userId)            { const r = _hit(userId);            _notifyBj(userId, r); return r }
 function stand(userId)          { const r = _stand(userId);          _notifyBj(userId, r); return r }
 function doubleDown(userId)     { const r = _double(userId);         _notifyBj(userId, r); return r }

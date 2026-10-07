@@ -61,7 +61,7 @@
             <div v-if="act.image_url" class="glace-act-img">
               <img :src="SERVER_URL + act.image_url" :alt="act.titre" />
             </div>
-            <div class="glace-act-body">
+            <RouterLink :to="'/glace/' + act.id" class="glace-act-body">
               <div class="glace-act-meta">
                 <span class="glace-type-badge" :class="'glace-type-badge--' + act.type">{{ typeLabels[act.type] || act.type }}</span>
                 <span v-if="act.date_activite" class="glace-act-date">{{ formatDate(act.date_activite) }}</span>
@@ -72,7 +72,7 @@
                 <span v-if="act.nb_participants" class="glace-act-participants">{{ act.nb_participants }} participant{{ act.nb_participants > 1 ? 's' : '' }}</span>
                 <span class="glace-act-auteur">par {{ act.auteur_nom || '?' }}</span>
               </div>
-            </div>
+            </RouterLink>
             <div v-if="canDelete(act)" class="glace-act-actions">
               <button class="glace-btn glace-btn--sm glace-btn--ghost" @click="openEditActivite(act)">Modifier</button>
               <button class="glace-btn glace-btn--sm glace-btn--danger" @click="deleteActivite(act.id)">Supprimer</button>
@@ -901,6 +901,10 @@ async function deleteMembre(userId) {
 
 .glace-act-body {
   padding: 18px 20px 14px;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 
 .glace-act-meta {

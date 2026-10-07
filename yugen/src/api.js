@@ -1178,6 +1178,11 @@ export async function glaceGetActivites() {
   if (!res.ok) throw new Error((await res.json()).message)
   return res.json()
 }
+export async function glaceGetActivite(id) {
+  const res = await apiFetch(`${BASE}/glace/activites/${id}`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
 export async function glaceCreateActivite(data) {
   const res = await apiFetch(`${BASE}/glace/activites`, { method: 'POST', body: JSON.stringify(data) })
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d

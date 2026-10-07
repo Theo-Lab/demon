@@ -32,6 +32,7 @@ import CorpsDemoniaquePage from '../components/CorpsDemoniaquePage.vue'
 import ScientifiquePage from '../components/ScientifiquePage.vue'
 import EffetPublicPage from '../components/EffetPublicPage.vue'
 import GlacePage from '../components/GlacePage.vue'
+import GlaceActivitePage from '../components/GlaceActivitePage.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -65,6 +66,7 @@ const routes = [
   { path: '/corps',             component: CorpsDemoniaquePage },
   { path: '/scientifique',      component: ScientifiquePage   },
   { path: '/glace',             component: GlacePage          },
+  { path: '/glace/:id',         component: GlaceActivitePage  },
   { path: '/effets/:token',     component: EffetPublicPage    },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },

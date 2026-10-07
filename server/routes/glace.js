@@ -115,6 +115,21 @@ router.get('/users', requireAuth, requireDirigeant, (req, res) => {
 })
 
 // Activités
+router.get('/activites/:id', requireAuth, requireGlace, (req, res) => {
+  const dirigeant = isDirigeant(req.user.id)
+  const role = getGlaceRole(req.user.id)
+  const canSeeAll = dirigeant || !!(role?.can_see_all)
+  const act = db.prepare(`
+    SELECT ga.*, u.nom as auteur_nom
+    FROM glace_activites ga
+    LEFT JOIN users u ON u.id = ga.created_by
+    WHERE ga.id = ?
+  `).get(req.params.id)
+  if (!act) return res.status(404).json({ message: 'Activité introuvable.' })
+  if (!canSeeAll && act.created_by !== req.user.id) return res.status(403).json({ message: 'Accès refusé.' })
+  res.json(act)
+})
+
 router.get('/activites', requireAuth, requireGlace, (req, res) => {
   const dirigeant = isDirigeant(req.user.id)
   const role = getGlaceRole(req.user.id)

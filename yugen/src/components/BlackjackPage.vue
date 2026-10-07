@@ -88,7 +88,7 @@
         <div v-if="etat === 'fini'" class="resultat" :class="`resultat--${resultat}`">
           {{ resultatLabel }}
           <span class="resultat-gain" :class="gainNet > 0 ? 'pos' : gainNet < 0 ? 'neg' : ''">
-            {{ gainNet > 0 ? '+' : '' }}{{ fmtYen(gainNet) }}
+            {{ gainNet > 0 ? '+' : '' }}{{ currency === 'bonbons' ? Math.abs(gainNet).toLocaleString('fr-FR') + ' 🍬' : fmtYen(gainNet) }}
           </span>
         </div>
       </Transition>
@@ -102,9 +102,9 @@
               v-model.number="miseInput"
               type="number"
               class="mise-input"
-              :min="bjMin"
+              :min="currency === 'bonbons' ? 1 : bjMin"
               :max="Math.min(bjMax, currency === 'bonbons' ? soldeBonbons : solde)"
-              step="1000"
+              :step="currency === 'bonbons' ? 1 : 1000"
               :disabled="loading"
               @keydown.enter="lancerPartie"
             />

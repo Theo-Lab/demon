@@ -115,9 +115,9 @@
                   v-model.number="mise"
                   class="field-input"
                   type="number"
-                  :min="config.mise_min"
+                  :min="currency === 'bonbons' ? 1 : config.mise_min"
                   :max="config.mise_max"
-                  :step="config.mise_min"
+                  :step="currency === 'bonbons' ? 1 : config.mise_min"
                   :disabled="spinning"
                 />
               </div>
