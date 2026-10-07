@@ -57,6 +57,17 @@ function dealerPlay(cards, deck) {
   return hand
 }
 
+// Version bonbons : le dealer tire jusqu'à battre le joueur (sans dépasser 21)
+function dealerPlayBeat(cards, deck, playerTotal) {
+  const hand = dealerPlay([...cards], deck)
+  while (handTotal(hand) <= playerTotal && handTotal(hand) <= 21 && deck.length > 0) {
+    const next = deck[deck.length - 1]
+    if (handTotal([...hand, next]) > 21) break
+    hand.push(deck.pop())
+  }
+  return hand
+}
+
 function _resoudrePartie(game, mainJoueur, mainDealer, miseTotale) {
   const currency = game.currency || 'yens'
   const soldeCol = currency === 'bonbons' ? 'bonbons' : 'solde'
@@ -129,18 +140,15 @@ const _newGame = db.transaction((userId, mise, currency = 'yens') => {
     swap(highVals, 2)  // 1re carte dealer visible → haute
   }
 
-  // Bonbons : 90% de stacker le deck contre le joueur
+  // Bonbons : 90% de donner des petites cartes au joueur
   if (currency === 'bonbons' && Math.random() < 0.9) {
-    const lowVals  = ['4','5','6','7']
-    const highVals = ['10','J','Q','K','A']
+    const lowVals = ['4','5','6','7']
     const swap = (targetVals, pos) => {
       const idx = deck.findIndex((c, i) => i < deck.length - pos && targetVals.includes(c.v))
       if (idx >= 0) [deck[idx], deck[deck.length - 1 - pos]] = [deck[deck.length - 1 - pos], deck[idx]]
     }
-    swap(lowVals,  0)  // 1re carte joueur → basse
-    swap(lowVals,  1)  // 2e carte joueur → basse
-    swap(highVals, 2)  // 1re carte dealer visible → haute
-    swap(highVals, 3)  // 2e carte dealer (cachée) → haute aussi
+    swap(lowVals, 0)  // 1re carte joueur → basse
+    swap(lowVals, 1)  // 2e carte joueur → basse
   }
 
   const mainJoueur  = [deck.pop(), deck.pop()]
@@ -226,7 +234,8 @@ const _hit = db.transaction((userId) => {
 
   if (pTotal === 21) {
     // 21 automatique → dealer joue
-    const finalDealer = dealerPlay(mainDealer, deck)
+    const isBonbonsNerf21 = (game.currency || 'yens') === 'bonbons' && Math.random() < 0.9
+    const finalDealer = isBonbonsNerf21 ? dealerPlayBeat(mainDealer, deck, pTotal) : dealerPlay(mainDealer, deck)
     db.prepare('UPDATE blackjack_games SET deck = ? WHERE id = ?').run(JSON.stringify(deck), game.id)
     return _resoudrePartie(game, mainJoueur, finalDealer, miseTotale)
   }
@@ -256,7 +265,9 @@ const _stand = db.transaction((userId) => {
   const deck       = JSON.parse(game.deck)
   const miseTotale = game.mise + game.mise_double
 
-  const finalDealer = dealerPlay(mainDealer, deck)
+  const pTotal = handTotal(mainJoueur)
+  const isBonbonsNerf = (game.currency || 'yens') === 'bonbons' && Math.random() < 0.9
+  const finalDealer = isBonbonsNerf ? dealerPlayBeat(mainDealer, deck, pTotal) : dealerPlay(mainDealer, deck)
   db.prepare('UPDATE blackjack_games SET deck = ? WHERE id = ?').run(JSON.stringify(deck), game.id)
 
   return _resoudrePartie(game, mainJoueur, finalDealer, miseTotale)
@@ -286,7 +297,9 @@ const _double = db.transaction((userId) => {
   db.prepare('UPDATE blackjack_games SET main_joueur = ?, deck = ? WHERE id = ?')
     .run(JSON.stringify(mainJoueur), JSON.stringify(deck), game.id)
 
-  const finalDealer = dealerPlay(mainDealer, deck)
+  const pTotalDouble = handTotal(mainJoueur)
+  const isBonbonsNerfDouble = (game.currency || 'yens') === 'bonbons' && Math.random() < 0.9
+  const finalDealer = isBonbonsNerfDouble ? dealerPlayBeat(mainDealer, deck, pTotalDouble) : dealerPlay(mainDealer, deck)
   db.prepare('UPDATE blackjack_games SET deck = ? WHERE id = ?').run(JSON.stringify(deck), game.id)
 
   return _resoudrePartie({ ...game, mise_double: game.mise }, mainJoueur, finalDealer, miseTotale)
