@@ -25,8 +25,27 @@
       </div>
 
       <div v-if="parsedImages.length" class="act-gallery">
-        <img v-for="(url, i) in parsedImages" :key="i" :src="SERVER_URL + url" class="act-image" :alt="activite.titre + ' ' + (i+1)" />
+        <div
+          v-for="(url, i) in parsedImages"
+          :key="i"
+          class="act-thumb"
+          :class="{ 'act-thumb--large': parsedImages.length === 1 }"
+          @click="openLightbox(i)"
+        >
+          <img :src="SERVER_URL + url" :alt="activite.titre + ' ' + (i+1)" />
+        </div>
       </div>
+
+      <!-- Lightbox -->
+      <Teleport to="body">
+        <div v-if="lightboxIndex !== null" class="act-lightbox" @click.self="closeLightbox" @keydown.esc="closeLightbox">
+          <button class="act-lb-close" @click="closeLightbox">✕</button>
+          <button v-if="parsedImages.length > 1" class="act-lb-arrow act-lb-arrow--prev" @click="lightboxIndex = (lightboxIndex - 1 + parsedImages.length) % parsedImages.length">&#8592;</button>
+          <img :src="SERVER_URL + parsedImages[lightboxIndex]" class="act-lb-img" :alt="activite.titre" />
+          <button v-if="parsedImages.length > 1" class="act-lb-arrow act-lb-arrow--next" @click="lightboxIndex = (lightboxIndex + 1) % parsedImages.length">&#8594;</button>
+          <div v-if="parsedImages.length > 1" class="act-lb-counter">{{ lightboxIndex + 1 }} / {{ parsedImages.length }}</div>
+        </div>
+      </Teleport>
 
       <div class="act-body">
         <div v-if="activite.nb_participants" class="act-info-row">
@@ -52,7 +71,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppNavbar from './AppNavbar.vue'
 import { glaceGetActivite, SERVER_URL } from '../api.js'
@@ -91,6 +110,20 @@ const parsedParticipants = computed(() => {
   if (!activite.value?.participants) return []
   return activite.value.participants.split('\n').map(s => s.trim()).filter(Boolean)
 })
+
+const lightboxIndex = ref(null)
+
+function openLightbox(i) { lightboxIndex.value = i; document.body.style.overflow = 'hidden' }
+function closeLightbox() { lightboxIndex.value = null; document.body.style.overflow = '' }
+
+function onKey(e) {
+  if (lightboxIndex.value === null) return
+  if (e.key === 'Escape') closeLightbox()
+  if (e.key === 'ArrowRight') lightboxIndex.value = (lightboxIndex.value + 1) % parsedImages.value.length
+  if (e.key === 'ArrowLeft') lightboxIndex.value = (lightboxIndex.value - 1 + parsedImages.value.length) % parsedImages.value.length
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onUnmounted(() => { window.removeEventListener('keydown', onKey); document.body.style.overflow = '' })
 
 function formatDate(d) {
   if (!d) return ''
@@ -187,18 +220,77 @@ function formatDate(d) {
 }
 
 .act-gallery {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
   margin-bottom: 36px;
 }
 
-.act-image {
-  width: 100%;
-  max-height: 420px;
+.act-thumb {
+  aspect-ratio: 1;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: opacity 0.15s;
+}
+.act-thumb:hover { opacity: 0.8; }
+.act-thumb img {
+  width: 100%; height: 100%;
   object-fit: cover;
   display: block;
-  border: 1px solid rgba(255,255,255,0.06);
+}
+.act-thumb--large {
+  grid-column: 1 / -1;
+  aspect-ratio: 16/7;
+}
+
+/* Lightbox */
+.act-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.act-lb-img {
+  max-width: 90vw;
+  max-height: 88vh;
+  object-fit: contain;
+  display: block;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.act-lb-close {
+  position: absolute;
+  top: 20px; right: 24px;
+  background: none; border: none;
+  color: rgba(255,255,255,0.5);
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.act-lb-close:hover { color: #fff; }
+.act-lb-arrow {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  background: none; border: none;
+  color: rgba(255,255,255,0.4);
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 16px;
+  line-height: 1;
+}
+.act-lb-arrow:hover { color: #fff; }
+.act-lb-arrow--prev { left: 12px; }
+.act-lb-arrow--next { right: 12px; }
+.act-lb-counter {
+  position: absolute;
+  bottom: 20px; left: 50%; transform: translateX(-50%);
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.3);
 }
 
 .act-body { display: flex; flex-direction: column; gap: 32px; }
