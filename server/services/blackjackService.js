@@ -57,6 +57,23 @@ function dealerPlay(cards, deck) {
   return hand
 }
 
+// Bonbons : le dealer tire sans jamais bust (cherche une carte safe dans le deck)
+function dealerPlayNoBust(cards, deck) {
+  const hand = [...cards]
+  while (true) {
+    const t = handTotal(hand)
+    if (t > 17) break
+    if (t === 17 && !isSoft17(hand)) break
+    if (deck.length === 0) break
+    // Chercher une carte qui ne fait pas bust
+    const safeIdx = deck.findLastIndex(c => handTotal([...hand, c]) <= 21)
+    if (safeIdx < 0) break // impossible de tirer sans bust, on s'arrête
+    const [card] = deck.splice(safeIdx, 1)
+    hand.push(card)
+  }
+  return hand
+}
+
 
 function _resoudrePartie(game, mainJoueur, mainDealer, miseTotale) {
   const currency = game.currency || 'yens'
@@ -225,7 +242,8 @@ const _hit = db.transaction((userId) => {
 
   if (pTotal === 21) {
     // 21 automatique → dealer joue
-    const finalDealer = dealerPlay(mainDealer, deck)
+    const playFn = (game.currency || 'yens') === 'bonbons' ? dealerPlayNoBust : dealerPlay
+    const finalDealer = playFn(mainDealer, deck)
     db.prepare('UPDATE blackjack_games SET deck = ? WHERE id = ?').run(JSON.stringify(deck), game.id)
     return _resoudrePartie(game, mainJoueur, finalDealer, miseTotale)
   }
@@ -255,7 +273,8 @@ const _stand = db.transaction((userId) => {
   const deck       = JSON.parse(game.deck)
   const miseTotale = game.mise + game.mise_double
 
-  const finalDealer = dealerPlay(mainDealer, deck)
+  const playFn = (game.currency || 'yens') === 'bonbons' ? dealerPlayNoBust : dealerPlay
+  const finalDealer = playFn(mainDealer, deck)
   db.prepare('UPDATE blackjack_games SET deck = ? WHERE id = ?').run(JSON.stringify(deck), game.id)
 
   return _resoudrePartie(game, mainJoueur, finalDealer, miseTotale)
@@ -285,7 +304,8 @@ const _double = db.transaction((userId) => {
   db.prepare('UPDATE blackjack_games SET main_joueur = ?, deck = ? WHERE id = ?')
     .run(JSON.stringify(mainJoueur), JSON.stringify(deck), game.id)
 
-  const finalDealer = dealerPlay(mainDealer, deck)
+  const playFnD = (game.currency || 'yens') === 'bonbons' ? dealerPlayNoBust : dealerPlay
+  const finalDealer = playFnD(mainDealer, deck)
   db.prepare('UPDATE blackjack_games SET deck = ? WHERE id = ?').run(JSON.stringify(deck), game.id)
 
   return _resoudrePartie({ ...game, mise_double: game.mise }, mainJoueur, finalDealer, miseTotale)
