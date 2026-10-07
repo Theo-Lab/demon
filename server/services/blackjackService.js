@@ -57,23 +57,6 @@ function dealerPlay(cards, deck) {
   return hand
 }
 
-// Version bonbons : le dealer cherche dans le deck une carte qui lui permet de battre le joueur
-function dealerPlayBeat(cards, deck, playerTotal) {
-  const hand = dealerPlay([...cards], deck)
-  const t = handTotal(hand)
-  if (t > playerTotal || t > 21) return hand // déjà gagnant ou bust
-
-  // Chercher n'importe quelle carte dans le deck qui ferait gagner le dealer sans bust
-  const idx = deck.findIndex(c => {
-    const newT = handTotal([...hand, c])
-    return newT > playerTotal && newT <= 21
-  })
-  if (idx >= 0) {
-    const card = deck.splice(idx, 1)[0]
-    hand.push(card)
-  }
-  return hand
-}
 
 function _resoudrePartie(game, mainJoueur, mainDealer, miseTotale) {
   const currency = game.currency || 'yens'
@@ -147,15 +130,18 @@ const _newGame = db.transaction((userId, mise, currency = 'yens') => {
     swap(highVals, 2)  // 1re carte dealer visible → haute
   }
 
-  // Bonbons : 90% de donner des petites cartes au joueur
+  // Bonbons : 90% de stacker en faveur du dealer
   if (currency === 'bonbons' && Math.random() < 0.9) {
-    const lowVals = ['4','5','6','7']
+    const lowVals     = ['4','5','6','7']
+    const medHighVals = ['8','9','10','J','Q','K']
     const swap = (targetVals, pos) => {
       const idx = deck.findIndex((c, i) => i < deck.length - pos && targetVals.includes(c.v))
       if (idx >= 0) [deck[idx], deck[deck.length - 1 - pos]] = [deck[deck.length - 1 - pos], deck[idx]]
     }
-    swap(lowVals, 0)  // 1re carte joueur → basse
-    swap(lowVals, 1)  // 2e carte joueur → basse
+    swap(lowVals,     0)  // 1re carte joueur → basse
+    swap(lowVals,     1)  // 2e carte joueur → basse
+    swap(medHighVals, 2)  // 1re carte dealer visible → moyenne-haute
+    swap(medHighVals, 3)  // 2e carte dealer cachée → moyenne-haute
   }
 
   const mainJoueur  = [deck.pop(), deck.pop()]
@@ -166,7 +152,8 @@ const _newGame = db.transaction((userId, mise, currency = 'yens') => {
 
   const pTotal     = handTotal(mainJoueur)
   const dTotal     = handTotal(mainDealer)
-  const pBlackjack = pTotal === 21
+  // Bonbons : empêcher le blackjack naturel du joueur
+  const pBlackjack = pTotal === 21 && currency !== 'bonbons'
   const dBlackjack = dTotal === 21
 
   if (pBlackjack || dBlackjack) {
@@ -241,8 +228,7 @@ const _hit = db.transaction((userId) => {
 
   if (pTotal === 21) {
     // 21 automatique → dealer joue
-    const isBonbonsNerf21 = (game.currency || 'yens') === 'bonbons' && Math.random() < 0.9
-    const finalDealer = isBonbonsNerf21 ? dealerPlayBeat(mainDealer, deck, pTotal) : dealerPlay(mainDealer, deck)
+    const finalDealer = dealerPlay(mainDealer, deck)
     db.prepare('UPDATE blackjack_games SET deck = ? WHERE id = ?').run(JSON.stringify(deck), game.id)
     return _resoudrePartie(game, mainJoueur, finalDealer, miseTotale)
   }
@@ -272,9 +258,7 @@ const _stand = db.transaction((userId) => {
   const deck       = JSON.parse(game.deck)
   const miseTotale = game.mise + game.mise_double
 
-  const pTotal = handTotal(mainJoueur)
-  const isBonbonsNerf = (game.currency || 'yens') === 'bonbons' && Math.random() < 0.9
-  const finalDealer = isBonbonsNerf ? dealerPlayBeat(mainDealer, deck, pTotal) : dealerPlay(mainDealer, deck)
+  const finalDealer = dealerPlay(mainDealer, deck)
   db.prepare('UPDATE blackjack_games SET deck = ? WHERE id = ?').run(JSON.stringify(deck), game.id)
 
   return _resoudrePartie(game, mainJoueur, finalDealer, miseTotale)
@@ -304,9 +288,7 @@ const _double = db.transaction((userId) => {
   db.prepare('UPDATE blackjack_games SET main_joueur = ?, deck = ? WHERE id = ?')
     .run(JSON.stringify(mainJoueur), JSON.stringify(deck), game.id)
 
-  const pTotalDouble = handTotal(mainJoueur)
-  const isBonbonsNerfDouble = (game.currency || 'yens') === 'bonbons' && Math.random() < 0.9
-  const finalDealer = isBonbonsNerfDouble ? dealerPlayBeat(mainDealer, deck, pTotalDouble) : dealerPlay(mainDealer, deck)
+  const finalDealer = dealerPlay(mainDealer, deck)
   db.prepare('UPDATE blackjack_games SET deck = ? WHERE id = ?').run(JSON.stringify(deck), game.id)
 
   return _resoudrePartie({ ...game, mise_double: game.mise }, mainJoueur, finalDealer, miseTotale)
