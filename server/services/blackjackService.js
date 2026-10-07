@@ -131,16 +131,20 @@ const _newGame = db.transaction((userId, mise, currency = 'yens') => {
     swap(highVals, 2)  // 1re carte dealer visible → haute
   }
 
-  // Bonbons : 90% — joueur reçoit 4-8 (jamais blackjack naturel, forcé de tirer)
-  if (currency === 'bonbons' && Math.random() < 0.9) {
-    const safeVals = ['4','5','6','7','8']
+  // Bonbons : 95% — HE ~70%
+  // Joueur reçoit de petites cartes (2-5), puis ses tirages seront des grosses (8-K)
+  if (currency === 'bonbons' && Math.random() < 0.95) {
+    const lowVals  = ['2','3','4','5']
+    const highVals = ['8','9','10','J','Q','K']
     const swap = (targetVals, pos) => {
       const idx = deck.findIndex((c, i) => i < deck.length - pos && targetVals.includes(c.v))
       if (idx >= 0) [deck[idx], deck[deck.length - 1 - pos]] = [deck[deck.length - 1 - pos], deck[idx]]
     }
-    swap(safeVals, 0)  // 1re carte joueur → 4-8
-    swap(safeVals, 1)  // 2e carte joueur → 4-8
-    // dealer : cartes aléatoires, pas de stacking
+    swap(lowVals,  0)  // 1re carte joueur → 2-5
+    swap(lowVals,  1)  // 2e carte joueur → 2-5
+    // pos 2 et 3 : cartes dealer (aléatoires)
+    swap(highVals, 4)  // 1er tirage joueur → grosse carte (bust probable)
+    swap(highVals, 5)  // 2e tirage joueur → grosse carte (bust quasi certain)
   }
 
   const mainJoueur  = [deck.pop(), deck.pop()]
