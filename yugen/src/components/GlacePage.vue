@@ -58,10 +58,10 @@
             :key="act.id"
             class="glace-act-card"
           >
+            <RouterLink :to="'/glace/' + act.id" class="glace-act-body">
             <div v-if="act.image_url" class="glace-act-img">
               <img :src="SERVER_URL + act.image_url" :alt="act.titre" />
             </div>
-            <RouterLink :to="'/glace/' + act.id" class="glace-act-body">
               <div class="glace-act-meta">
                 <span class="glace-type-badge" :class="'glace-type-badge--' + act.type">{{ typeLabels[act.type] || act.type }}</span>
                 <span v-if="act.date_activite" class="glace-act-date">{{ formatDate(act.date_activite) }}</span>
@@ -883,9 +883,10 @@ async function deleteMembre(userId) {
 .glace-act-card {
   background: #111113;
   border: 1px solid rgba(255,255,255,0.05);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
 }
-.glace-act-card:hover { border-color: rgba(127,179,200,0.15); }
+.glace-act-card:hover { border-color: rgba(127,179,200,0.3); background: #161618; }
 
 .glace-act-img {
   width: 100%;
