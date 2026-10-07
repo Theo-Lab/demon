@@ -24,7 +24,9 @@
         <div class="act-auteur">par {{ activite.auteur_nom || '?' }}</div>
       </div>
 
-      <img v-if="activite.image_url" :src="SERVER_URL + activite.image_url" class="act-image" :alt="activite.titre" />
+      <div v-if="parsedImages.length" class="act-gallery">
+        <img v-for="(url, i) in parsedImages" :key="i" :src="SERVER_URL + url" class="act-image" :alt="activite.titre + ' ' + (i+1)" />
+      </div>
 
       <div class="act-body">
         <div v-if="activite.nb_participants" class="act-info-row">
@@ -76,6 +78,13 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+const parsedImages = computed(() => {
+  if (!activite.value?.image_url) return []
+  const raw = activite.value.image_url
+  if (raw.startsWith('[')) { try { return JSON.parse(raw) } catch {} }
+  return [raw]
 })
 
 const parsedParticipants = computed(() => {
@@ -177,12 +186,18 @@ function formatDate(d) {
   color: rgba(255,255,255,0.25);
 }
 
+.act-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 36px;
+}
+
 .act-image {
   width: 100%;
   max-height: 420px;
   object-fit: cover;
   display: block;
-  margin-bottom: 36px;
   border: 1px solid rgba(255,255,255,0.06);
 }
 

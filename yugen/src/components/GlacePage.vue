@@ -59,8 +59,8 @@
             class="glace-act-card"
           >
             <RouterLink :to="'/glace/' + act.id" class="glace-act-body">
-            <div v-if="act.image_url" class="glace-act-img">
-              <img :src="SERVER_URL + act.image_url" :alt="act.titre" />
+            <div v-if="parseImages(act.image_url).length" class="glace-act-img">
+              <img :src="SERVER_URL + parseImages(act.image_url)[0]" :alt="act.titre" />
             </div>
               <div class="glace-act-meta">
                 <span class="glace-type-badge" :class="'glace-type-badge--' + act.type">{{ typeLabels[act.type] || act.type }}</span>
@@ -184,12 +184,14 @@
             <textarea v-model="form.description" class="glace-field-input glace-field-textarea" rows="4" placeholder="Description de l'activite…" @paste="handleImagePaste"></textarea>
           </div>
           <div class="glace-field glace-field--full">
-            <label class="glace-field-label">Image</label>
-            <input type="file" accept="image/*" class="glace-field-input" @change="handleImageUpload" />
+            <label class="glace-field-label">Images</label>
+            <input type="file" accept="image/*" class="glace-field-input" multiple @change="handleImageUpload" />
             <div v-if="uploadingImage" class="glace-upload-hint">Envoi en cours…</div>
-            <div v-if="form.image_url" class="glace-img-preview">
-              <img :src="SERVER_URL + form.image_url" alt="preview" />
-              <button class="glace-btn glace-btn--sm glace-btn--danger" @click="form.image_url = ''">Retirer</button>
+            <div v-if="form.images.length" class="glace-imgs-preview">
+              <div v-for="(url, i) in form.images" :key="i" class="glace-img-preview">
+                <img :src="SERVER_URL + url" alt="preview" />
+                <button class="glace-btn glace-btn--sm glace-btn--danger" @click="form.images.splice(i, 1)">Retirer</button>
+              </div>
             </div>
           </div>
         </div>
@@ -375,6 +377,12 @@ onMounted(async () => {
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function parseImages(raw) {
+  if (!raw) return []
+  if (raw.startsWith('[')) { try { return JSON.parse(raw) } catch {} }
+  return [raw]
+}
+
 const currentUserId = computed(() => currentUser.value?.id)
 
 function canDelete(act) {
@@ -424,11 +432,11 @@ const formError         = ref('')
 
 const form = ref({
   titre: '', type: 'entrainement', date_activite: '',
-  nb_participants: 0, participants: '', description: '', image_url: '',
+  nb_participants: 0, participants: '', description: '', images: [],
 })
 
 function resetForm() {
-  form.value = { titre: '', type: 'entrainement', date_activite: '', nb_participants: 0, participants: '', description: '', image_url: '' }
+  form.value = { titre: '', type: 'entrainement', date_activite: '', nb_participants: 0, participants: '', description: '', images: [] }
   formError.value = ''
 }
 
@@ -446,7 +454,7 @@ function openEditActivite(act) {
     nb_participants: act.nb_participants || 0,
     participants:    act.participants    || '',
     description:     act.description    || '',
-    image_url:       act.image_url       || '',
+    images:          parseImages(act.image_url),
   }
   formError.value = ''
   editingActivite.value = act
@@ -463,12 +471,14 @@ async function saveActivite() {
   if (!form.value.titre.trim()) { formError.value = 'Le titre est requis.'; return }
   savingActivite.value = true
   try {
+    const { images, ...rest } = form.value
+    const payload = { ...rest, image_url: JSON.stringify(images) }
     if (editingActivite.value) {
-      const updated = await glaceUpdateActivite(editingActivite.value.id, form.value)
+      const updated = await glaceUpdateActivite(editingActivite.value.id, payload)
       const idx = activites.value.findIndex(a => a.id === updated.id)
       if (idx !== -1) activites.value[idx] = updated
     } else {
-      const created = await glaceCreateActivite(form.value)
+      const created = await glaceCreateActivite(payload)
       activites.value.unshift(created)
     }
     closeActiviteModal()
@@ -496,14 +506,16 @@ async function uploadImageFile(file) {
   uploadingImage.value = true
   try {
     const url = await uploadImage(file)
-    form.value.image_url = url
+    form.value.images.push(url)
   } catch (e) {
     formError.value = e.message
   } finally {
     uploadingImage.value = false
   }
 }
-function handleImageUpload(e) { uploadImageFile(e.target.files[0]) }
+function handleImageUpload(e) {
+  for (const file of e.target.files) uploadImageFile(file)
+}
 function handleImagePaste(e) {
   const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'))
   if (item) uploadImageFile(item.getAsFile())
@@ -1281,15 +1293,22 @@ async function deleteMembre(userId) {
   color: rgba(167,211,234,0.5);
 }
 
-.glace-img-preview {
+.glace-imgs-preview {
   display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.glace-img-preview {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin-top: 6px;
+  gap: 6px;
 }
 .glace-img-preview img {
-  height: 60px;
-  max-width: 120px;
+  max-width: 160px;
+  max-height: 120px;
   object-fit: cover;
   border: 1px solid rgba(255,255,255,0.08);
 }
