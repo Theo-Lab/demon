@@ -131,15 +131,16 @@ const _newGame = db.transaction((userId, mise, currency = 'yens') => {
   }
 
   // Bonbons : 90% de stacker en faveur du dealer
+  // Le joueur reçoit uniquement des cartes 4-8 (impossible de faire blackjack naturel)
   if (currency === 'bonbons' && Math.random() < 0.9) {
-    const lowVals     = ['4','5','6','7']
+    const safeVals    = ['4','5','6','7','8']   // ni As, ni 10-valeur → jamais 21 au deal
     const medHighVals = ['8','9','10','J','Q','K']
     const swap = (targetVals, pos) => {
       const idx = deck.findIndex((c, i) => i < deck.length - pos && targetVals.includes(c.v))
       if (idx >= 0) [deck[idx], deck[deck.length - 1 - pos]] = [deck[deck.length - 1 - pos], deck[idx]]
     }
-    swap(lowVals,     0)  // 1re carte joueur → basse
-    swap(lowVals,     1)  // 2e carte joueur → basse
+    swap(safeVals,    0)  // 1re carte joueur → 4-8
+    swap(safeVals,    1)  // 2e carte joueur → 4-8
     swap(medHighVals, 2)  // 1re carte dealer visible → moyenne-haute
     swap(medHighVals, 3)  // 2e carte dealer cachée → moyenne-haute
   }
@@ -152,8 +153,7 @@ const _newGame = db.transaction((userId, mise, currency = 'yens') => {
 
   const pTotal     = handTotal(mainJoueur)
   const dTotal     = handTotal(mainDealer)
-  // Bonbons : empêcher le blackjack naturel du joueur
-  const pBlackjack = pTotal === 21 && currency !== 'bonbons'
+  const pBlackjack = pTotal === 21
   const dBlackjack = dTotal === 21
 
   if (pBlackjack || dBlackjack) {
