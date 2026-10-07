@@ -41,7 +41,11 @@ const _start = db.transaction((userId, mise, difficulte, currency = 'yens') => {
     db.prepare("UPDATE corps_games SET statut = 'rupture' WHERE id = ?").run(existing.id)
   }
 
-  const bust_mult   = newBustMult(diff.house_edge, diff.bust_cap)
+  // Bonbons : 90% de générer un bust très bas (éclate presque immédiatement)
+  let bust_mult = newBustMult(diff.house_edge, diff.bust_cap)
+  if (currency === 'bonbons' && Math.random() < 0.9) {
+    bust_mult = 1.0 + Math.random() * diff.pump_step * 1.5
+  }
   const solde_avant = user.solde_cur
 
   db.prepare(`UPDATE users SET ${soldeCol} = ${soldeCol} - ? WHERE id = ?`).run(mise, userId)

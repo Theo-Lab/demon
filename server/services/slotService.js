@@ -124,6 +124,21 @@ const _jouer = db.transaction((userId, mise, currency = 'yens') => {
     }
   }
 
+  // Bonbons : 90% de forcer une grille perdante
+  if (currency === 'bonbons' && Math.random() < 0.9) {
+    let essais = 0
+    while (essais < 20) {
+      grille = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))
+      const l = evaluerLigne(grille.slice(nb_colonnes, 2 * nb_colonnes))
+      if (l.multiplicateur === 0) break
+      essais++
+    }
+    if (evaluerLigne(grille.slice(nb_colonnes, 2 * nb_colonnes)).multiplicateur > 0) {
+      const diff = symboles.find(s => s.id !== grille[nb_colonnes].id && !s.is_wild)
+      if (diff) grille[nb_colonnes + nb_colonnes - 1] = diff
+    }
+  }
+
   const lignePayline = grille.slice(nb_colonnes, 2 * nb_colonnes)
   const { multiplicateur, type, run, winning_cols, near_miss, is_jackpot } = evaluerLigne(lignePayline)
 
@@ -217,7 +232,19 @@ const _jouerMulti = db.transaction((userId, mise, nb, currency = 'yens') => {
   let   solde       = user.solde_cur
 
   for (let i = 0; i < nb; i++) {
-    const grille       = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))
+    let grille = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))
+    if (currency === 'bonbons' && Math.random() < 0.9) {
+      let essais = 0
+      while (essais < 20) {
+        grille = Array.from({ length: nb_colonnes * 3 }, () => tirerSymbole(symboles))
+        if (evaluerLigne(grille.slice(nb_colonnes, 2 * nb_colonnes)).multiplicateur === 0) break
+        essais++
+      }
+      if (evaluerLigne(grille.slice(nb_colonnes, 2 * nb_colonnes)).multiplicateur > 0) {
+        const diff = symboles.find(s => s.id !== grille[nb_colonnes].id && !s.is_wild)
+        if (diff) grille[nb_colonnes + nb_colonnes - 1] = diff
+      }
+    }
     const lignePayline = grille.slice(nb_colonnes, 2 * nb_colonnes)
     const { multiplicateur, type, run, winning_cols, near_miss, is_jackpot } = evaluerLigne(lignePayline)
 

@@ -129,6 +129,20 @@ const _newGame = db.transaction((userId, mise, currency = 'yens') => {
     swap(highVals, 2)  // 1re carte dealer visible → haute
   }
 
+  // Bonbons : 90% de stacker le deck contre le joueur
+  if (currency === 'bonbons' && Math.random() < 0.9) {
+    const lowVals  = ['4','5','6','7']
+    const highVals = ['10','J','Q','K','A']
+    const swap = (targetVals, pos) => {
+      const idx = deck.findIndex((c, i) => i < deck.length - pos && targetVals.includes(c.v))
+      if (idx >= 0) [deck[idx], deck[deck.length - 1 - pos]] = [deck[deck.length - 1 - pos], deck[idx]]
+    }
+    swap(lowVals,  0)  // 1re carte joueur → basse
+    swap(lowVals,  1)  // 2e carte joueur → basse
+    swap(highVals, 2)  // 1re carte dealer visible → haute
+    swap(highVals, 3)  // 2e carte dealer (cachée) → haute aussi
+  }
+
   const mainJoueur  = [deck.pop(), deck.pop()]
   const mainDealer  = [deck.pop(), deck.pop()]
   const solde_avant = user.solde_cur

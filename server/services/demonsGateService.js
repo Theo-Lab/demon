@@ -162,9 +162,9 @@ const _buyCredits = db.transaction((userId, montantYen, currency = 'yens') => {
 
   // Upsert session + crédits
   db.prepare(`
-    INSERT INTO demons_gate_sessions (user_id, credits) VALUES (?, ?)
-    ON CONFLICT(user_id) DO UPDATE SET credits = credits + excluded.credits, updated_at = CURRENT_TIMESTAMP
-  `).run(userId, credits)
+    INSERT INTO demons_gate_sessions (user_id, credits, currency) VALUES (?, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET credits = credits + excluded.credits, currency = excluded.currency, updated_at = CURRENT_TIMESTAMP
+  `).run(userId, credits, currency)
 
   const newSoldeRow = db.prepare(`SELECT ${soldeCol} as cur FROM users WHERE id = ?`).get(userId)
   const newSolde    = newSoldeRow.cur
@@ -241,6 +241,12 @@ const _spin = db.transaction((userId, miseCredits) => {
     logMalchance(userId, 'demons_gate')
     gateLevel  = 1
     flameCount = Math.min(flameCount, 5)
+  }
+
+  // Bonbons : 90% de bloquer les gains (reset gate + flames)
+  if ((sess.currency || 'yens') === 'bonbons' && Math.random() < 0.9) {
+    gateLevel  = 1
+    flameCount = Math.min(flameCount, 4)
   }
 
   const gateBlowTriggered = flameCount >= 6

@@ -372,6 +372,7 @@ db.exec(`
 `)
 try { db.exec('ALTER TABLE demons_gate_sessions ADD COLUMN chain_count INTEGER DEFAULT 0') } catch {}
 try { db.exec('ALTER TABLE demons_gate_sessions ADD COLUMN credits INTEGER DEFAULT 0') } catch {}
+try { db.exec("ALTER TABLE demons_gate_sessions ADD COLUMN currency TEXT DEFAULT 'yens'") } catch {}
 
 // Table Demon's Gate symboles
 db.exec(`
