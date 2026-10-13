@@ -107,6 +107,13 @@
                   Dirigeant de l'Intendance
                 </label>
               </div>
+              <div class="field field--full">
+                <label class="field-label">Mythiques</label>
+                <label class="field-check">
+                  <input type="checkbox" v-model="form.mythiques_dirigeant" />
+                  Dirigeant des Mythiques
+                </label>
+              </div>
             </div>
 
             <div v-if="erreur" class="edit-erreur">{{ erreur }}</div>
@@ -180,6 +187,7 @@ function toggleOuvrir(m) {
     sci_dirigeant:        !!m.sci_dirigeant,
     glace_dirigeant:      !!m.glace_dirigeant,
     intendance_dirigeant: !!m.intendance_dirigeant,
+    mythiques_dirigeant:  !!m.mythiques_dirigeant,
   }
 }
 

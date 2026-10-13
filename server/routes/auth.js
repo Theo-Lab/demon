@@ -200,7 +200,7 @@ router.patch('/users/:id', requireAuth, (req, res) => {
   const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id)
   if (!target) return res.status(404).json({ message: 'Utilisateur introuvable.' })
 
-  const { nom, identifiant, mot_de_passe, grade, pouvoir_nom, role, signature, sci_dirigeant, glace_dirigeant, intendance_dirigeant } = req.body
+  const { nom, identifiant, mot_de_passe, grade, pouvoir_nom, role, signature, sci_dirigeant, glace_dirigeant, intendance_dirigeant, mythiques_dirigeant } = req.body
 
   if (role && !['admin', 'groupier', 'membre'].includes(role))
     return res.status(400).json({ message: 'Rôle invalide.' })
@@ -221,7 +221,8 @@ router.patch('/users/:id', requireAuth, (req, res) => {
       signature            = ?,
       sci_dirigeant        = ?,
       glace_dirigeant      = ?,
-      intendance_dirigeant = ?
+      intendance_dirigeant = ?,
+      mythiques_dirigeant  = ?
     WHERE id = ?
   `).run(
     nom                  !== undefined ? nom                  : target.nom,
@@ -234,6 +235,7 @@ router.patch('/users/:id', requireAuth, (req, res) => {
     sci_dirigeant        !== undefined ? (sci_dirigeant        ? 1 : 0) : (target.sci_dirigeant        || 0),
     glace_dirigeant      !== undefined ? (glace_dirigeant      ? 1 : 0) : (target.glace_dirigeant      || 0),
     intendance_dirigeant !== undefined ? (intendance_dirigeant ? 1 : 0) : (target.intendance_dirigeant || 0),
+    mythiques_dirigeant  !== undefined ? (mythiques_dirigeant  ? 1 : 0) : (target.mythiques_dirigeant  || 0),
     target.id
   )
 
