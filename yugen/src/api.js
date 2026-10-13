@@ -1272,6 +1272,77 @@ export async function intendanceSetDirigeant(userId, actif) {
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
 
+// ── Entrainement ───────────────────────────────────────────────────────────────
+export async function entrainementMe() {
+  const res = await apiFetch(`${BASE}/entrainement/me`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function entrainementClassement() {
+  const res = await apiFetch(`${BASE}/entrainement/classement`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function entrainementSemaine() {
+  const res = await apiFetch(`${BASE}/entrainement/semaine`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function entrainementInscrire() {
+  const res = await apiFetch(`${BASE}/entrainement/inscription`, { method: 'POST' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementDesinscrire() {
+  const res = await apiFetch(`${BASE}/entrainement/inscription`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementGetPaiements() {
+  const res = await apiFetch(`${BASE}/entrainement/paiements`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function entrainementAddPaiement(userId) {
+  const res = await apiFetch(`${BASE}/entrainement/paiements`, { method: 'POST', body: JSON.stringify({ userId }) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementDeletePaiement(userId) {
+  const res = await apiFetch(`${BASE}/entrainement/paiements/${userId}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementAddInscription(userId, semaine) {
+  const res = await apiFetch(`${BASE}/entrainement/inscription/admin`, { method: 'POST', body: JSON.stringify({ userId, semaine }) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementDeleteInscription(userId, semaine) {
+  const res = await apiFetch(`${BASE}/entrainement/inscription/admin/${userId}?semaine=${semaine}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementCreateSeance(data) {
+  const res = await apiFetch(`${BASE}/entrainement/seances`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementUpdateSeance(id, data) {
+  const res = await apiFetch(`${BASE}/entrainement/seances/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementDeleteSeance(id) {
+  const res = await apiFetch(`${BASE}/entrainement/seances/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementAddParticipation(seanceId, userId, role) {
+  const res = await apiFetch(`${BASE}/entrainement/seances/${seanceId}/participations`, { method: 'POST', body: JSON.stringify({ userId, role }) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementDeleteParticipation(seanceId, userId) {
+  const res = await apiFetch(`${BASE}/entrainement/seances/${seanceId}/participations/${userId}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function entrainementGetUsers() {
+  const res = await apiFetch(`${BASE}/entrainement/users`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+
 export async function updateJoueurBonbons(id, montant, operation) {
   const res = await apiFetch(`${BASE}/slots/admin/joueurs/${id}/bonbons`, {
     method: 'PATCH',

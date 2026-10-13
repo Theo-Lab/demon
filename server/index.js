@@ -57,6 +57,7 @@ app.use('/api/corps',         require('./routes/corps'))
 app.use('/api/scientifique', require('./routes/scientifique'))
 app.use('/api/glace',        require('./routes/glace'))
 app.use('/api/intendance',   require('./routes/intendance'))
+app.use('/api/entrainement', require('./routes/entrainement'))
 app.delete('/api/poker/tables/:id', (req, res, next) => {
   res.on('finish', () => {
     if (res.statusCode === 200) {

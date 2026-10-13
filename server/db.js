@@ -778,6 +778,47 @@ db.exec(`
 `)
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS entrainement_paiements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    added_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`)
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS entrainement_inscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    semaine TEXT NOT NULL,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(semaine, user_id)
+  )
+`)
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS entrainement_seances (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    semaine TEXT NOT NULL,
+    titre TEXT NOT NULL,
+    multiplicateur INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+  )
+`)
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS entrainement_participations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seance_id INTEGER REFERENCES entrainement_seances(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT DEFAULT 'participant',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(seance_id, user_id)
+  )
+`)
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS glace_roles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nom TEXT NOT NULL,

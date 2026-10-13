@@ -35,6 +35,7 @@ import GlacePage from '../components/GlacePage.vue'
 import GlaceActivitePage from '../components/GlaceActivitePage.vue'
 import IntendancePage from '../components/IntendancePage.vue'
 import IntendanceActivitePage from '../components/IntendanceActivitePage.vue'
+import EntrainementPage from '../components/EntrainementPage.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -71,6 +72,7 @@ const routes = [
   { path: '/glace/:id',         component: GlaceActivitePage  },
   { path: '/intendance',        component: IntendancePage     },
   { path: '/intendance/:id',    component: IntendanceActivitePage },
+  { path: '/entrainement',      component: EntrainementPage   },
   { path: '/effets/:token',     component: EffetPublicPage    },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },
