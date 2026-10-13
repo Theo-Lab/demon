@@ -49,7 +49,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { isLoggedIn, currentUser } from '../auth.js'
+import { isLoggedIn, currentUser, initAuth } from '../auth.js'
 import { login, register } from '../api.js'
 
 const emit = defineEmits(['close'])
@@ -80,8 +80,7 @@ async function handleSubmit() {
       ? await login(identifiant.value, mot_de_passe.value)
       : await register(identifiant.value, nom.value, mot_de_passe.value)
 
-    currentUser.value = user
-    isLoggedIn.value = true
+    await initAuth()
     emit('close')
   } catch (e) {
     error.value = e.message
