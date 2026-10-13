@@ -202,21 +202,21 @@
       <div class="entr-modal">
         <h2 class="entr-modal-title">Ajouter un paiement</h2>
         <div class="entr-field">
-          <label class="entr-field-label">Utilisateur (compte requis)</label>
+          <label class="entr-field-label">Nom (libre ou compte)</label>
           <div class="entr-user-search">
-            <input v-model="paiementSearch" class="entr-field-input" type="text" placeholder="Rechercher…" autocomplete="off" @focus="paiementSearchOpen = true" @blur="closePaiementSearch" @input="paiementUserId = null" />
+            <input v-model="paiementSearch" class="entr-field-input" type="text" placeholder="Tapez un nom…" autocomplete="off" @focus="paiementSearchOpen = true" @blur="closePaiementSearch" @input="paiementUserId = null" />
             <div v-if="paiementSearchOpen && paiementSearch && paiementSuggestions.length" class="entr-user-dropdown">
               <div v-for="u in paiementSuggestions" :key="u.id" class="entr-user-option" @mousedown.prevent="selectPaiementUser(u)">
                 {{ u.nom }} <span class="entr-user-id">{{ u.identifiant }}</span>
               </div>
             </div>
-            <p v-if="paiementUserId" class="entr-user-selected">✓ {{ paiementSearch }}</p>
           </div>
+          <p class="entr-field-hint">Sélectionnez un compte si disponible, sinon tapez simplement le nom.</p>
         </div>
         <div v-if="modalError" class="entr-modal-error">{{ modalError }}</div>
         <div class="entr-modal-actions">
           <button class="entr-btn entr-btn--ghost" @click="showAddPaiement = false">Annuler</button>
-          <button class="entr-btn" @click="addPaiement">Ajouter</button>
+          <button class="entr-btn" :disabled="!paiementSearch.trim()" @click="addPaiement">Ajouter</button>
         </div>
       </div>
     </div>
@@ -423,9 +423,12 @@ function closePaiementSearch() { setTimeout(() => { paiementSearchOpen.value = f
 
 async function addPaiement() {
   modalError.value = ''
-  if (!paiementUserId.value) { modalError.value = 'Sélectionnez un compte utilisateur.'; return }
+  if (!paiementSearch.value.trim()) { modalError.value = 'Entrez un nom.'; return }
   try {
-    await entrainementAddPaiement(paiementUserId.value)
+    await entrainementAddPaiement({
+      userId: paiementUserId.value,
+      nomLibre: paiementUserId.value ? null : paiementSearch.value.trim(),
+    })
     paiements.value = await entrainementGetPaiements()
     showAddPaiement.value = false
     paiementSearch.value = ''; paiementUserId.value = null

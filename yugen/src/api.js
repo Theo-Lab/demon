@@ -1301,8 +1301,8 @@ export async function entrainementGetPaiements() {
   if (!res.ok) throw new Error((await res.json()).message)
   return res.json()
 }
-export async function entrainementAddPaiement(userId) {
-  const res = await apiFetch(`${BASE}/entrainement/paiements`, { method: 'POST', body: JSON.stringify({ userId }) })
+export async function entrainementAddPaiement({ userId, nomLibre }) {
+  const res = await apiFetch(`${BASE}/entrainement/paiements`, { method: 'POST', body: JSON.stringify({ userId, nomLibre }) })
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
 export async function entrainementDeletePaiement(userId) {

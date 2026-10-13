@@ -818,6 +818,7 @@ db.exec(`
   )
 `)
 
+try { db.prepare('ALTER TABLE entrainement_paiements ADD COLUMN nom_libre TEXT').run() } catch {}
 try { db.prepare('ALTER TABLE entrainement_inscriptions ADD COLUMN nom_libre TEXT').run() } catch {}
 try { db.prepare('ALTER TABLE entrainement_participations ADD COLUMN nom_libre TEXT').run() } catch {}
 try { db.prepare('ALTER TABLE entrainement_seances ADD COLUMN valide INTEGER DEFAULT 0').run() } catch {}

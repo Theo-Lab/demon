@@ -139,22 +139,27 @@ router.delete('/inscription', requireAuth, (req, res) => {
 
 router.get('/paiements', requireAuth, requireIntendance, (req, res) => {
   const paiements = db.prepare(`
-    SELECT ep.id, ep.user_id, u.nom, u.identifiant, ep.created_at
+    SELECT ep.id, ep.user_id, COALESCE(u.nom, ep.nom_libre) as nom,
+           COALESCE(u.identifiant, '') as identifiant, ep.created_at
     FROM entrainement_paiements ep
-    JOIN users u ON u.id = ep.user_id
-    ORDER BY u.nom ASC
+    LEFT JOIN users u ON u.id = ep.user_id
+    ORDER BY nom ASC
   `).all()
   res.json(paiements)
 })
 
 router.post('/paiements', requireAuth, requireIntendance, (req, res) => {
-  const { userId } = req.body
-  const user = db.prepare('SELECT id, nom, identifiant FROM users WHERE id = ?').get(userId)
-  if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
-  try {
+  const { userId, nomLibre } = req.body
+  if (userId) {
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId)
+    if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
     db.prepare('INSERT OR IGNORE INTO entrainement_paiements (user_id, added_by) VALUES (?, ?)').run(userId, req.user.id)
-  } catch {}
-  res.json({ ok: true, user })
+  } else if (nomLibre?.trim()) {
+    db.prepare('INSERT INTO entrainement_paiements (nom_libre, added_by) VALUES (?, ?)').run(nomLibre.trim(), req.user.id)
+  } else {
+    return res.status(400).json({ message: 'userId ou nomLibre requis.' })
+  }
+  res.json({ ok: true })
 })
 
 router.delete('/paiements/:userId', requireAuth, requireIntendance, (req, res) => {
