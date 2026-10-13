@@ -142,7 +142,9 @@ router.get('/me', requireAuth, (req, res) => {
     WHERE im.user_id = ?
   `).get(req.user.id)
 
-  res.json({ user: { ...user, spheres, sci_role: sciRole || null, glace_role: glaceRole || null, intendance_role: intendanceRole || null } })
+  const mythiquesRow = db.prepare('SELECT niveau FROM mythiques_membres WHERE user_id = ?').get(req.user.id)
+
+  res.json({ user: { ...user, spheres, sci_role: sciRole || null, glace_role: glaceRole || null, intendance_role: intendanceRole || null, mythiques_niveau: mythiquesRow ? (mythiquesRow.niveau || 0) : 0 } })
 })
 
 // PATCH /api/auth/profile

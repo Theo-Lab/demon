@@ -1352,3 +1352,115 @@ export async function updateJoueurBonbons(id, montant, operation) {
   if (!res.ok) throw new Error(data.message)
   return data
 }
+
+// ── Mythiques ──────────────────────────────────────────────────────────────────
+
+export async function mythiquesMe() {
+  const res = await apiFetch(`${BASE}/mythiques/me`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function mythiquesStats() {
+  const res = await apiFetch(`${BASE}/mythiques/stats`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function mythiquesObjets() {
+  const res = await apiFetch(`${BASE}/mythiques/objets`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.objets
+}
+
+export async function mythiquesObjet(id) {
+  const res = await apiFetch(`${BASE}/mythiques/objets/${id}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.objet
+}
+
+export async function mythiquesAdminObjets() {
+  const res = await apiFetch(`${BASE}/mythiques/admin/objets`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.objets
+}
+
+export async function mythiquesAdminCreateObjet(data) {
+  const res = await apiFetch(`${BASE}/mythiques/admin/objets`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.message)
+  return json.objet
+}
+
+export async function mythiquesAdminUpdateObjet(id, data) {
+  const res = await apiFetch(`${BASE}/mythiques/admin/objets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.message)
+  return json.objet
+}
+
+export async function mythiquesAdminDeleteObjet(id) {
+  const res = await apiFetch(`${BASE}/mythiques/admin/objets/${id}`, { method: 'DELETE' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function mythiquesAdminMembres() {
+  const res = await apiFetch(`${BASE}/mythiques/admin/membres`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.membres
+}
+
+export async function mythiquesAdminAddMembre(userId, niveau) {
+  const res = await apiFetch(`${BASE}/mythiques/admin/membres`, {
+    method: 'POST',
+    body: JSON.stringify({ userId, niveau }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function mythiquesAdminUpdateMembre(userId, niveau) {
+  const res = await apiFetch(`${BASE}/mythiques/admin/membres/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ niveau }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function mythiquesAdminDeleteMembre(userId) {
+  const res = await apiFetch(`${BASE}/mythiques/admin/membres/${userId}`, { method: 'DELETE' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function mythiquesAdminUsers() {
+  const res = await apiFetch(`${BASE}/mythiques/admin/users`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.users
+}
+
+export async function mythiquesAdminStats() {
+  const res = await apiFetch(`${BASE}/mythiques/admin/stats`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}

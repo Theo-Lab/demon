@@ -860,4 +860,39 @@ db.exec(`
   )
 `)
 
+// ── Mythiques ─────────────────────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS mythiques_membres (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    niveau INTEGER DEFAULT 1,
+    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS mythiques_objets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    type TEXT DEFAULT '',
+    rarity TEXT DEFAULT 'COMMUN',
+    rarity_color TEXT DEFAULT '#6b7280',
+    status TEXT DEFAULT 'INCONNU',
+    status_color TEXT DEFAULT '#6b7280',
+    image_url TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    tags TEXT DEFAULT '[]',
+    location TEXT DEFAULT '',
+    acquired TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    discovered_by TEXT DEFAULT '',
+    reference TEXT DEFAULT '',
+    discovery_method TEXT DEFAULT '',
+    danger TEXT DEFAULT 'INCONNU',
+    danger_color TEXT DEFAULT '#6b7280',
+    origin TEXT DEFAULT '',
+    min_level INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`)
+
+try { db.prepare('ALTER TABLE mythiques_membres ADD COLUMN niveau INTEGER DEFAULT 1').run() } catch {}
+
 module.exports = db
