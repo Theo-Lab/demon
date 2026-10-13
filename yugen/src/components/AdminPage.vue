@@ -100,6 +100,13 @@
                   Dirigeant de la Glace
                 </label>
               </div>
+              <div class="field field--full">
+                <label class="field-label">Intendance</label>
+                <label class="field-check">
+                  <input type="checkbox" v-model="form.intendance_dirigeant" />
+                  Dirigeant de l'Intendance
+                </label>
+              </div>
             </div>
 
             <div v-if="erreur" class="edit-erreur">{{ erreur }}</div>
@@ -170,8 +177,9 @@ function toggleOuvrir(m) {
     pouvoir_nom:     m.pouvoir_nom     ?? '',
     role:            m.role            ?? 'membre',
     signature:       m.signature       ?? '',
-    sci_dirigeant:   !!m.sci_dirigeant,
-    glace_dirigeant: !!m.glace_dirigeant,
+    sci_dirigeant:        !!m.sci_dirigeant,
+    glace_dirigeant:      !!m.glace_dirigeant,
+    intendance_dirigeant: !!m.intendance_dirigeant,
   }
 }
 

@@ -1200,6 +1200,78 @@ export async function glaceSetDirigeant(userId, actif) {
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
 
+// ── Intendance ─────────────────────────────────────────────────────────────────
+export async function intendanceMe() {
+  const res = await apiFetch(`${BASE}/intendance/me`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function intendanceGetMembres() {
+  const res = await apiFetch(`${BASE}/intendance/membres`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function intendanceAddMembre(data) {
+  const res = await apiFetch(`${BASE}/intendance/membres`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function intendanceUpdateMembre(userId, data) {
+  const res = await apiFetch(`${BASE}/intendance/membres/${userId}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function intendanceDeleteMembre(userId) {
+  const res = await apiFetch(`${BASE}/intendance/membres/${userId}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function intendanceGetRoles() {
+  const res = await apiFetch(`${BASE}/intendance/roles`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function intendanceCreateRole(data) {
+  const res = await apiFetch(`${BASE}/intendance/roles`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function intendanceUpdateRole(id, data) {
+  const res = await apiFetch(`${BASE}/intendance/roles/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function intendanceDeleteRole(id) {
+  const res = await apiFetch(`${BASE}/intendance/roles/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function intendanceGetUsers() {
+  const res = await apiFetch(`${BASE}/intendance/users`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function intendanceGetActivites() {
+  const res = await apiFetch(`${BASE}/intendance/activites`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function intendanceGetActivite(id) {
+  const res = await apiFetch(`${BASE}/intendance/activites/${id}`)
+  if (!res.ok) throw new Error((await res.json()).message)
+  return res.json()
+}
+export async function intendanceCreateActivite(data) {
+  const res = await apiFetch(`${BASE}/intendance/activites`, { method: 'POST', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function intendanceUpdateActivite(id, data) {
+  const res = await apiFetch(`${BASE}/intendance/activites/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function intendanceDeleteActivite(id) {
+  const res = await apiFetch(`${BASE}/intendance/activites/${id}`, { method: 'DELETE' })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+export async function intendanceSetDirigeant(userId, actif) {
+  const res = await apiFetch(`${BASE}/intendance/admin/dirigeant`, { method: 'POST', body: JSON.stringify({ userId, actif }) })
+  const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
+}
+
 export async function updateJoueurBonbons(id, montant, operation) {
   const res = await apiFetch(`${BASE}/slots/admin/joueurs/${id}/bonbons`, {
     method: 'PATCH',

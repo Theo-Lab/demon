@@ -33,6 +33,8 @@ import ScientifiquePage from '../components/ScientifiquePage.vue'
 import EffetPublicPage from '../components/EffetPublicPage.vue'
 import GlacePage from '../components/GlacePage.vue'
 import GlaceActivitePage from '../components/GlaceActivitePage.vue'
+import IntendancePage from '../components/IntendancePage.vue'
+import IntendanceActivitePage from '../components/IntendanceActivitePage.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -67,6 +69,8 @@ const routes = [
   { path: '/scientifique',      component: ScientifiquePage   },
   { path: '/glace',             component: GlacePage          },
   { path: '/glace/:id',         component: GlaceActivitePage  },
+  { path: '/intendance',        component: IntendancePage     },
+  { path: '/intendance/:id',    component: IntendanceActivitePage },
   { path: '/effets/:token',     component: EffetPublicPage    },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },
