@@ -818,6 +818,11 @@ db.exec(`
   )
 `)
 
+try { db.prepare('ALTER TABLE entrainement_inscriptions ADD COLUMN nom_libre TEXT').run() } catch {}
+try { db.prepare('ALTER TABLE entrainement_participations ADD COLUMN nom_libre TEXT').run() } catch {}
+try { db.prepare('ALTER TABLE entrainement_seances ADD COLUMN valide INTEGER DEFAULT 0').run() } catch {}
+try { db.prepare('ALTER TABLE entrainement_seances ADD COLUMN preuve_url TEXT').run() } catch {}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS glace_roles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

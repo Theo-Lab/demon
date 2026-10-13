@@ -54,7 +54,11 @@
               <span class="entr-rank-nom">{{ demon.nom }}</span>
               <span class="entr-rank-grade">{{ demon.grade }}</span>
             </div>
-            <span class="entr-rank-pts">{{ demon.points }} <span class="entr-rank-pts-label">pt{{ demon.points !== 1 ? 's' : '' }}</span></span>
+            <!-- Points visibles uniquement pour soi-même -->
+            <span v-if="demon.id === currentUser?.id" class="entr-rank-pts">
+              {{ me.points }} <span class="entr-rank-pts-label">pt{{ me.points !== 1 ? 's' : '' }}</span>
+            </span>
+            <span v-else class="entr-rank-pts-hidden">—</span>
           </div>
         </div>
       </div>
@@ -92,7 +96,7 @@
           <h3 class="entr-subsection-title">Inscrits ({{ semaine.inscriptions?.length || 0 }})</h3>
           <div v-if="!semaine.inscriptions?.length" class="entr-vide-sm">Aucun inscrit.</div>
           <div class="entr-inscrits-grid">
-            <span v-for="ins in semaine.inscriptions" :key="ins.user_id" class="entr-inscrit-chip">{{ ins.nom }}</span>
+            <span v-for="ins in semaine.inscriptions" :key="ins.id" class="entr-inscrit-chip">{{ ins.nom }}</span>
           </div>
         </div>
 
@@ -105,11 +109,14 @@
               <div class="entr-seance-head">
                 <span class="entr-seance-titre">{{ s.titre }}</span>
                 <span v-if="s.multiplicateur > 1" class="entr-multi-badge">×{{ s.multiplicateur }}</span>
+                <span class="entr-valid-badge" :class="s.valide ? 'entr-valid-badge--ok' : 'entr-valid-badge--non'">
+                  {{ s.valide ? '✓ Validée' : '⏳ En attente' }}
+                </span>
               </div>
               <div class="entr-seance-participants">
-                <div v-for="p in s.participations" :key="p.user_id" class="entr-participant-chip" :class="p.role === 'organisateur' ? 'entr-participant-chip--org' : ''">
+                <div v-for="p in s.participations" :key="p.id" class="entr-participant-chip" :class="p.role === 'organisateur' ? 'entr-participant-chip--org' : ''">
                   {{ p.nom }}
-                  <span class="entr-participant-role">{{ p.role === 'organisateur' ? '+' + (2 * s.multiplicateur) : '+' + s.multiplicateur }}</span>
+                  <span v-if="s.valide" class="entr-participant-role">{{ p.role === 'organisateur' ? '+' + (2 * s.multiplicateur) : '+' + s.multiplicateur }}</span>
                 </div>
                 <div v-if="!s.participations?.length" class="entr-vide-sm">Aucun participant enregistré.</div>
               </div>
@@ -145,10 +152,10 @@
             <button class="entr-btn entr-btn--sm" @click="showAddInscription = true">+ Ajouter</button>
           </div>
           <div class="entr-paiements-list">
-            <div v-for="ins in semaine.inscriptions" :key="ins.user_id" class="entr-paiement-row">
+            <div v-for="ins in semaine.inscriptions" :key="ins.id" class="entr-paiement-row">
               <span class="entr-paiement-nom">{{ ins.nom }}</span>
               <span class="entr-paiement-id">{{ ins.identifiant }}</span>
-              <button class="entr-btn entr-btn--sm entr-btn--danger" @click="deleteInscription(ins.user_id)">Retirer</button>
+              <button class="entr-btn entr-btn--sm entr-btn--danger" @click="deleteInscription(ins.id)">Retirer</button>
             </div>
             <div v-if="!semaine.inscriptions?.length" class="entr-vide-sm">Aucun inscrit.</div>
           </div>
@@ -165,16 +172,20 @@
               <div class="entr-seance-head">
                 <span class="entr-seance-titre">{{ s.titre }}</span>
                 <span v-if="s.multiplicateur > 1" class="entr-multi-badge">×{{ s.multiplicateur }}</span>
+                <span class="entr-valid-badge" :class="s.valide ? 'entr-valid-badge--ok' : 'entr-valid-badge--non'">
+                  {{ s.valide ? '✓ Validée' : '⏳ En attente' }}
+                </span>
                 <div class="entr-seance-actions">
                   <button class="entr-btn entr-btn--sm entr-btn--ghost" @click="openEditSeance(s)">Modifier</button>
+                  <button v-if="!s.valide" class="entr-btn entr-btn--sm entr-btn--valider" @click="openValiderSeance(s)">Valider</button>
                   <button class="entr-btn entr-btn--sm entr-btn--danger" @click="deleteSeance(s.id)">Supprimer</button>
                 </div>
               </div>
               <div class="entr-seance-participants">
-                <div v-for="p in s.participations" :key="p.user_id" class="entr-participant-chip" :class="p.role === 'organisateur' ? 'entr-participant-chip--org' : ''">
+                <div v-for="p in s.participations" :key="p.id" class="entr-participant-chip" :class="p.role === 'organisateur' ? 'entr-participant-chip--org' : ''">
                   {{ p.nom }}
-                  <span class="entr-participant-role">{{ p.role === 'organisateur' ? 'Org +' + (2 * s.multiplicateur) : '+' + s.multiplicateur }}</span>
-                  <button class="entr-chip-del" @click="deleteParticipation(s.id, p.user_id)">✕</button>
+                  <span class="entr-participant-role">{{ p.role === 'organisateur' ? 'Org' : 'Part.' }}</span>
+                  <button class="entr-chip-del" @click="deleteParticipation(s.id, p.id)">✕</button>
                 </div>
                 <button class="entr-btn entr-btn--sm entr-btn--ghost" @click="openAddParticipation(s)">+ Participant</button>
               </div>
@@ -191,9 +202,9 @@
       <div class="entr-modal">
         <h2 class="entr-modal-title">Ajouter un paiement</h2>
         <div class="entr-field">
-          <label class="entr-field-label">Utilisateur</label>
+          <label class="entr-field-label">Utilisateur (compte requis)</label>
           <div class="entr-user-search">
-            <input v-model="paiementSearch" class="entr-field-input" type="text" placeholder="Rechercher…" autocomplete="off" @focus="paiementSearchOpen = true" @blur="closePaiementSearch" />
+            <input v-model="paiementSearch" class="entr-field-input" type="text" placeholder="Rechercher…" autocomplete="off" @focus="paiementSearchOpen = true" @blur="closePaiementSearch" @input="paiementUserId = null" />
             <div v-if="paiementSearchOpen && paiementSearch && paiementSuggestions.length" class="entr-user-dropdown">
               <div v-for="u in paiementSuggestions" :key="u.id" class="entr-user-option" @mousedown.prevent="selectPaiementUser(u)">
                 {{ u.nom }} <span class="entr-user-id">{{ u.identifiant }}</span>
@@ -215,21 +226,21 @@
       <div class="entr-modal">
         <h2 class="entr-modal-title">Ajouter une inscription</h2>
         <div class="entr-field">
-          <label class="entr-field-label">Utilisateur</label>
+          <label class="entr-field-label">Nom (libre ou compte)</label>
           <div class="entr-user-search">
-            <input v-model="inscriptionSearch" class="entr-field-input" type="text" placeholder="Rechercher…" autocomplete="off" @focus="inscriptionSearchOpen = true" @blur="closeInscriptionSearch" />
+            <input v-model="inscriptionSearch" class="entr-field-input" type="text" placeholder="Tapez un nom…" autocomplete="off" @focus="inscriptionSearchOpen = true" @blur="closeInscriptionSearch" @input="inscriptionUserId = null" />
             <div v-if="inscriptionSearchOpen && inscriptionSearch && inscriptionSuggestions.length" class="entr-user-dropdown">
               <div v-for="u in inscriptionSuggestions" :key="u.id" class="entr-user-option" @mousedown.prevent="selectInscriptionUser(u)">
                 {{ u.nom }} <span class="entr-user-id">{{ u.identifiant }}</span>
               </div>
             </div>
-            <p v-if="inscriptionUserId" class="entr-user-selected">✓ {{ inscriptionSearch }}</p>
           </div>
+          <p class="entr-field-hint">Sélectionnez un compte si disponible, sinon tapez simplement le nom.</p>
         </div>
         <div v-if="modalError" class="entr-modal-error">{{ modalError }}</div>
         <div class="entr-modal-actions">
           <button class="entr-btn entr-btn--ghost" @click="showAddInscription = false">Annuler</button>
-          <button class="entr-btn" @click="addInscription">Ajouter</button>
+          <button class="entr-btn" :disabled="!inscriptionSearch.trim()" @click="addInscription">Ajouter</button>
         </div>
       </div>
     </div>
@@ -259,21 +270,38 @@
       </div>
     </div>
 
+    <!-- ══ MODAL VALIDER SEANCE ═══════════════════════════════════════ -->
+    <div v-if="showValiderModal" class="entr-modal-overlay" @click.self="showValiderModal = false">
+      <div class="entr-modal">
+        <h2 class="entr-modal-title">Valider — {{ validatingSeance?.titre }}</h2>
+        <p class="entr-modal-desc">Validez cette séance pour que les points soient comptabilisés. Un rapport et une preuve sont requis.</p>
+        <div class="entr-field">
+          <label class="entr-field-label">URL de preuve / rapport</label>
+          <input v-model="validerPreuve" class="entr-field-input" type="text" placeholder="Lien ou référence" />
+        </div>
+        <div v-if="modalError" class="entr-modal-error">{{ modalError }}</div>
+        <div class="entr-modal-actions">
+          <button class="entr-btn entr-btn--ghost" @click="showValiderModal = false">Annuler</button>
+          <button class="entr-btn entr-btn--valider" @click="validerSeance">Valider la séance</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ MODAL PARTICIPATION ═════════════════════════════════════════ -->
     <div v-if="showParticipationModal" class="entr-modal-overlay" @click.self="showParticipationModal = false">
       <div class="entr-modal">
         <h2 class="entr-modal-title">Ajouter un participant — {{ participationSeance?.titre }}</h2>
         <div class="entr-field">
-          <label class="entr-field-label">Utilisateur</label>
+          <label class="entr-field-label">Nom (libre ou compte)</label>
           <div class="entr-user-search">
-            <input v-model="participationSearch" class="entr-field-input" type="text" placeholder="Rechercher…" autocomplete="off" @focus="participationSearchOpen = true" @blur="closeParticipationSearch" />
+            <input v-model="participationSearch" class="entr-field-input" type="text" placeholder="Tapez un nom…" autocomplete="off" @focus="participationSearchOpen = true" @blur="closeParticipationSearch" @input="participationUserId = null" />
             <div v-if="participationSearchOpen && participationSearch && participationSuggestions.length" class="entr-user-dropdown">
               <div v-for="u in participationSuggestions" :key="u.id" class="entr-user-option" @mousedown.prevent="selectParticipationUser(u)">
                 {{ u.nom }} <span class="entr-user-id">{{ u.identifiant }}</span>
               </div>
             </div>
-            <p v-if="participationUserId" class="entr-user-selected">✓ {{ participationSearch }}</p>
           </div>
+          <p class="entr-field-hint">Sélectionnez un compte si disponible, sinon tapez simplement le nom.</p>
         </div>
         <div class="entr-field">
           <label class="entr-field-label">Rôle</label>
@@ -285,7 +313,7 @@
         <div v-if="modalError" class="entr-modal-error">{{ modalError }}</div>
         <div class="entr-modal-actions">
           <button class="entr-btn entr-btn--ghost" @click="showParticipationModal = false">Annuler</button>
-          <button class="entr-btn" @click="addParticipation">Ajouter</button>
+          <button class="entr-btn" :disabled="!participationSearch.trim()" @click="addParticipation">Ajouter</button>
         </div>
       </div>
     </div>
@@ -376,6 +404,7 @@ async function reloadSemaine() {
 }
 async function reloadClassement() {
   classement.value = await entrainementClassement()
+  me.value = await entrainementMe()
 }
 
 // ── Paiements ─────────────────────────────────────────────────────────────────
@@ -394,7 +423,7 @@ function closePaiementSearch() { setTimeout(() => { paiementSearchOpen.value = f
 
 async function addPaiement() {
   modalError.value = ''
-  if (!paiementUserId.value) { modalError.value = 'Sélectionnez un utilisateur.'; return }
+  if (!paiementUserId.value) { modalError.value = 'Sélectionnez un compte utilisateur.'; return }
   try {
     await entrainementAddPaiement(paiementUserId.value)
     paiements.value = await entrainementGetPaiements()
@@ -426,18 +455,22 @@ function closeInscriptionSearch() { setTimeout(() => { inscriptionSearchOpen.val
 
 async function addInscription() {
   modalError.value = ''
-  if (!inscriptionUserId.value) { modalError.value = 'Sélectionnez un utilisateur.'; return }
+  if (!inscriptionSearch.value.trim()) { modalError.value = 'Entrez un nom.'; return }
   try {
-    await entrainementAddInscription(inscriptionUserId.value, semaine.value.semaine)
+    await entrainementAddInscription({
+      userId: inscriptionUserId.value,
+      nomLibre: inscriptionUserId.value ? null : inscriptionSearch.value.trim(),
+      semaine: semaine.value.semaine,
+    })
     await reloadSemaine()
     showAddInscription.value = false
     inscriptionSearch.value = ''; inscriptionUserId.value = null
   } catch (e) { modalError.value = e.message }
 }
-async function deleteInscription(userId) {
+async function deleteInscription(id) {
   if (!confirm('Retirer cet inscrit ?')) return
   try {
-    await entrainementDeleteInscription(userId, semaine.value.semaine)
+    await entrainementDeleteInscription(id)
     await reloadSemaine()
   } catch (e) { alert(e.message) }
 }
@@ -458,13 +491,11 @@ async function saveSeance() {
   savingSeance.value = true
   try {
     if (editingSeance.value) {
-      const updated = await entrainementUpdateSeance(editingSeance.value.id, seanceForm.value)
-      const idx = semaine.value.seances.findIndex(s => s.id === updated.id)
-      if (idx !== -1) semaine.value.seances[idx] = updated
+      await entrainementUpdateSeance(editingSeance.value.id, seanceForm.value)
     } else {
-      const created = await entrainementCreateSeance({ ...seanceForm.value, semaine: semaine.value.semaine })
-      semaine.value.seances.push(created)
+      await entrainementCreateSeance({ ...seanceForm.value, semaine: semaine.value.semaine })
     }
+    await reloadSemaine()
     closeSeanceModal()
   } catch (e) { modalError.value = e.message } finally { savingSeance.value = false }
 }
@@ -472,9 +503,31 @@ async function deleteSeance(id) {
   if (!confirm('Supprimer cette séance et toutes ses participations ?')) return
   try {
     await entrainementDeleteSeance(id)
-    semaine.value.seances = semaine.value.seances.filter(s => s.id !== id)
+    await reloadSemaine()
     await reloadClassement()
   } catch (e) { alert(e.message) }
+}
+
+// ── Validation séance ─────────────────────────────────────────────────────────
+const showValiderModal   = ref(false)
+const validatingSeance   = ref(null)
+const validerPreuve      = ref('')
+
+function openValiderSeance(s) {
+  validatingSeance.value = s
+  validerPreuve.value = s.preuve_url || ''
+  modalError.value = ''
+  showValiderModal.value = true
+}
+async function validerSeance() {
+  modalError.value = ''
+  if (!validerPreuve.value.trim()) { modalError.value = 'Une preuve/référence est requise.'; return }
+  try {
+    await entrainementUpdateSeance(validatingSeance.value.id, { valide: true, preuve_url: validerPreuve.value.trim() })
+    await reloadSemaine()
+    await reloadClassement()
+    showValiderModal.value = false
+  } catch (e) { modalError.value = e.message }
 }
 
 // ── Participations ────────────────────────────────────────────────────────────
@@ -501,20 +554,23 @@ function openAddParticipation(s) {
 }
 async function addParticipation() {
   modalError.value = ''
-  if (!participationUserId.value) { modalError.value = 'Sélectionnez un utilisateur.'; return }
+  if (!participationSearch.value.trim()) { modalError.value = 'Entrez un nom.'; return }
   try {
-    await entrainementAddParticipation(participationSeance.value.id, participationUserId.value, participationRole.value)
+    await entrainementAddParticipation(participationSeance.value.id, {
+      userId: participationUserId.value,
+      nomLibre: participationUserId.value ? null : participationSearch.value.trim(),
+      role: participationRole.value,
+    })
     await reloadSemaine()
     await reloadClassement()
     showParticipationModal.value = false
     participationSearch.value = ''; participationUserId.value = null
   } catch (e) { modalError.value = e.message }
 }
-async function deleteParticipation(seanceId, userId) {
+async function deleteParticipation(seanceId, participationId) {
   try {
-    await entrainementDeleteParticipation(seanceId, userId)
-    const s = semaine.value.seances.find(s => s.id === seanceId)
-    if (s) s.participations = s.participations.filter(p => p.user_id !== userId)
+    await entrainementDeleteParticipation(seanceId, participationId)
+    await reloadSemaine()
     await reloadClassement()
   } catch (e) { alert(e.message) }
 }
@@ -632,6 +688,10 @@ async function deleteParticipation(seanceId, userId) {
   font-weight: 400; color: #c9a84c; letter-spacing: 0.04em;
 }
 .entr-rank-pts-label { font-size: 0.55rem; color: rgba(201,168,76,0.6); letter-spacing: 0.12em; }
+.entr-rank-pts-hidden {
+  font-family: 'Cinzel', serif; font-size: 0.8rem;
+  color: rgba(255,255,255,0.08); min-width: 24px; text-align: right;
+}
 
 /* Semaine header */
 .entr-semaine-header { margin-bottom: 24px; }
@@ -677,7 +737,6 @@ async function deleteParticipation(seanceId, userId) {
   display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
   flex-wrap: wrap;
 }
-.entr-seance-card--gestion .entr-seance-head { flex-wrap: nowrap; }
 .entr-seance-titre {
   font-family: 'Cinzel', serif; font-size: 0.82rem;
   letter-spacing: 0.06em; color: #e8e3dd; flex: 1;
@@ -688,6 +747,12 @@ async function deleteParticipation(seanceId, userId) {
   letter-spacing: 0.1em; padding: 2px 8px;
   border: 1px solid rgba(201,168,76,0.4); color: #c9a84c;
 }
+.entr-valid-badge {
+  font-family: 'Cinzel', serif; font-size: 0.52rem;
+  letter-spacing: 0.1em; padding: 2px 8px; border: 1px solid;
+}
+.entr-valid-badge--ok  { border-color: rgba(80,192,120,0.4); color: #50c078; }
+.entr-valid-badge--non { border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); }
 
 .entr-seance-participants { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .entr-participant-chip {
@@ -743,6 +808,11 @@ async function deleteParticipation(seanceId, userId) {
   color: rgba(192,57,43,0.7);
 }
 .entr-btn--danger:hover:not(:disabled) { background: rgba(139,26,26,0.12); color: #c0392b; border-color: rgba(139,26,26,0.6); }
+.entr-btn--valider {
+  background: rgba(80,192,120,0.1); border: 1px solid rgba(80,192,120,0.3);
+  color: #50c078;
+}
+.entr-btn--valider:hover:not(:disabled) { background: rgba(80,192,120,0.18); border-color: rgba(80,192,120,0.5); }
 
 /* Multiplicateur */
 .entr-multi-row { display: flex; gap: 8px; }
@@ -770,6 +840,10 @@ async function deleteParticipation(seanceId, userId) {
   letter-spacing: 0.1em; text-transform: uppercase;
   color: #c9a84c; margin: 0 0 20px; font-weight: 400;
 }
+.entr-modal-desc {
+  font-size: 0.95rem; color: rgba(255,255,255,0.4);
+  font-style: italic; margin: -10px 0 18px;
+}
 .entr-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 .entr-modal-error { font-size: 0.9rem; font-style: italic; color: #c05050; margin-top: 8px; }
 
@@ -778,6 +852,10 @@ async function deleteParticipation(seanceId, userId) {
 .entr-field-label {
   font-family: 'Cinzel', serif; font-size: 0.55rem;
   letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.28);
+}
+.entr-field-hint {
+  font-size: 0.82rem; font-style: italic;
+  color: rgba(255,255,255,0.2); margin: 2px 0 0;
 }
 .entr-field-input {
   background: #0f0f10; border: 1px solid rgba(255,255,255,0.08);

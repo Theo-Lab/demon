@@ -1309,12 +1309,12 @@ export async function entrainementDeletePaiement(userId) {
   const res = await apiFetch(`${BASE}/entrainement/paiements/${userId}`, { method: 'DELETE' })
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
-export async function entrainementAddInscription(userId, semaine) {
-  const res = await apiFetch(`${BASE}/entrainement/inscription/admin`, { method: 'POST', body: JSON.stringify({ userId, semaine }) })
+export async function entrainementAddInscription({ userId, nomLibre, semaine }) {
+  const res = await apiFetch(`${BASE}/entrainement/inscription/admin`, { method: 'POST', body: JSON.stringify({ userId, nomLibre, semaine }) })
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
-export async function entrainementDeleteInscription(userId, semaine) {
-  const res = await apiFetch(`${BASE}/entrainement/inscription/admin/${userId}?semaine=${semaine}`, { method: 'DELETE' })
+export async function entrainementDeleteInscription(id) {
+  const res = await apiFetch(`${BASE}/entrainement/inscription/admin/${id}`, { method: 'DELETE' })
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
 export async function entrainementCreateSeance(data) {
@@ -1329,12 +1329,12 @@ export async function entrainementDeleteSeance(id) {
   const res = await apiFetch(`${BASE}/entrainement/seances/${id}`, { method: 'DELETE' })
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
-export async function entrainementAddParticipation(seanceId, userId, role) {
-  const res = await apiFetch(`${BASE}/entrainement/seances/${seanceId}/participations`, { method: 'POST', body: JSON.stringify({ userId, role }) })
+export async function entrainementAddParticipation(seanceId, { userId, nomLibre, role }) {
+  const res = await apiFetch(`${BASE}/entrainement/seances/${seanceId}/participations`, { method: 'POST', body: JSON.stringify({ userId, nomLibre, role }) })
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
-export async function entrainementDeleteParticipation(seanceId, userId) {
-  const res = await apiFetch(`${BASE}/entrainement/seances/${seanceId}/participations/${userId}`, { method: 'DELETE' })
+export async function entrainementDeleteParticipation(seanceId, participationId) {
+  const res = await apiFetch(`${BASE}/entrainement/seances/${seanceId}/participations/${participationId}`, { method: 'DELETE' })
   const d = await res.json(); if (!res.ok) throw new Error(d.message); return d
 }
 export async function entrainementGetUsers() {

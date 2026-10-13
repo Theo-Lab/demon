@@ -13,7 +13,7 @@ function getSemaineKey(date) {
   const diff = day === 0 ? -6 : 1 - day
   const monday = new Date(d)
   monday.setDate(d.getDate() + diff)
-  return monday.toISOString().split('T')[0] // "2026-10-12"
+  return monday.toISOString().split('T')[0]
 }
 
 function isInscriptionOuverte() {
@@ -45,7 +45,7 @@ function getPoints(userId) {
     ), 0) as points
     FROM entrainement_participations ep
     JOIN entrainement_seances s ON s.id = ep.seance_id
-    WHERE ep.user_id = ?
+    WHERE ep.user_id = ? AND s.valide = 1
   `).get(userId)
   return row?.points || 0
 }
@@ -63,21 +63,21 @@ router.get('/me', requireAuth, (req, res) => {
 })
 
 // ── Classement ────────────────────────────────────────────────────────────────
+// Points secrets : le classement retourne l'ordre sans exposer les points
 
 router.get('/classement', requireAuth, (req, res) => {
   const classement = db.prepare(`
-    SELECT u.id, u.nom, u.identifiant, u.grade,
-      COALESCE(SUM(
-        CASE WHEN ep.role = 'participant' THEN s.multiplicateur
-             WHEN ep.role = 'organisateur' THEN 2 * s.multiplicateur
-             ELSE 0 END
-      ), 0) as points
+    SELECT u.id, u.nom, u.identifiant, u.grade
     FROM entrainement_paiements pay
     JOIN users u ON u.id = pay.user_id
     LEFT JOIN entrainement_participations ep ON ep.user_id = u.id
-    LEFT JOIN entrainement_seances s ON s.id = ep.seance_id
+    LEFT JOIN entrainement_seances s ON s.id = ep.seance_id AND s.valide = 1
     GROUP BY u.id
-    ORDER BY points DESC, u.nom ASC
+    ORDER BY COALESCE(SUM(
+      CASE WHEN ep.role = 'participant' THEN s.multiplicateur
+           WHEN ep.role = 'organisateur' THEN 2 * s.multiplicateur
+           ELSE 0 END
+    ), 0) DESC, u.nom ASC
   `).all()
   res.json(classement)
 })
@@ -87,14 +87,16 @@ router.get('/classement', requireAuth, (req, res) => {
 router.get('/semaine', requireAuth, (req, res) => {
   const semaine = getSemaineKey()
   const inscriptions = db.prepare(`
-    SELECT ei.user_id, u.nom, u.identifiant, ei.created_at
+    SELECT ei.id, ei.user_id, COALESCE(u.nom, ei.nom_libre) as nom,
+           COALESCE(u.identifiant, '') as identifiant, ei.created_at
     FROM entrainement_inscriptions ei
-    JOIN users u ON u.id = ei.user_id
+    LEFT JOIN users u ON u.id = ei.user_id
     WHERE ei.semaine = ?
-    ORDER BY u.nom ASC
+    ORDER BY nom ASC
   `).all(semaine)
   const seances = db.prepare(`
-    SELECT es.*, u.nom as auteur_nom
+    SELECT es.id, es.titre, es.multiplicateur, es.valide, es.preuve_url,
+           es.created_at, u.nom as auteur_nom
     FROM entrainement_seances es
     LEFT JOIN users u ON u.id = es.created_by
     WHERE es.semaine = ?
@@ -102,11 +104,12 @@ router.get('/semaine', requireAuth, (req, res) => {
   `).all(semaine)
   for (const s of seances) {
     s.participations = db.prepare(`
-      SELECT ep.user_id, ep.role, u.nom, u.identifiant
+      SELECT ep.id, ep.user_id, ep.role, COALESCE(u.nom, ep.nom_libre) as nom,
+             COALESCE(u.identifiant, '') as identifiant
       FROM entrainement_participations ep
-      JOIN users u ON u.id = ep.user_id
+      LEFT JOIN users u ON u.id = ep.user_id
       WHERE ep.seance_id = ?
-      ORDER BY u.nom ASC
+      ORDER BY nom ASC
     `).all(s.id)
   }
   res.json({ semaine, inscriptions, seances, ouvert: isInscriptionOuverte() })
@@ -162,17 +165,22 @@ router.delete('/paiements/:userId', requireAuth, requireIntendance, (req, res) =
 // ── Inscriptions admin (intendance) ───────────────────────────────────────────
 
 router.post('/inscription/admin', requireAuth, requireIntendance, (req, res) => {
-  const { userId, semaine } = req.body
+  const { userId, nomLibre, semaine } = req.body
   const s = semaine || getSemaineKey()
-  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId)
-  if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
-  db.prepare('INSERT OR IGNORE INTO entrainement_inscriptions (semaine, user_id) VALUES (?, ?)').run(s, userId)
+  if (userId) {
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId)
+    if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
+    db.prepare('INSERT OR IGNORE INTO entrainement_inscriptions (semaine, user_id) VALUES (?, ?)').run(s, userId)
+  } else if (nomLibre?.trim()) {
+    db.prepare('INSERT INTO entrainement_inscriptions (semaine, nom_libre) VALUES (?, ?)').run(s, nomLibre.trim())
+  } else {
+    return res.status(400).json({ message: 'userId ou nomLibre requis.' })
+  }
   res.json({ ok: true })
 })
 
-router.delete('/inscription/admin/:userId', requireAuth, requireIntendance, (req, res) => {
-  const semaine = req.query.semaine || getSemaineKey()
-  db.prepare('DELETE FROM entrainement_inscriptions WHERE semaine = ? AND user_id = ?').run(semaine, parseInt(req.params.userId))
+router.delete('/inscription/admin/:id', requireAuth, requireIntendance, (req, res) => {
+  db.prepare('DELETE FROM entrainement_inscriptions WHERE id = ?').run(parseInt(req.params.id))
   res.json({ ok: true })
 })
 
@@ -189,13 +197,20 @@ router.post('/seances', requireAuth, requireIntendance, (req, res) => {
 })
 
 router.patch('/seances/:id', requireAuth, requireIntendance, (req, res) => {
-  const { titre, multiplicateur } = req.body
+  const { titre, multiplicateur, valide, preuve_url } = req.body
   const seance = db.prepare('SELECT id FROM entrainement_seances WHERE id = ?').get(req.params.id)
   if (!seance) return res.status(404).json({ message: 'Séance introuvable.' })
   if (titre !== undefined) db.prepare('UPDATE entrainement_seances SET titre = ? WHERE id = ?').run(titre.trim(), req.params.id)
   if (multiplicateur !== undefined) db.prepare('UPDATE entrainement_seances SET multiplicateur = ? WHERE id = ?').run(multiplicateur, req.params.id)
+  if (valide !== undefined) db.prepare('UPDATE entrainement_seances SET valide = ? WHERE id = ?').run(valide ? 1 : 0, req.params.id)
+  if (preuve_url !== undefined) db.prepare('UPDATE entrainement_seances SET preuve_url = ? WHERE id = ?').run(preuve_url, req.params.id)
   const updated = db.prepare('SELECT es.*, u.nom as auteur_nom FROM entrainement_seances es LEFT JOIN users u ON u.id = es.created_by WHERE es.id = ?').get(req.params.id)
-  updated.participations = db.prepare('SELECT ep.user_id, ep.role, u.nom, u.identifiant FROM entrainement_participations ep JOIN users u ON u.id = ep.user_id WHERE ep.seance_id = ? ORDER BY u.nom ASC').all(req.params.id)
+  updated.participations = db.prepare(`
+    SELECT ep.id, ep.user_id, ep.role, COALESCE(u.nom, ep.nom_libre) as nom, COALESCE(u.identifiant, '') as identifiant
+    FROM entrainement_participations ep
+    LEFT JOIN users u ON u.id = ep.user_id
+    WHERE ep.seance_id = ? ORDER BY nom ASC
+  `).all(req.params.id)
   res.json(updated)
 })
 
@@ -207,18 +222,24 @@ router.delete('/seances/:id', requireAuth, requireIntendance, (req, res) => {
 // ── Participations (intendance) ───────────────────────────────────────────────
 
 router.post('/seances/:id/participations', requireAuth, requireIntendance, (req, res) => {
-  const { userId, role } = req.body
+  const { userId, nomLibre, role } = req.body
   const seance = db.prepare('SELECT id FROM entrainement_seances WHERE id = ?').get(req.params.id)
   if (!seance) return res.status(404).json({ message: 'Séance introuvable.' })
-  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId)
-  if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
   const r = ['participant', 'organisateur'].includes(role) ? role : 'participant'
-  db.prepare('INSERT OR REPLACE INTO entrainement_participations (seance_id, user_id, role) VALUES (?, ?, ?)').run(req.params.id, userId, r)
+  if (userId) {
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId)
+    if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
+    db.prepare('INSERT OR REPLACE INTO entrainement_participations (seance_id, user_id, role) VALUES (?, ?, ?)').run(req.params.id, userId, r)
+  } else if (nomLibre?.trim()) {
+    db.prepare('INSERT INTO entrainement_participations (seance_id, nom_libre, role) VALUES (?, ?, ?)').run(req.params.id, nomLibre.trim(), r)
+  } else {
+    return res.status(400).json({ message: 'userId ou nomLibre requis.' })
+  }
   res.json({ ok: true })
 })
 
-router.delete('/seances/:id/participations/:userId', requireAuth, requireIntendance, (req, res) => {
-  db.prepare('DELETE FROM entrainement_participations WHERE seance_id = ? AND user_id = ?').run(req.params.id, parseInt(req.params.userId))
+router.delete('/seances/:seanceId/participations/:id', requireAuth, requireIntendance, (req, res) => {
+  db.prepare('DELETE FROM entrainement_participations WHERE id = ? AND seance_id = ?').run(parseInt(req.params.id), parseInt(req.params.seanceId))
   res.json({ ok: true })
 })
 
