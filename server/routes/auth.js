@@ -113,7 +113,7 @@ router.post('/logout', (req, res) => {
 
 // GET /api/auth/me
 router.get('/me', requireAuth, (req, res) => {
-  const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(sci_dirigeant, 0) as sci_dirigeant, COALESCE(bonbons, 0) as bonbons FROM users WHERE id = ?').get(req.user.id)
+  const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(sci_dirigeant, 0) as sci_dirigeant, COALESCE(glace_dirigeant, 0) as glace_dirigeant, COALESCE(bonbons, 0) as bonbons FROM users WHERE id = ?').get(req.user.id)
   if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
 
   const spheres = db.prepare(`
@@ -129,7 +129,14 @@ router.get('/me', requireAuth, (req, res) => {
     FROM sci_membres sm JOIN sci_roles sr ON sr.id = sm.role_id
     WHERE sm.user_id = ?
   `).get(req.user.id)
-  res.json({ user: { ...user, spheres, sci_role: sciRole || null } })
+
+  const glaceRole = db.prepare(`
+    SELECT gm.role_id, gr.nom as role_nom
+    FROM glace_membres gm LEFT JOIN glace_roles gr ON gr.id = gm.role_id
+    WHERE gm.user_id = ?
+  `).get(req.user.id)
+
+  res.json({ user: { ...user, spheres, sci_role: sciRole || null, glace_role: glaceRole || null } })
 })
 
 // PATCH /api/auth/profile

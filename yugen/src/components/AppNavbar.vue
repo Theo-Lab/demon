@@ -6,6 +6,7 @@
       <RouterLink v-if="isLoggedIn" to="/parchemin" class="nav-link" active-class="nav-link--active">Parchemin</RouterLink>
       <RouterLink v-if="isLoggedIn" to="/casino" class="nav-link" active-class="nav-link--active">Casino</RouterLink>
       <RouterLink v-if="isLoggedIn && (currentUser?.sci_dirigeant || currentUser?.sci_role)" to="/scientifique" class="nav-link" active-class="nav-link--active">Scientifique</RouterLink>
+      <RouterLink v-if="isLoggedIn && (currentUser?.glace_dirigeant || currentUser?.glace_role)" to="/glace" class="nav-link" active-class="nav-link--active">Glace</RouterLink>
     </div>
 
     <!-- Non connecté -->
