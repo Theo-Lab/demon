@@ -113,7 +113,7 @@ router.post('/logout', (req, res) => {
 
 // GET /api/auth/me
 router.get('/me', requireAuth, (req, res) => {
-  const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(sci_dirigeant, 0) as sci_dirigeant, COALESCE(glace_dirigeant, 0) as glace_dirigeant, COALESCE(intendance_dirigeant, 0) as intendance_dirigeant, COALESCE(bonbons, 0) as bonbons FROM users WHERE id = ?').get(req.user.id)
+  const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(sci_dirigeant, 0) as sci_dirigeant, COALESCE(glace_dirigeant, 0) as glace_dirigeant, COALESCE(intendance_dirigeant, 0) as intendance_dirigeant, COALESCE(mythiques_dirigeant, 0) as mythiques_dirigeant, COALESCE(bonbons, 0) as bonbons FROM users WHERE id = ?').get(req.user.id)
   if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
 
   const spheres = db.prepare(`
@@ -144,7 +144,7 @@ router.get('/me', requireAuth, (req, res) => {
 
   const mythiquesRow = db.prepare('SELECT niveau FROM mythiques_membres WHERE user_id = ?').get(req.user.id)
 
-  res.json({ user: { ...user, spheres, sci_role: sciRole || null, glace_role: glaceRole || null, intendance_role: intendanceRole || null, mythiques_niveau: mythiquesRow ? (mythiquesRow.niveau || 0) : 0 } })
+  res.json({ user: { ...user, spheres, sci_role: sciRole || null, glace_role: glaceRole || null, intendance_role: intendanceRole || null, mythiques_niveau: mythiquesRow ? (mythiquesRow.niveau || 0) : 0, mythiques_dirigeant: user.mythiques_dirigeant || 0 } })
 })
 
 // PATCH /api/auth/profile

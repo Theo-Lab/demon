@@ -6,12 +6,19 @@ const router = express.Router()
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function isDirigeant(userId) {
+  const u = db.prepare('SELECT mythiques_dirigeant FROM users WHERE id = ?').get(userId)
+  return !!u?.mythiques_dirigeant
+}
+
 function getMythiqueNiveau(userId) {
+  if (isDirigeant(userId)) return 5
   const row = db.prepare('SELECT niveau FROM mythiques_membres WHERE user_id = ?').get(userId)
   return row ? (row.niveau || 1) : 0
 }
 
 function requireMythique(req, res, next) {
+  if (isDirigeant(req.user.id)) { req.mythiqueNiveau = 5; return next() }
   const niveau = getMythiqueNiveau(req.user.id)
   if (niveau === 0) return res.status(403).json({ message: 'Accès réservé aux membres Mythiques.' })
   req.mythiqueNiveau = niveau
@@ -19,6 +26,7 @@ function requireMythique(req, res, next) {
 }
 
 function requireNiveau5(req, res, next) {
+  if (isDirigeant(req.user.id)) return next()
   const niveau = req.mythiqueNiveau || getMythiqueNiveau(req.user.id)
   if (niveau < 5) return res.status(403).json({ message: 'Accès réservé au niveau 5.' })
   next()
@@ -49,7 +57,7 @@ function parseObjet(row, userNiveau) {
 // GET /api/mythiques/me
 router.get('/me', requireAuth, requireMythique, (req, res) => {
   const user = db.prepare('SELECT nom, identifiant FROM users WHERE id = ?').get(req.user.id)
-  res.json({ niveau: req.mythiqueNiveau, nom: user.nom, identifiant: user.identifiant })
+  res.json({ niveau: req.mythiqueNiveau, nom: user.nom, identifiant: user.identifiant, dirigeant: isDirigeant(req.user.id) })
 })
 
 // GET /api/mythiques/stats

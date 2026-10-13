@@ -894,5 +894,6 @@ db.exec(`
 `)
 
 try { db.prepare('ALTER TABLE mythiques_membres ADD COLUMN niveau INTEGER DEFAULT 1').run() } catch {}
+try { db.prepare('ALTER TABLE users ADD COLUMN mythiques_dirigeant INTEGER DEFAULT 0').run() } catch {}
 
 module.exports = db

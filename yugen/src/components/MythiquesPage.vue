@@ -40,7 +40,7 @@
       <!-- Onglets principaux -->
       <div class="tabs-bar">
         <button class="tab-btn" :class="{ active: mainTab === 'catalogue' }" @click="mainTab = 'catalogue'">CATALOGUE</button>
-        <button v-if="me?.niveau >= 5" class="tab-btn" :class="{ active: mainTab === 'admin' }" @click="mainTab = 'admin'">ADMIN</button>
+        <button v-if="me?.niveau >= 5 || me?.dirigeant" class="tab-btn" :class="{ active: mainTab === 'admin' }" @click="mainTab = 'admin'">ADMIN</button>
       </div>
 
       <!-- ═══════════ CATALOGUE ═══════════ -->
@@ -741,7 +741,7 @@ async function chargerAdmin() {
 
 onMounted(async () => {
   await chargerBase()
-  if (me.value?.niveau >= 5) {
+  if (me.value?.niveau >= 5 || me.value?.dirigeant) {
     await chargerAdmin()
   }
 })

@@ -9,7 +9,7 @@
       <RouterLink v-if="isLoggedIn && (currentUser?.glace_dirigeant || currentUser?.glace_role)" to="/glace" class="nav-link" active-class="nav-link--active">Glace</RouterLink>
       <RouterLink v-if="isLoggedIn && (currentUser?.intendance_dirigeant || currentUser?.intendance_role)" to="/intendance" class="nav-link" active-class="nav-link--active">Intendance</RouterLink>
       <RouterLink v-if="isLoggedIn && (currentUser?.intendance_dirigeant || currentUser?.intendance_role)" to="/entrainement" class="nav-link" active-class="nav-link--active">Entrainement</RouterLink>
-      <RouterLink v-if="isLoggedIn && currentUser?.mythiques_niveau > 0" to="/mythiques" class="nav-link" active-class="nav-link--active">Mythiques</RouterLink>
+      <RouterLink v-if="isLoggedIn && (currentUser?.mythiques_niveau > 0 || currentUser?.mythiques_dirigeant)" to="/mythiques" class="nav-link" active-class="nav-link--active">Mythiques</RouterLink>
     </div>
 
     <!-- Non connecté -->
