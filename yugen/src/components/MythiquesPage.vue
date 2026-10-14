@@ -157,7 +157,7 @@
         <!-- Admin > Membres -->
         <div v-if="adminTab === 'membres'" class="admin-section">
           <div class="admin-toolbar">
-            <button class="btn-primary" @click="showAddMembre = true">+ Ajouter un membre</button>
+            <button class="btn-primary" @click="showAddMembre = true; addMembreSearch = ''; addMembreSelected = null; addMembreNiveau = 1">+ Ajouter un membre</button>
           </div>
           <div class="admin-list">
             <div v-if="adminMembres.length === 0" class="empty-msg">Aucun membre.</div>
@@ -540,38 +540,70 @@
 
     <!-- ═══════════ MODAL AJOUTER MEMBRE ═══════════ -->
     <Teleport to="body">
-      <div v-if="showAddMembre" class="modal-overlay" @click.self="showAddMembre = false">
+      <div v-if="showAddMembre" class="modal-overlay" @click.self="fermerAddMembre">
         <div class="modal-panel modal-panel--sm">
           <div class="modal-rarity-bar" style="background: #9f5fd4"></div>
           <div class="modal-header">
             <h2 class="modal-title">AJOUTER UN MEMBRE</h2>
-            <button class="modal-close" @click="showAddMembre = false">✕</button>
+            <button class="modal-close" @click="fermerAddMembre">✕</button>
           </div>
           <div class="modal-body">
+
+            <!-- Recherche -->
             <div class="form-group">
-              <label class="form-label">RECHERCHER UN UTILISATEUR</label>
-              <input class="form-input" v-model="addMembreSearch" placeholder="Nom ou identifiant…" @input="filtrerUsers" />
-              <div v-if="usersSuggestions.length" class="suggestions">
-                <div
-                  v-for="u in usersSuggestions"
-                  :key="u.id"
-                  class="suggestion-item"
-                  @click="selectUser(u)"
-                >{{ u.nom }} (@{{ u.identifiant }})</div>
+              <label class="form-label">RECHERCHER</label>
+              <input
+                ref="addMembreInput"
+                class="form-input"
+                v-model="addMembreSearch"
+                placeholder="Nom ou identifiant…"
+                autocomplete="off"
+              />
+            </div>
+
+            <!-- Liste résultats -->
+            <div class="membre-search-list">
+              <div v-if="!addMembreSearch.trim()" class="membre-search-hint">Tapez pour rechercher un utilisateur</div>
+              <div v-else-if="usersSuggestions.length === 0" class="membre-search-hint">Aucun résultat</div>
+              <div
+                v-for="u in usersSuggestions"
+                :key="u.id"
+                class="membre-search-row"
+                :class="{ selected: addMembreSelected?.id === u.id }"
+                @click="selectUser(u)"
+              >
+                <div class="membre-avatar-sm">{{ u.nom[0].toUpperCase() }}</div>
+                <div class="membre-search-info">
+                  <span class="membre-search-nom">{{ u.nom }}</span>
+                  <span class="membre-search-ident">@{{ u.identifiant }}</span>
+                </div>
+                <span v-if="addMembreSelected?.id === u.id" class="membre-check">✓</span>
               </div>
             </div>
-            <div v-if="addMembreSelected" class="selected-user">
-              Sélectionné : <strong>{{ addMembreSelected.nom }}</strong>
+
+            <!-- Niveau -->
+            <div class="form-group" style="margin-top:1rem">
+              <label class="form-label">RANG ATTRIBUÉ</label>
+              <div class="niveau-picker">
+                <button
+                  v-for="n in [1,2,3,4,5]"
+                  :key="n"
+                  class="niveau-pick-btn"
+                  :class="{ active: addMembreNiveau === n }"
+                  :style="addMembreNiveau === n ? { borderColor: NIVEAU_COLORS[n], color: NIVEAU_COLORS[n], background: NIVEAU_COLORS[n] + '22' } : {}"
+                  @click="addMembreNiveau = n"
+                >
+                  <span class="niveau-pick-num">NV.{{ n }}</span>
+                  <span class="niveau-pick-label">{{ niveauLabels[n] }}</span>
+                </button>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">NIVEAU</label>
-              <select class="form-input" v-model.number="addMembreNiveau">
-                <option v-for="n in [1,2,3,4,5]" :key="n" :value="n">NV.{{ n }} — {{ niveauLabels[n] }}</option>
-              </select>
-            </div>
+
             <div class="modal-footer-actions">
-              <button class="btn-ghost" @click="showAddMembre = false">Annuler</button>
-              <button class="btn-primary" :disabled="!addMembreSelected" @click="ajouterMembre">Ajouter</button>
+              <button class="btn-ghost" @click="fermerAddMembre">Annuler</button>
+              <button class="btn-primary" :disabled="!addMembreSelected" @click="ajouterMembre">
+                {{ addMembreSelected ? `Ajouter ${addMembreSelected.nom}` : 'Sélectionner un utilisateur' }}
+              </button>
             </div>
           </div>
         </div>
@@ -660,7 +692,7 @@ const showAddMembre = ref(false)
 const addMembreSearch = ref('')
 const addMembreSelected = ref(null)
 const addMembreNiveau = ref(1)
-const usersSuggestions = ref([])
+const addMembreInput = ref(null)
 
 const toast = ref({ visible: false, message: '', type: 'success' })
 const configForm = ref({ 1: 'RANG I', 2: 'RANG II', 3: 'RANG III', 4: 'RANG IV', 5: 'RANG SUPRÊME' })
@@ -691,6 +723,16 @@ const objetsFiltres = computed(() => {
 })
 
 const formTagsStr = ref('')
+const membreIds = computed(() => new Set(adminMembres.value.map(m => m.user_id)))
+
+const usersSuggestions = computed(() => {
+  const q = addMembreSearch.value.trim().toLowerCase()
+  if (!q) return []
+  return allUsers.value
+    .filter(u => !membreIds.value.has(u.id) && (u.nom.toLowerCase().includes(q) || u.identifiant.toLowerCase().includes(q)))
+    .slice(0, 6)
+})
+
 const formTags = computed(() => {
   return formTagsStr.value
     .split(',')
@@ -919,18 +961,15 @@ async function supprimerObjet(obj) {
 
 // ── Gestion membres ───────────────────────────────────────────────────────────
 
-function filtrerUsers() {
-  const q = addMembreSearch.value.trim().toLowerCase()
-  if (!q) { usersSuggestions.value = []; return }
-  usersSuggestions.value = allUsers.value
-    .filter(u => u.nom.toLowerCase().includes(q) || u.identifiant.toLowerCase().includes(q))
-    .slice(0, 8)
+function fermerAddMembre() {
+  showAddMembre.value = false
+  addMembreSearch.value = ''
+  addMembreSelected.value = null
+  addMembreNiveau.value = 1
 }
 
 function selectUser(u) {
-  addMembreSelected.value = u
-  addMembreSearch.value = u.nom
-  usersSuggestions.value = []
+  addMembreSelected.value = addMembreSelected.value?.id === u.id ? null : u
 }
 
 async function ajouterMembre() {
@@ -938,10 +977,7 @@ async function ajouterMembre() {
   try {
     await mythiquesAdminAddMembre(addMembreSelected.value.id, addMembreNiveau.value)
     showToast(`${addMembreSelected.value.nom} ajouté au rang ${niveauLabels.value[addMembreNiveau.value]}.`)
-    showAddMembre.value = false
-    addMembreSearch.value = ''
-    addMembreSelected.value = null
-    addMembreNiveau.value = 1
+    fermerAddMembre()
     await Promise.all([
       mythiquesAdminMembres().then(d => { adminMembres.value = d }),
       mythiquesAdminStats().then(d => { adminStats.value = d }),
@@ -1878,31 +1914,109 @@ async function supprimerMembre(m) {
 .btn-ghost--danger:hover { background: rgba(139,26,26,0.08); color: #c02020; border-color: rgba(139,26,26,0.5); }
 
 /* ── Suggestions autocomplete ──────────────────────────────────────────────── */
-.suggestions {
-  position: absolute;
-  background: #100d1c;
-  border: 1px solid rgba(180,140,60,0.2);
-  border-top: none;
-  z-index: 10;
-  max-height: 200px;
-  overflow-y: auto;
-  width: 100%;
-}
-.suggestion-item {
-  padding: 0.55rem 0.9rem;
-  font-size: 0.9rem;
-  color: rgba(226,220,214,0.65);
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.suggestion-item:hover { background: rgba(201,168,76,0.07); color: #e2dcd6; }
-
 .form-group { position: relative; }
 
-.selected-user {
-  font-size: 0.85rem;
-  color: rgba(255,255,255,0.5);
-  padding: 0.3rem 0;
+/* ── Recherche membre ──────────────────────────────────────────────────────── */
+.membre-search-list {
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.3);
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 0.5rem;
 }
-.selected-user strong { color: rgba(255,255,255,0.8); }
+.membre-search-hint {
+  padding: 0.9rem;
+  font-size: 0.75rem;
+  color: rgba(226,220,214,0.3);
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.1em;
+}
+.membre-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.12s;
+}
+.membre-search-row:last-child { border-bottom: none; }
+.membre-search-row:hover { background: rgba(255,255,255,0.04); }
+.membre-search-row.selected { background: rgba(201,168,76,0.1); }
+.membre-avatar-sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(201,168,76,0.15);
+  border: 1px solid rgba(201,168,76,0.3);
+  color: #c9a84c;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.membre-search-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+.membre-search-nom {
+  font-size: 0.82rem;
+  color: #e2dcd6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.membre-search-ident {
+  font-size: 0.7rem;
+  color: rgba(226,220,214,0.4);
+}
+.membre-check {
+  color: #c9a84c;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* ── Niveau picker ─────────────────────────────────────────────────────────── */
+.niveau-picker {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.niveau-pick-btn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.5rem 0.3rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(226,220,214,0.5);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Cinzel', serif;
+}
+.niveau-pick-btn:hover { background: rgba(255,255,255,0.06); color: #e2dcd6; }
+.niveau-pick-btn.active { color: inherit; }
+.niveau-pick-num {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+.niveau-pick-label {
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 </style>
