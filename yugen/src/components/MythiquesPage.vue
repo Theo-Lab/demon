@@ -156,6 +156,14 @@
           <div class="form-group">
             <input class="form-input" v-model="configYoutubeUrl" placeholder="https://www.youtube.com/watch?v=…" />
           </div>
+          <div class="form-group">
+            <label class="form-label">VOLUME — {{ configYoutubeVolume }}%</label>
+            <div class="volume-slider-row">
+              <span class="volume-icon">🔈</span>
+              <input type="range" min="1" max="100" v-model.number="configYoutubeVolume" class="volume-slider" />
+              <span class="volume-icon">🔊</span>
+            </div>
+          </div>
 
           <div class="config-actions">
             <button class="btn-primary" @click="sauvegarderConfig">Sauvegarder</button>
@@ -783,6 +791,7 @@ const addMembreInput = ref(null)
 const toast = ref({ visible: false, message: '', type: 'success' })
 const configForm = ref({ 1: 'RANG I', 2: 'RANG II', 3: 'RANG III', 4: 'RANG IV', 5: 'RANG SUPRÊME' })
 const configYoutubeUrl = ref('')
+const configYoutubeVolume = ref(8)
 const uploadingImage = ref(false)
 const musicStarted = ref(false)
 const musicMuted = ref(false)
@@ -801,7 +810,7 @@ function _createYTPlayer() {
     playerVars: { autoplay: 1, loop: 1, playlist: youtubeVideoId.value, controls: 0 },
     events: {
       onReady(e) {
-        e.target.setVolume(8)
+        e.target.setVolume(configYoutubeVolume.value)
         e.target.playVideo()
         musicStarted.value = true
         musicMuted.value = false
@@ -826,7 +835,7 @@ function toggleMute() {
   if (!ytPlayer.value) return
   if (musicMuted.value) {
     ytPlayer.value.unMute()
-    ytPlayer.value.setVolume(20)
+    ytPlayer.value.setVolume(configYoutubeVolume.value)
     musicMuted.value = false
   } else {
     ytPlayer.value.mute()
@@ -953,6 +962,7 @@ async function chargerBase() {
       }
       configForm.value = { ...niveauLabels.value }
       configYoutubeUrl.value = configData.youtube_url || ''
+      configYoutubeVolume.value = parseInt(configData.youtube_volume) || 8
     }
   } catch (e) {
     console.error('Erreur chargement mythiques:', e)
@@ -998,6 +1008,7 @@ async function sauvegarderConfig() {
       niveau_4: configForm.value[4],
       niveau_5: configForm.value[5],
       youtube_url: configYoutubeUrl.value,
+      youtube_volume: configYoutubeVolume.value,
     }
     await mythiquesUpdateConfig(data)
     niveauLabels.value = { ...configForm.value }
@@ -2066,6 +2077,20 @@ async function sauvegarderProfilMembre() {
   flex-shrink: 0;
   opacity: 0.8;
 }
+.volume-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+.volume-icon { font-size: 0.9rem; flex-shrink: 0; }
+.volume-slider {
+  flex: 1;
+  accent-color: #c9a84c;
+  cursor: pointer;
+  height: 4px;
+}
+
 .config-sep {
   height: 1px;
   background: rgba(201,168,76,0.15);

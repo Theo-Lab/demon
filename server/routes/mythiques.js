@@ -81,10 +81,13 @@ router.get('/config', requireAuth, requireMythique, (req, res) => {
 
 // PATCH /api/mythiques/config (dirigeant only)
 router.patch('/config', requireAuth, requireNiveau5, (req, res) => {
-  const allowed = ['niveau_1', 'niveau_2', 'niveau_3', 'niveau_4', 'niveau_5', 'youtube_url']
+  const allowed = ['niveau_1', 'niveau_2', 'niveau_3', 'niveau_4', 'niveau_5', 'youtube_url', 'youtube_volume']
   for (const key of allowed) {
     if (req.body[key] !== undefined) {
-      const val = key === 'youtube_url' ? String(req.body[key] || '').trim() : (String(req.body[key]).trim() || key)
+      let val
+      if (key === 'youtube_url') val = String(req.body[key] || '').trim()
+      else if (key === 'youtube_volume') val = String(Math.max(0, Math.min(100, parseInt(req.body[key]) || 8)))
+      else val = String(req.body[key]).trim() || key
       db.prepare('INSERT OR REPLACE INTO mythiques_config (key, value) VALUES (?, ?)').run(key, val)
     }
   }
