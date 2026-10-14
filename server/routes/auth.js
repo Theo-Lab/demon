@@ -239,7 +239,7 @@ router.patch('/users/:id', requireAuth, (req, res) => {
     target.id
   )
 
-  const updated = db.prepare('SELECT id, nom, identifiant, grade, pouvoir_nom, role, signature, COALESCE(solde,0) as solde, COALESCE(sci_dirigeant,0) as sci_dirigeant, COALESCE(glace_dirigeant,0) as glace_dirigeant, COALESCE(intendance_dirigeant,0) as intendance_dirigeant FROM users WHERE id = ?').get(target.id)
+  const updated = db.prepare('SELECT id, nom, identifiant, grade, pouvoir_nom, role, signature, COALESCE(solde,0) as solde, COALESCE(sci_dirigeant,0) as sci_dirigeant, COALESCE(glace_dirigeant,0) as glace_dirigeant, COALESCE(intendance_dirigeant,0) as intendance_dirigeant, COALESCE(mythiques_dirigeant,0) as mythiques_dirigeant FROM users WHERE id = ?').get(target.id)
   res.json({ user: updated })
 })
 
