@@ -3,16 +3,9 @@
     <AppNavbar />
 
     <!-- Lecteur audio YouTube -->
-    <div v-if="youtubeVideoId" class="music-player" :class="{ playing: musicPlaying }" @click="musicPlaying = !musicPlaying" :title="musicPlaying ? 'Couper la musique' : 'Lancer la musique'">
+    <div v-if="youtubeVideoId" class="music-player" :class="{ playing: musicPlaying }" @click="toggleMusic" :title="musicPlaying ? 'Couper la musique' : 'Lancer la musique'">
       <span class="music-icon">{{ musicPlaying ? '♫' : '♪' }}</span>
-      <iframe
-        v-if="musicPlaying"
-        :src="`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&loop=1&playlist=${youtubeVideoId}&controls=0&disablekb=1&fs=0&modestbranding=1`"
-        allow="autoplay"
-        style="display:none"
-        width="0" height="0"
-        frameborder="0"
-      ></iframe>
+      <div id="yt-player-div" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"></div>
     </div>
 
     <!-- Toast -->
@@ -792,12 +785,44 @@ const configForm = ref({ 1: 'RANG I', 2: 'RANG II', 3: 'RANG III', 4: 'RANG IV',
 const configYoutubeUrl = ref('')
 const uploadingImage = ref(false)
 const musicPlaying = ref(false)
+const ytPlayer = ref(null)
 const youtubeVideoId = computed(() => {
   const url = configYoutubeUrl.value
   if (!url) return null
   const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/)
   return m ? m[1] : null
 })
+
+function createYTPlayer() {
+  if (ytPlayer.value) { ytPlayer.value.destroy(); ytPlayer.value = null }
+  ytPlayer.value = new window.YT.Player('yt-player-div', {
+    videoId: youtubeVideoId.value,
+    playerVars: { autoplay: 1, loop: 1, playlist: youtubeVideoId.value, controls: 0 },
+    events: {
+      onReady(e) {
+        e.target.setVolume(20)
+        e.target.playVideo()
+      }
+    }
+  })
+}
+
+function toggleMusic() {
+  if (musicPlaying.value) {
+    musicPlaying.value = false
+    if (ytPlayer.value) { ytPlayer.value.pauseVideo(); ytPlayer.value.destroy(); ytPlayer.value = null }
+    return
+  }
+  musicPlaying.value = true
+  if (window.YT?.Player) {
+    createYTPlayer()
+  } else {
+    const tag = document.createElement('script')
+    tag.src = 'https://www.youtube.com/iframe_api'
+    document.head.appendChild(tag)
+    window.onYouTubeIframeAPIReady = createYTPlayer
+  }
+}
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
