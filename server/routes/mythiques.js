@@ -54,6 +54,17 @@ function parseObjet(row, userNiveau) {
 
 // ── Routes membres ────────────────────────────────────────────────────────────
 
+// GET /api/mythiques/membres
+router.get('/membres', requireAuth, requireMythique, (req, res) => {
+  const membres = db.prepare(`
+    SELECT mm.user_id, mm.niveau, mm.photo_url, mm.description, mm.grade, u.nom, u.identifiant
+    FROM mythiques_membres mm
+    JOIN users u ON u.id = mm.user_id
+    ORDER BY mm.niveau DESC, u.nom ASC
+  `).all()
+  res.json({ membres })
+})
+
 // GET /api/mythiques/me
 router.get('/me', requireAuth, requireMythique, (req, res) => {
   const user = db.prepare('SELECT nom, identifiant FROM users WHERE id = ?').get(req.user.id)
@@ -195,7 +206,7 @@ router.delete('/admin/objets/:id', requireAuth, requireMythique, requireNiveau5,
 // GET /api/mythiques/admin/membres
 router.get('/admin/membres', requireAuth, requireMythique, requireNiveau5, (req, res) => {
   const membres = db.prepare(`
-    SELECT mm.user_id, mm.niveau, mm.joined_at, u.nom, u.identifiant
+    SELECT mm.user_id, mm.niveau, mm.joined_at, mm.photo_url, mm.description, mm.grade, u.nom, u.identifiant
     FROM mythiques_membres mm
     JOIN users u ON u.id = mm.user_id
     ORDER BY mm.niveau DESC, u.nom ASC
@@ -220,10 +231,21 @@ router.post('/admin/membres', requireAuth, requireMythique, requireNiveau5, (req
 
 // PATCH /api/mythiques/admin/membres/:userId
 router.patch('/admin/membres/:userId', requireAuth, requireMythique, requireNiveau5, (req, res) => {
-  const { niveau } = req.body
+  const { niveau, photo_url, description, grade } = req.body
   const row = db.prepare('SELECT user_id FROM mythiques_membres WHERE user_id = ?').get(req.params.userId)
   if (!row) return res.status(404).json({ message: 'Membre introuvable.' })
-  db.prepare('UPDATE mythiques_membres SET niveau = ? WHERE user_id = ?').run(parseInt(niveau) || 1, req.params.userId)
+
+  const updates = []
+  const values = []
+  if (niveau !== undefined) { updates.push('niveau = ?'); values.push(parseInt(niveau) || 1) }
+  if (photo_url !== undefined) { updates.push('photo_url = ?'); values.push(photo_url) }
+  if (description !== undefined) { updates.push('description = ?'); values.push(description) }
+  if (grade !== undefined) { updates.push('grade = ?'); values.push(grade) }
+
+  if (updates.length > 0) {
+    values.push(req.params.userId)
+    db.prepare(`UPDATE mythiques_membres SET ${updates.join(', ')} WHERE user_id = ?`).run(...values)
+  }
   res.json({ ok: true })
 })
 

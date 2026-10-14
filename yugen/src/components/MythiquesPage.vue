@@ -40,6 +40,7 @@
       <!-- Onglets principaux -->
       <div class="tabs-bar">
         <button class="tab-btn" :class="{ active: mainTab === 'catalogue' }" @click="mainTab = 'catalogue'">CATALOGUE</button>
+        <button v-if="me?.niveau > 0 || me?.dirigeant" class="tab-btn" :class="{ active: mainTab === 'membres' }" @click="mainTab = 'membres'">MEMBRES</button>
         <button v-if="me?.niveau >= 5 || me?.dirigeant" class="tab-btn" :class="{ active: mainTab === 'admin' }" @click="mainTab = 'admin'">ADMIN</button>
         <button v-if="me?.dirigeant" class="tab-btn" :class="{ active: mainTab === 'config' }" @click="mainTab = 'config'">CONFIG</button>
       </div>
@@ -100,6 +101,31 @@
             <div v-if="objet.locked" class="lock-overlay">
               <span class="lock-icon">🔒</span>
               <span class="lock-text">NIVEAU {{ objet.min_level }} REQUIS</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════ MEMBRES ═══════════ -->
+      <div v-if="mainTab === 'membres'" class="membres-view">
+        <div v-if="membres.length === 0" class="loading-msg">Aucun membre.</div>
+        <div v-else class="membres-grid">
+          <div v-for="m in membres" :key="m.user_id" class="membre-card">
+            <!-- Photo ou initiales -->
+            <div class="membre-card-photo">
+              <img v-if="m.photo_url" :src="m.photo_url" :alt="m.nom" class="membre-card-img" />
+              <div v-else class="membre-card-initiales" :style="{ background: NIVEAU_COLORS[m.niveau] + '22', color: NIVEAU_COLORS[m.niveau], borderColor: NIVEAU_COLORS[m.niveau] + '55' }">
+                {{ m.nom[0]?.toUpperCase() }}
+              </div>
+            </div>
+            <!-- Infos -->
+            <div class="membre-card-body">
+              <h3 class="membre-card-nom">{{ m.nom }}</h3>
+              <p v-if="m.grade" class="membre-card-grade">{{ m.grade }}</p>
+              <span class="badge membre-card-badge" :style="{ background: NIVEAU_COLORS[m.niveau] + '22', color: NIVEAU_COLORS[m.niveau], borderColor: NIVEAU_COLORS[m.niveau] + '55' }">
+                {{ niveauLabels[m.niveau] }}
+              </span>
+              <p v-if="m.description" class="membre-card-desc">{{ m.description }}</p>
             </div>
           </div>
         </div>
@@ -172,6 +198,7 @@
                 <select class="inline-select" :value="m.niveau" @change="changerNiveauMembre(m.user_id, $event.target.value)">
                   <option v-for="n in [1,2,3,4,5]" :key="n" :value="n">NV.{{ n }}</option>
                 </select>
+                <button class="btn-ghost" @click="ouvrirEditMembre(m)">Éditer profil</button>
                 <button class="btn-ghost btn-ghost--danger" @click="supprimerMembre(m)">Supprimer</button>
               </div>
             </div>
@@ -538,6 +565,43 @@
       </div>
     </Teleport>
 
+    <!-- ═══════════ MODAL ÉDITER PROFIL MEMBRE ═══════════ -->
+    <Teleport to="body">
+      <div v-if="showEditMembre" class="modal-overlay" @click.self="fermerEditMembre">
+        <div class="modal-panel modal-panel--sm">
+          <div class="modal-rarity-bar" style="background: #c9a84c"></div>
+          <div class="modal-header">
+            <h2 class="modal-title">ÉDITER LE PROFIL</h2>
+            <button class="modal-close" @click="fermerEditMembre">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">PHOTO URL</label>
+              <div class="upload-row">
+                <input class="form-input" v-model="editMembreForm.photo_url" placeholder="https://… ou uploader ci-dessous" />
+                <label class="btn-upload" :class="{ loading: uploadingMembreImage }">
+                  <input type="file" accept="image/*" style="display:none" @change="handleMembreImageUpload" :disabled="uploadingMembreImage" />
+                  {{ uploadingMembreImage ? '…' : '↑' }}
+                </label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">GRADE</label>
+              <input class="form-input" v-model="editMembreForm.grade" placeholder="Ex: Archiviste des Âmes" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">DESCRIPTION</label>
+              <textarea class="form-input form-textarea" v-model="editMembreForm.description" rows="4" placeholder="Description courte du membre…"></textarea>
+            </div>
+            <div class="modal-footer-actions">
+              <button class="btn-ghost" @click="fermerEditMembre">Annuler</button>
+              <button class="btn-primary" @click="sauvegarderProfilMembre">Sauvegarder</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ═══════════ MODAL AJOUTER MEMBRE ═══════════ -->
     <Teleport to="body">
       <div v-if="showAddMembre" class="modal-overlay" @click.self="fermerAddMembre">
@@ -622,6 +686,7 @@ import {
   mythiquesObjets,
   mythiquesConfig,
   mythiquesUpdateConfig,
+  mythiquesMembres,
   mythiquesAdminObjets,
   mythiquesAdminCreateObjet,
   mythiquesAdminUpdateObjet,
@@ -629,6 +694,7 @@ import {
   mythiquesAdminMembres,
   mythiquesAdminAddMembre,
   mythiquesAdminUpdateMembre,
+  mythiquesAdminUpdateMembreProfile,
   mythiquesAdminDeleteMembre,
   mythiquesAdminUsers,
   mythiquesAdminStats,
@@ -671,10 +737,16 @@ const loading = ref(true)
 const me = ref(null)
 const stats = ref({ catalogues: 0, acquis: 0, membres: 0 })
 const objets = ref([])
+const membres = ref([])
 const adminObjets = ref([])
 const adminMembres = ref([])
 const adminStats = ref({ total: 0, acquis: 0, membres: 0, parRarity: [], parNiveau: [] })
 const allUsers = ref([])
+
+const showEditMembre = ref(false)
+const editMembreUserId = ref(null)
+const editMembreForm = ref({ photo_url: '', grade: '', description: '' })
+const uploadingMembreImage = ref(false)
 
 const mainTab = ref('catalogue')
 const adminTab = ref('objets')
@@ -796,15 +868,17 @@ async function handleImageUpload(event) {
 
 async function chargerBase() {
   try {
-    const [meData, statsData, objetsData, configData] = await Promise.all([
+    const [meData, statsData, objetsData, configData, membresData] = await Promise.all([
       mythiquesMe(),
       mythiquesStats(),
       mythiquesObjets(),
       mythiquesConfig(),
+      mythiquesMembres(),
     ])
     me.value = meData
     stats.value = statsData
     objets.value = objetsData
+    membres.value = membresData
     if (configData) {
       niveauLabels.value = {
         1: configData.niveau_1 || 'RANG I',
@@ -1011,6 +1085,54 @@ async function supprimerMembre(m) {
       mythiquesAdminStats().then(d => { adminStats.value = d }),
       mythiquesStats().then(d => { stats.value = d }),
     ])
+  } catch (e) {
+    showToast(e.message || 'Erreur.', 'error')
+  }
+}
+
+// ── Édition profil membre ──────────────────────────────────────────────────────
+
+function ouvrirEditMembre(m) {
+  editMembreUserId.value = m.user_id
+  editMembreForm.value = {
+    photo_url: m.photo_url || '',
+    grade: m.grade || '',
+    description: m.description || '',
+  }
+  showEditMembre.value = true
+}
+
+function fermerEditMembre() {
+  showEditMembre.value = false
+  editMembreUserId.value = null
+  editMembreForm.value = { photo_url: '', grade: '', description: '' }
+}
+
+async function handleMembreImageUpload(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  uploadingMembreImage.value = true
+  try {
+    const url = await uploadImage(file)
+    editMembreForm.value.photo_url = `${IMG_BASE}${url}`
+  } catch (e) {
+    showToast('Erreur upload image.', 'error')
+  } finally {
+    uploadingMembreImage.value = false
+    event.target.value = ''
+  }
+}
+
+async function sauvegarderProfilMembre() {
+  if (!editMembreUserId.value) return
+  try {
+    await mythiquesAdminUpdateMembreProfile(editMembreUserId.value, editMembreForm.value)
+    showToast('Profil mis à jour.')
+    fermerEditMembre()
+    const d = await mythiquesAdminMembres()
+    adminMembres.value = d
+    const m = await mythiquesMembres()
+    membres.value = m
   } catch (e) {
     showToast(e.message || 'Erreur.', 'error')
   }
@@ -2018,5 +2140,95 @@ async function supprimerMembre(m) {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+}
+
+/* ── Grille membres ────────────────────────────────────────────────────────── */
+.membres-view {
+  padding: 1rem 0;
+}
+
+.membres-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.2rem;
+}
+
+.membre-card {
+  background: linear-gradient(160deg, #0f0c1a 0%, #0a0814 100%);
+  border: 1px solid rgba(180,140,60,0.12);
+  padding: 1.4rem 1.2rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  text-align: center;
+}
+.membre-card:hover {
+  border-color: rgba(201,168,76,0.25);
+  box-shadow: 0 0 20px rgba(201,168,76,0.06);
+}
+
+.membre-card-photo {
+  flex-shrink: 0;
+}
+.membre-card-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(201,168,76,0.3);
+}
+.membre-card-initiales {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.membre-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.membre-card-nom {
+  font-family: 'Cinzel', serif;
+  font-size: 0.88rem;
+  color: #e8e0cc;
+  margin: 0;
+  letter-spacing: 0.07em;
+}
+
+.membre-card-grade {
+  font-style: italic;
+  color: #c9a84c;
+  font-size: 0.88rem;
+  margin: 0;
+  opacity: 0.85;
+}
+
+.membre-card-badge {
+  margin-top: 0.1rem;
+}
+
+.membre-card-desc {
+  font-size: 0.9rem;
+  color: rgba(226,220,214,0.5);
+  margin: 0.3rem 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+  text-align: center;
 }
 </style>

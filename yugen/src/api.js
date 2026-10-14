@@ -1430,6 +1430,13 @@ export async function mythiquesAdminDeleteObjet(id) {
   return data
 }
 
+export async function mythiquesMembres() {
+  const res = await apiFetch(`${BASE}/mythiques/membres`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data.membres
+}
+
 export async function mythiquesAdminMembres() {
   const res = await apiFetch(`${BASE}/mythiques/admin/membres`)
   const data = await res.json()
@@ -1455,6 +1462,16 @@ export async function mythiquesAdminUpdateMembre(userId, niveau) {
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
   return data
+}
+
+export async function mythiquesAdminUpdateMembreProfile(userId, data) {
+  const res = await apiFetch(`${BASE}/mythiques/admin/membres/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.message)
+  return json
 }
 
 export async function mythiquesAdminDeleteMembre(userId) {
