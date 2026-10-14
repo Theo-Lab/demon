@@ -3,8 +3,8 @@
     <AppNavbar />
 
     <!-- Lecteur audio YouTube -->
-    <div v-if="youtubeVideoId" class="music-player" :class="{ playing: musicPlaying }" @click="toggleMusic" :title="musicPlaying ? 'Couper la musique' : 'Lancer la musique'">
-      <span class="music-icon">{{ musicPlaying ? '♫' : '♪' }}</span>
+    <div v-if="youtubeVideoId" class="music-player" :class="{ playing: musicStarted && !musicMuted, muted: musicMuted }" @click="musicStarted ? toggleMute() : startMusic()" :title="!musicStarted ? 'Lancer la musique' : (musicMuted ? 'Activer le son' : 'Couper le son')">
+      <span class="music-icon">{{ !musicStarted ? '♪' : (musicMuted ? '🔇' : '♫') }}</span>
       <div id="yt-player-div" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"></div>
     </div>
 
@@ -784,7 +784,8 @@ const toast = ref({ visible: false, message: '', type: 'success' })
 const configForm = ref({ 1: 'RANG I', 2: 'RANG II', 3: 'RANG III', 4: 'RANG IV', 5: 'RANG SUPRÊME' })
 const configYoutubeUrl = ref('')
 const uploadingImage = ref(false)
-const musicPlaying = ref(false)
+const musicStarted = ref(false)
+const musicMuted = ref(false)
 const ytPlayer = ref(null)
 const youtubeVideoId = computed(() => {
   const url = configYoutubeUrl.value
@@ -793,8 +794,8 @@ const youtubeVideoId = computed(() => {
   return m ? m[1] : null
 })
 
-function createYTPlayer() {
-  if (ytPlayer.value) { ytPlayer.value.destroy(); ytPlayer.value = null }
+function _createYTPlayer() {
+  if (ytPlayer.value) { try { ytPlayer.value.destroy() } catch {} ; ytPlayer.value = null }
   ytPlayer.value = new window.YT.Player('yt-player-div', {
     videoId: youtubeVideoId.value,
     playerVars: { autoplay: 1, loop: 1, playlist: youtubeVideoId.value, controls: 0 },
@@ -802,25 +803,34 @@ function createYTPlayer() {
       onReady(e) {
         e.target.setVolume(20)
         e.target.playVideo()
+        musicStarted.value = true
+        musicMuted.value = false
       }
     }
   })
 }
 
-function toggleMusic() {
-  if (musicPlaying.value) {
-    musicPlaying.value = false
-    if (ytPlayer.value) { ytPlayer.value.pauseVideo(); ytPlayer.value.destroy(); ytPlayer.value = null }
-    return
-  }
-  musicPlaying.value = true
-  if (window.YT?.Player) {
-    createYTPlayer()
+function _loadYTApi(cb) {
+  if (window.YT?.Player) { cb(); return }
+  const tag = document.createElement('script')
+  tag.src = 'https://www.youtube.com/iframe_api'
+  document.head.appendChild(tag)
+  window.onYouTubeIframeAPIReady = cb
+}
+
+function startMusic() {
+  _loadYTApi(_createYTPlayer)
+}
+
+function toggleMute() {
+  if (!ytPlayer.value) return
+  if (musicMuted.value) {
+    ytPlayer.value.unMute()
+    ytPlayer.value.setVolume(20)
+    musicMuted.value = false
   } else {
-    const tag = document.createElement('script')
-    tag.src = 'https://www.youtube.com/iframe_api'
-    document.head.appendChild(tag)
-    window.onYouTubeIframeAPIReady = createYTPlayer
+    ytPlayer.value.mute()
+    musicMuted.value = true
   }
 }
 
@@ -972,6 +982,10 @@ onMounted(async () => {
   await chargerBase()
   if (me.value?.niveau >= 5 || me.value?.dirigeant) {
     await chargerAdmin()
+  }
+  // Démarrage auto de la musique si configurée
+  if (youtubeVideoId.value) {
+    startMusic()
   }
 })
 
@@ -2088,6 +2102,10 @@ async function sauvegarderProfilMembre() {
   border-color: rgba(201,168,76,0.6);
   box-shadow: 0 0 18px rgba(201,168,76,0.25);
   animation: music-pulse 2.5s ease-in-out infinite;
+}
+.music-player.muted {
+  border-color: rgba(255,255,255,0.15);
+  opacity: 0.6;
 }
 .music-icon {
   font-size: 1.1rem;
