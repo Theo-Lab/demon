@@ -60,6 +60,28 @@ router.get('/me', requireAuth, requireMythique, (req, res) => {
   res.json({ niveau: req.mythiqueNiveau, nom: user.nom, identifiant: user.identifiant, dirigeant: isDirigeant(req.user.id) })
 })
 
+// GET /api/mythiques/config
+router.get('/config', requireAuth, requireMythique, (req, res) => {
+  const rows = db.prepare('SELECT key, value FROM mythiques_config').all()
+  const config = {}
+  for (const r of rows) config[r.key] = r.value
+  res.json(config)
+})
+
+// PATCH /api/mythiques/config (dirigeant only)
+router.patch('/config', requireAuth, requireNiveau5, (req, res) => {
+  const allowed = ['niveau_1', 'niveau_2', 'niveau_3', 'niveau_4', 'niveau_5']
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) {
+      db.prepare('INSERT OR REPLACE INTO mythiques_config (key, value) VALUES (?, ?)').run(key, String(req.body[key]).trim() || key)
+    }
+  }
+  const rows = db.prepare('SELECT key, value FROM mythiques_config').all()
+  const config = {}
+  for (const r of rows) config[r.key] = r.value
+  res.json(config)
+})
+
 // GET /api/mythiques/stats
 router.get('/stats', requireAuth, requireMythique, (req, res) => {
   const catalogues = db.prepare('SELECT COUNT(*) as n FROM mythiques_objets').get().n

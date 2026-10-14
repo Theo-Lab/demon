@@ -1355,6 +1355,19 @@ export async function updateJoueurBonbons(id, montant, operation) {
 
 // ── Mythiques ──────────────────────────────────────────────────────────────────
 
+export async function mythiquesConfig() {
+  const res = await apiFetch(`${BASE}/mythiques/config`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+export async function mythiquesUpdateConfig(data) {
+  const res = await apiFetch(`${BASE}/mythiques/config`, { method: 'PATCH', body: JSON.stringify(data) })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.message)
+  return json
+}
+
 export async function mythiquesMe() {
   const res = await apiFetch(`${BASE}/mythiques/me`)
   const data = await res.json()

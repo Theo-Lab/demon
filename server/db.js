@@ -896,4 +896,15 @@ db.exec(`
 try { db.prepare('ALTER TABLE mythiques_membres ADD COLUMN niveau INTEGER DEFAULT 1').run() } catch {}
 try { db.prepare('ALTER TABLE users ADD COLUMN mythiques_dirigeant INTEGER DEFAULT 0').run() } catch {}
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS mythiques_config (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )
+`)
+const defaultNiveaux = { niveau_1: 'RANG I', niveau_2: 'RANG II', niveau_3: 'RANG III', niveau_4: 'RANG IV', niveau_5: 'RANG SUPRÊME' }
+for (const [k, v] of Object.entries(defaultNiveaux)) {
+  db.prepare('INSERT OR IGNORE INTO mythiques_config (key, value) VALUES (?, ?)').run(k, v)
+}
+
 module.exports = db

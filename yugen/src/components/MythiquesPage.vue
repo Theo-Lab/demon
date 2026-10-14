@@ -41,6 +41,7 @@
       <div class="tabs-bar">
         <button class="tab-btn" :class="{ active: mainTab === 'catalogue' }" @click="mainTab = 'catalogue'">CATALOGUE</button>
         <button v-if="me?.niveau >= 5 || me?.dirigeant" class="tab-btn" :class="{ active: mainTab === 'admin' }" @click="mainTab = 'admin'">ADMIN</button>
+        <button v-if="me?.dirigeant" class="tab-btn" :class="{ active: mainTab === 'config' }" @click="mainTab = 'config'">CONFIG</button>
       </div>
 
       <!-- ═══════════ CATALOGUE ═══════════ -->
@@ -104,6 +105,24 @@
         </div>
       </div>
 
+      <!-- ═══════════ CONFIG ═══════════ -->
+      <div v-if="mainTab === 'config'" class="config-view">
+        <div class="config-section">
+          <h3 class="config-title">NOMS DES NIVEAUX</h3>
+          <p class="config-hint">Personnalisez le nom affiché pour chaque rang de membre.</p>
+          <div class="config-fields">
+            <div v-for="n in [1,2,3,4,5]" :key="n" class="config-field-row">
+              <span class="config-level-badge" :style="{ color: NIVEAU_COLORS[n], borderColor: NIVEAU_COLORS[n] + '66' }">NV.{{ n }}</span>
+              <input class="form-input config-input" v-model="configForm[n]" :placeholder="`Nom du niveau ${n}`" />
+              <span class="config-preview" :style="{ color: NIVEAU_COLORS[n] }">{{ configForm[n] || '—' }}</span>
+            </div>
+          </div>
+          <div class="config-actions">
+            <button class="btn-primary" @click="sauvegarderConfig">Sauvegarder</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══════════ ADMIN ═══════════ -->
       <div v-if="mainTab === 'admin'" class="admin-view">
         <div class="tabs-bar tabs-bar--sub">
@@ -147,7 +166,7 @@
                 <div class="avatar-initial" :style="{ background: NIVEAU_COLORS[m.niveau] + '33', color: NIVEAU_COLORS[m.niveau], borderColor: NIVEAU_COLORS[m.niveau] + '66' }">{{ m.nom[0] }}</div>
                 <span class="admin-row-name">{{ m.nom }}</span>
                 <span class="admin-row-ident">@{{ m.identifiant }}</span>
-                <span class="badge" :style="{ background: NIVEAU_COLORS[m.niveau] + '22', color: NIVEAU_COLORS[m.niveau], borderColor: NIVEAU_COLORS[m.niveau] + '55' }">{{ NIVEAU_LABELS[m.niveau] }}</span>
+                <span class="badge" :style="{ background: NIVEAU_COLORS[m.niveau] + '22', color: NIVEAU_COLORS[m.niveau], borderColor: NIVEAU_COLORS[m.niveau] + '55' }">{{ niveauLabels[m.niveau] }}</span>
               </div>
               <div class="admin-row-actions">
                 <select class="inline-select" :value="m.niveau" @change="changerNiveauMembre(m.user_id, $event.target.value)">
@@ -191,7 +210,7 @@
             <div class="stats-section">
               <h4 class="stats-title">RÉPARTITION PAR RANG</h4>
               <div v-for="n in [1,2,3,4,5]" :key="n" class="stats-bar-row">
-                <span class="stats-bar-label" :style="{ color: NIVEAU_COLORS[n] }">{{ NIVEAU_LABELS[n] }}</span>
+                <span class="stats-bar-label" :style="{ color: NIVEAU_COLORS[n] }">{{ niveauLabels[n] }}</span>
                 <div class="stats-bar-track">
                   <div class="stats-bar-fill" :style="{ width: adminStats.membres ? ((adminStats.parNiveau?.find(p => p.niveau === n)?.count || 0) / adminStats.membres * 100) + '%' : '0%', background: NIVEAU_COLORS[n] }"></div>
                 </div>
@@ -237,7 +256,7 @@
                   <div class="info-grid">
                     <div class="info-item">
                       <span class="info-label">NIVEAU REQUIS</span>
-                      <span class="info-val" :style="{ color: NIVEAU_COLORS[modalObjet.min_level] }">{{ NIVEAU_LABELS[modalObjet.min_level] }}</span>
+                      <span class="info-val" :style="{ color: NIVEAU_COLORS[modalObjet.min_level] }">{{ niveauLabels[modalObjet.min_level] }}</span>
                     </div>
                     <div class="info-item">
                       <span class="info-label">DANGER</span>
@@ -450,7 +469,7 @@
                       <div class="info-grid">
                         <div class="info-item">
                           <span class="info-label">NIVEAU REQUIS</span>
-                          <span class="info-val" :style="{ color: NIVEAU_COLORS[form.min_level] }">{{ NIVEAU_LABELS[form.min_level] }}</span>
+                          <span class="info-val" :style="{ color: NIVEAU_COLORS[form.min_level] }">{{ niveauLabels[form.min_level] }}</span>
                         </div>
                         <div class="info-item">
                           <span class="info-label">DANGER</span>
@@ -540,7 +559,7 @@
             <div class="form-group">
               <label class="form-label">NIVEAU</label>
               <select class="form-input" v-model.number="addMembreNiveau">
-                <option v-for="n in [1,2,3,4,5]" :key="n" :value="n">NV.{{ n }} — {{ NIVEAU_LABELS[n] }}</option>
+                <option v-for="n in [1,2,3,4,5]" :key="n" :value="n">NV.{{ n }} — {{ niveauLabels[n] }}</option>
               </select>
             </div>
             <div class="modal-footer-actions">
@@ -562,6 +581,8 @@ import {
   mythiquesMe,
   mythiquesStats,
   mythiquesObjets,
+  mythiquesConfig,
+  mythiquesUpdateConfig,
   mythiquesAdminObjets,
   mythiquesAdminCreateObjet,
   mythiquesAdminUpdateObjet,
@@ -577,7 +598,7 @@ import {
 // ── Constantes ────────────────────────────────────────────────────────────────
 
 const NIVEAU_COLORS = { 1: '#8b9ba8', 2: '#4a90c4', 3: '#c9a84c', 4: '#c47c3a', 5: '#9f5fd4' }
-const NIVEAU_LABELS = { 1: 'RANG I', 2: 'RANG II', 3: 'RANG III', 4: 'RANG IV', 5: 'RANG SUPRÊME' }
+const niveauLabels = ref({ 1: 'RANG I', 2: 'RANG II', 3: 'RANG III', 4: 'RANG IV', 5: 'RANG SUPRÊME' })
 const RARETE_OPTIONS = [
   { value: 'COMMUN',    color: '#6b7280' },
   { value: 'RARE',      color: '#4a90c4' },
@@ -633,11 +654,12 @@ const addMembreNiveau = ref(1)
 const usersSuggestions = ref([])
 
 const toast = ref({ visible: false, message: '', type: 'success' })
+const configForm = ref({ 1: 'RANG I', 2: 'RANG II', 3: 'RANG III', 4: 'RANG IV', 5: 'RANG SUPRÊME' })
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
 const niveauColor = computed(() => NIVEAU_COLORS[me.value?.niveau] || '#8b9ba8')
-const niveauLabel = computed(() => NIVEAU_LABELS[me.value?.niveau] || 'RANG I')
+const niveauLabel = computed(() => niveauLabels.value[me.value?.niveau] || 'RANG I')
 
 const objetsFiltres = computed(() => {
   let list = objets.value
@@ -707,14 +729,25 @@ function onDangerChange() {
 
 async function chargerBase() {
   try {
-    const [meData, statsData, objetsData] = await Promise.all([
+    const [meData, statsData, objetsData, configData] = await Promise.all([
       mythiquesMe(),
       mythiquesStats(),
       mythiquesObjets(),
+      mythiquesConfig(),
     ])
     me.value = meData
     stats.value = statsData
     objets.value = objetsData
+    if (configData) {
+      niveauLabels.value = {
+        1: configData.niveau_1 || 'RANG I',
+        2: configData.niveau_2 || 'RANG II',
+        3: configData.niveau_3 || 'RANG III',
+        4: configData.niveau_4 || 'RANG IV',
+        5: configData.niveau_5 || 'RANG SUPRÊME',
+      }
+      configForm.value = { ...niveauLabels.value }
+    }
   } catch (e) {
     console.error('Erreur chargement mythiques:', e)
   } finally {
@@ -745,6 +778,23 @@ onMounted(async () => {
     await chargerAdmin()
   }
 })
+
+async function sauvegarderConfig() {
+  try {
+    const data = {
+      niveau_1: configForm.value[1],
+      niveau_2: configForm.value[2],
+      niveau_3: configForm.value[3],
+      niveau_4: configForm.value[4],
+      niveau_5: configForm.value[5],
+    }
+    await mythiquesUpdateConfig(data)
+    niveauLabels.value = { ...configForm.value }
+    showToast('Configuration sauvegardée.')
+  } catch (e) {
+    showToast('Erreur lors de la sauvegarde.', 'error')
+  }
+}
 
 // ── Modal détail ──────────────────────────────────────────────────────────────
 
@@ -862,7 +912,7 @@ async function ajouterMembre() {
   if (!addMembreSelected.value) return
   try {
     await mythiquesAdminAddMembre(addMembreSelected.value.id, addMembreNiveau.value)
-    showToast(`${addMembreSelected.value.nom} ajouté au rang ${NIVEAU_LABELS[addMembreNiveau.value]}.`)
+    showToast(`${addMembreSelected.value.nom} ajouté au rang ${niveauLabels.value[addMembreNiveau.value]}.`)
     showAddMembre.value = false
     addMembreSearch.value = ''
     addMembreSelected.value = null
@@ -1670,6 +1720,66 @@ async function supprimerMembre(m) {
   width: 24px;
   text-align: right;
   flex-shrink: 0;
+}
+
+/* ── Config ────────────────────────────────────────────────────────────────── */
+.config-view {
+  padding: 1.5rem 0;
+}
+.config-section {
+  background: rgba(15,10,30,0.7);
+  border: 1px solid rgba(201,168,76,0.2);
+  padding: 2rem;
+  max-width: 600px;
+}
+.config-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: #c9a84c;
+  margin: 0 0 0.5rem;
+}
+.config-hint {
+  font-size: 0.72rem;
+  color: rgba(226,220,214,0.5);
+  margin: 0 0 1.5rem;
+}
+.config-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.config-field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.config-level-badge {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  border: 1px solid;
+  padding: 0.2rem 0.5rem;
+  width: 48px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.config-input {
+  flex: 1;
+}
+.config-preview {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  width: 110px;
+  text-align: right;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+.config-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* ── Boutons ───────────────────────────────────────────────────────────────── */
