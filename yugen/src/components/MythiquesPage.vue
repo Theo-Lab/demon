@@ -333,10 +333,7 @@
       <div v-if="editeurOuvert" class="editeur-overlay">
         <div class="editeur-header">
           <span class="editeur-title">ÉDITEUR — {{ form.name || 'NOUVEL ARTEFACT' }}</span>
-          <div class="editeur-actions">
-            <button class="btn-ghost" @click="fermerEditeur">Annuler</button>
-            <button class="btn-primary" :disabled="!form.name || !form.description" @click="sauvegarderObjet">Sauvegarder</button>
-          </div>
+          <button class="btn-ghost editeur-close" @click="fermerEditeur">✕</button>
         </div>
 
         <div class="editeur-body">
@@ -380,7 +377,13 @@
             </div>
             <div class="form-group">
               <label class="form-label">IMAGE URL</label>
-              <input class="form-input" v-model="form.image_url" placeholder="https://…" />
+              <div class="upload-row">
+                <input class="form-input" v-model="form.image_url" placeholder="https://… ou uploader ci-dessous" />
+                <label class="btn-upload" :class="{ loading: uploadingImage }">
+                  <input type="file" accept="image/*" style="display:none" @change="handleImageUpload" :disabled="uploadingImage" />
+                  {{ uploadingImage ? '…' : '↑' }}
+                </label>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">DESCRIPTION *</label>
@@ -417,6 +420,10 @@
             <div class="form-group">
               <label class="form-label">NOTES INTERNES</label>
               <textarea class="form-input form-textarea" v-model="form.notes" rows="3" placeholder="Notes confidentielles…"></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn-ghost" @click="fermerEditeur">Annuler</button>
+              <button class="btn-primary" :disabled="!form.name || !form.description" @click="sauvegarderObjet">Sauvegarder</button>
             </div>
           </div>
 
@@ -593,6 +600,8 @@ import {
   mythiquesAdminDeleteMembre,
   mythiquesAdminUsers,
   mythiquesAdminStats,
+  uploadImage,
+  IMG_BASE,
 } from '../api.js'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -655,6 +664,7 @@ const usersSuggestions = ref([])
 
 const toast = ref({ visible: false, message: '', type: 'success' })
 const configForm = ref({ 1: 'RANG I', 2: 'RANG II', 3: 'RANG III', 4: 'RANG IV', 5: 'RANG SUPRÊME' })
+const uploadingImage = ref(false)
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
@@ -723,6 +733,21 @@ function onStatusChange() {
 function onDangerChange() {
   const opt = DANGER_OPTIONS.find(d => d.value === form.value.danger)
   if (opt) form.value.danger_color = opt.color
+}
+
+async function handleImageUpload(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  uploadingImage.value = true
+  try {
+    const url = await uploadImage(file)
+    form.value.image_url = `${IMG_BASE}${url}`
+  } catch (e) {
+    showToast('Erreur upload image.', 'error')
+  } finally {
+    uploadingImage.value = false
+    event.target.value = ''
+  }
 }
 
 // ── Chargement ────────────────────────────────────────────────────────────────
@@ -1568,6 +1593,42 @@ async function supprimerMembre(m) {
 .form-input:focus { border-color: rgba(201,168,76,0.35); background: rgba(201,168,76,0.02); }
 .form-input option { background: #0a0816; }
 .form-textarea { resize: vertical; min-height: 80px; }
+
+.upload-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.upload-row .form-input { flex: 1; }
+.btn-upload {
+  background: rgba(201,168,76,0.12);
+  border: 1px solid rgba(201,168,76,0.35);
+  color: #c9a84c;
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  padding: 0 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.btn-upload:hover { background: rgba(201,168,76,0.22); }
+.btn-upload.loading { opacity: 0.5; cursor: not-allowed; }
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.editeur-close {
+  margin-left: auto;
+  font-size: 0.8rem;
+}
 
 /* ── Admin sections ────────────────────────────────────────────────────────── */
 .admin-section { }
