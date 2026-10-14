@@ -801,7 +801,7 @@ function _createYTPlayer() {
     playerVars: { autoplay: 1, loop: 1, playlist: youtubeVideoId.value, controls: 0 },
     events: {
       onReady(e) {
-        e.target.setVolume(20)
+        e.target.setVolume(8)
         e.target.playVideo()
         musicStarted.value = true
         musicMuted.value = false
