@@ -2,6 +2,19 @@
   <div class="page-mythiques">
     <AppNavbar />
 
+    <!-- Lecteur audio YouTube -->
+    <div v-if="youtubeVideoId" class="music-player" :class="{ playing: musicPlaying }" @click="musicPlaying = !musicPlaying" :title="musicPlaying ? 'Couper la musique' : 'Lancer la musique'">
+      <span class="music-icon">{{ musicPlaying ? '♫' : '♪' }}</span>
+      <iframe
+        v-if="musicPlaying"
+        :src="`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&loop=1&playlist=${youtubeVideoId}&controls=0&disablekb=1&fs=0&modestbranding=1`"
+        allow="autoplay"
+        style="display:none"
+        width="0" height="0"
+        frameborder="0"
+      ></iframe>
+    </div>
+
     <!-- Toast -->
     <Transition name="toast">
       <div v-if="toast.visible" class="toast" :class="`toast--${toast.type}`">
@@ -143,6 +156,14 @@
               <span class="config-preview" :style="{ color: NIVEAU_COLORS[n] }">{{ configForm[n] || '—' }}</span>
             </div>
           </div>
+          <div class="config-sep"></div>
+
+          <h3 class="config-title">AMBIANCE SONORE</h3>
+          <p class="config-hint">Lien YouTube dont l'audio jouera en fond sur la page (boucle). Laissez vide pour désactiver.</p>
+          <div class="form-group">
+            <input class="form-input" v-model="configYoutubeUrl" placeholder="https://www.youtube.com/watch?v=…" />
+          </div>
+
           <div class="config-actions">
             <button class="btn-primary" @click="sauvegarderConfig">Sauvegarder</button>
           </div>
@@ -768,7 +789,15 @@ const addMembreInput = ref(null)
 
 const toast = ref({ visible: false, message: '', type: 'success' })
 const configForm = ref({ 1: 'RANG I', 2: 'RANG II', 3: 'RANG III', 4: 'RANG IV', 5: 'RANG SUPRÊME' })
+const configYoutubeUrl = ref('')
 const uploadingImage = ref(false)
+const musicPlaying = ref(false)
+const youtubeVideoId = computed(() => {
+  const url = configYoutubeUrl.value
+  if (!url) return null
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/)
+  return m ? m[1] : null
+})
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
@@ -888,6 +917,7 @@ async function chargerBase() {
         5: configData.niveau_5 || 'RANG SUPRÊME',
       }
       configForm.value = { ...niveauLabels.value }
+      configYoutubeUrl.value = configData.youtube_url || ''
     }
   } catch (e) {
     console.error('Erreur chargement mythiques:', e)
@@ -928,6 +958,7 @@ async function sauvegarderConfig() {
       niveau_3: configForm.value[3],
       niveau_4: configForm.value[4],
       niveau_5: configForm.value[5],
+      youtube_url: configYoutubeUrl.value,
     }
     await mythiquesUpdateConfig(data)
     niveauLabels.value = { ...configForm.value }
@@ -1996,9 +2027,51 @@ async function sauvegarderProfilMembre() {
   flex-shrink: 0;
   opacity: 0.8;
 }
+.config-sep {
+  height: 1px;
+  background: rgba(201,168,76,0.15);
+  margin: 1.5rem 0;
+}
 .config-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+/* ── Music player ──────────────────────────────────────────────────────────── */
+.music-player {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(15,10,30,0.9);
+  border: 1px solid rgba(201,168,76,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 999;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(8px);
+}
+.music-player:hover {
+  border-color: rgba(201,168,76,0.7);
+  box-shadow: 0 0 14px rgba(201,168,76,0.2);
+}
+.music-player.playing {
+  border-color: rgba(201,168,76,0.6);
+  box-shadow: 0 0 18px rgba(201,168,76,0.25);
+  animation: music-pulse 2.5s ease-in-out infinite;
+}
+.music-icon {
+  font-size: 1.1rem;
+  color: #c9a84c;
+  line-height: 1;
+}
+@keyframes music-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(201,168,76,0.2); }
+  50% { box-shadow: 0 0 22px rgba(201,168,76,0.4); }
 }
 
 /* ── Boutons ───────────────────────────────────────────────────────────────── */

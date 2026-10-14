@@ -905,7 +905,7 @@ db.exec(`
     value TEXT NOT NULL
   )
 `)
-const defaultNiveaux = { niveau_1: 'RANG I', niveau_2: 'RANG II', niveau_3: 'RANG III', niveau_4: 'RANG IV', niveau_5: 'RANG SUPRÊME' }
+const defaultNiveaux = { niveau_1: 'RANG I', niveau_2: 'RANG II', niveau_3: 'RANG III', niveau_4: 'RANG IV', niveau_5: 'RANG SUPRÊME', youtube_url: '' }
 for (const [k, v] of Object.entries(defaultNiveaux)) {
   db.prepare('INSERT OR IGNORE INTO mythiques_config (key, value) VALUES (?, ?)').run(k, v)
 }
