@@ -61,13 +61,13 @@
 
       <!-- Onglets principaux -->
       <div class="tabs-bar">
-        <button class="tab-btn" :class="{ active: mainTab === 'catalogue' }" @click="mainTab = 'catalogue'">CATALOGUE</button>
+        <button class="tab-btn" :class="{ active: mainTab === 'catalogue' }" @click="mainTab = 'catalogue'">REGISTRE</button>
         <button v-if="me?.niveau > 0 || me?.dirigeant" class="tab-btn" :class="{ active: mainTab === 'membres' }" @click="mainTab = 'membres'">MEMBRES</button>
         <button v-if="me?.niveau >= 5 || me?.dirigeant" class="tab-btn" :class="{ active: mainTab === 'admin' }" @click="mainTab = 'admin'">ADMIN</button>
         <button v-if="me?.dirigeant" class="tab-btn" :class="{ active: mainTab === 'config' }" @click="mainTab = 'config'">CONFIG</button>
       </div>
 
-      <!-- ═══════════ CATALOGUE ═══════════ -->
+      <!-- ═══════════ REGISTRE ═══════════ -->
       <div v-if="mainTab === 'catalogue'" class="catalogue-view">
         <div class="catalogue-toolbar">
           <input
