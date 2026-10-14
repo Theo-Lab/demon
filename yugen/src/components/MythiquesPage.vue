@@ -1,5 +1,6 @@
 <template>
   <div class="page-mythiques">
+    <canvas ref="particlesCanvas" class="particles-canvas"></canvas>
     <AppNavbar />
 
     <!-- Lecteur audio YouTube -->
@@ -699,7 +700,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { currentUser } from '../auth.js'
 import {
@@ -792,6 +793,8 @@ const toast = ref({ visible: false, message: '', type: 'success' })
 const configForm = ref({ 1: 'RANG I', 2: 'RANG II', 3: 'RANG III', 4: 'RANG IV', 5: 'RANG SUPRÊME' })
 const configYoutubeUrl = ref('')
 const configYoutubeVolume = ref(8)
+const particlesCanvas = ref(null)
+let animFrame = null
 const uploadingImage = ref(false)
 const musicStarted = ref(false)
 const musicMuted = ref(false)
@@ -988,7 +991,64 @@ async function chargerAdmin() {
   }
 }
 
+// ── Particules ────────────────────────────────────────────────────────────────
+
+function initParticles() {
+  const canvas = particlesCanvas.value
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+
+  const resize = () => {
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+  }
+  resize()
+  window.addEventListener('resize', resize)
+
+  const COLORS = ['#c9a84c', '#9f5fd4', '#4a90c4', '#e2dcd6']
+  const COUNT = 90
+
+  const particles = Array.from({ length: COUNT }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    size: Math.random() * 1.4 + 0.2,
+    speedY: -(Math.random() * 0.25 + 0.05),
+    speedX: (Math.random() - 0.5) * 0.15,
+    opacity: Math.random() * 0.35 + 0.05,
+    opacityDir: Math.random() > 0.5 ? 1 : -1,
+    opacitySpeed: Math.random() * 0.004 + 0.001,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+  }))
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    for (const p of particles) {
+      p.y += p.speedY
+      p.x += p.speedX
+      p.opacity += p.opacitySpeed * p.opacityDir
+      if (p.opacity > 0.45) { p.opacity = 0.45; p.opacityDir = -1 }
+      if (p.opacity < 0.03) { p.opacity = 0.03; p.opacityDir = 1 }
+      if (p.y < -4) { p.y = canvas.height + 4; p.x = Math.random() * canvas.width }
+      if (p.x < -4) p.x = canvas.width + 4
+      if (p.x > canvas.width + 4) p.x = -4
+      ctx.globalAlpha = p.opacity
+      ctx.fillStyle = p.color
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
+    animFrame = requestAnimationFrame(animate)
+  }
+  animate()
+}
+
+onUnmounted(() => {
+  if (animFrame) cancelAnimationFrame(animFrame)
+})
+
 onMounted(async () => {
+  initParticles()
   await chargerBase()
   if (me.value?.niveau >= 5 || me.value?.dirigeant) {
     await chargerAdmin()
@@ -1230,12 +1290,24 @@ async function sauvegarderProfilMembre() {
     radial-gradient(ellipse 60% 40% at 80% 100%, rgba(60, 20, 100, 0.12) 0%, transparent 60%);
   color: #e2dcd6;
   font-family: 'Crimson Text', Georgia, serif;
+  position: relative;
+}
+
+.particles-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .page-inner {
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem 2rem 4rem;
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Toast ─────────────────────────────────────────────────────────────────── */
@@ -2106,6 +2178,7 @@ async function sauvegarderProfilMembre() {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
+  z-index: 100;
   width: 44px;
   height: 44px;
   border-radius: 50%;
