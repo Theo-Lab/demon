@@ -68,7 +68,15 @@ router.get('/membres', requireAuth, requireMythique, (req, res) => {
 // GET /api/mythiques/me
 router.get('/me', requireAuth, requireMythique, (req, res) => {
   const user = db.prepare('SELECT nom, identifiant FROM users WHERE id = ?').get(req.user.id)
-  res.json({ niveau: req.mythiqueNiveau, nom: user.nom, identifiant: user.identifiant, dirigeant: isDirigeant(req.user.id) })
+  const membre = db.prepare('SELECT photo_url, grade FROM mythiques_membres WHERE user_id = ?').get(req.user.id)
+  res.json({
+    niveau: req.mythiqueNiveau,
+    nom: user.nom,
+    identifiant: user.identifiant,
+    dirigeant: isDirigeant(req.user.id),
+    photo_url: membre?.photo_url || '',
+    grade: membre?.grade || '',
+  })
 })
 
 // GET /api/mythiques/config

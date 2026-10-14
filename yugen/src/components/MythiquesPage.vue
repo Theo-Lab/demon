@@ -1,7 +1,11 @@
 <template>
   <div class="page-mythiques">
     <canvas ref="particlesCanvas" class="particles-canvas"></canvas>
-    <AppNavbar />
+
+    <!-- Topbar custom -->
+    <div class="mythiques-topbar">
+      <button class="topbar-back" @click="$router.back()">← RETOUR</button>
+    </div>
 
     <!-- Lecteur audio YouTube -->
     <div v-if="youtubeVideoId" class="music-player" :class="{ playing: musicStarted && !musicMuted, muted: musicMuted }" @click="musicStarted ? toggleMute() : startMusic()" :title="!musicStarted ? 'Lancer la musique' : (musicMuted ? 'Activer le son' : 'Couper le son')">
@@ -19,12 +23,23 @@
     <div class="page-inner">
       <!-- En-tête -->
       <header class="header">
-        <div class="header-title-block">
-          <p class="header-label">[ REGISTRE DES ARTEFACTS ]</p>
-          <p class="header-subtitle">SAISON II — ORDRE DÉMONIAQUE</p>
-        </div>
-        <div class="header-badge" :style="{ borderColor: niveauColor, color: niveauColor }">
-          NV.{{ me?.niveau }} — {{ niveauLabel }}
+        <div class="header-left">
+          <div class="header-title-block">
+            <p class="header-label">[ REGISTRE DES ARTEFACTS ]</p>
+            <p class="header-subtitle">SAISON II — ORDRE DÉMONIAQUE</p>
+          </div>
+          <!-- Profil membre -->
+          <div v-if="me" class="header-profile">
+            <div class="header-profile-avatar">
+              <img v-if="me.photo_url" :src="me.photo_url" :alt="me.nom" />
+              <span v-else>{{ me.nom?.[0]?.toUpperCase() }}</span>
+            </div>
+            <div class="header-profile-info">
+              <span class="header-profile-nom">{{ me.nom?.split(' ')[0] }}</span>
+              <span class="header-profile-grade" v-if="me.grade">{{ me.grade }}</span>
+              <span class="header-profile-niveau" :style="{ color: niveauColor }">NV.{{ me.niveau }} — {{ niveauLabel }}</span>
+            </div>
+          </div>
         </div>
         <div class="header-stats">
           <div class="stat-box">
@@ -701,8 +716,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import AppNavbar from './AppNavbar.vue'
+import { useRouter } from 'vue-router'
 import { currentUser } from '../auth.js'
+const router = useRouter()
 import {
   mythiquesMe,
   mythiquesStats,
@@ -1328,15 +1344,46 @@ async function sauvegarderProfilMembre() {
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(10px); }
 
 /* ── Header ────────────────────────────────────────────────────────────────── */
+/* ── Topbar ────────────────────────────────────────────────────────────────── */
+.mythiques-topbar {
+  position: relative;
+  z-index: 10;
+  padding: 0.75rem 2rem;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.topbar-back {
+  background: none;
+  border: none;
+  color: rgba(226,220,214,0.4);
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+.topbar-back:hover { color: #c9a84c; }
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
 .header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 2rem;
-  padding: 2.5rem 0 2rem;
+  padding: 2rem 0 2rem;
   border-bottom: 1px solid rgba(180, 140, 60, 0.18);
   margin-bottom: 2rem;
   flex-wrap: wrap;
   position: relative;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
 }
 .header::after {
   content: '';
@@ -1364,6 +1411,57 @@ async function sauvegarderProfilMembre() {
   letter-spacing: 0.28em;
   margin: 0.25rem 0 0;
   text-transform: uppercase;
+}
+
+/* Profil dans le header */
+.header-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding-left: 1.5rem;
+  border-left: 1px solid rgba(201,168,76,0.2);
+}
+.header-profile-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,76,0.4);
+  overflow: hidden;
+  background: rgba(201,168,76,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #c9a84c;
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+}
+.header-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.header-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.header-profile-nom {
+  font-family: 'Cinzel', serif;
+  font-size: 0.82rem;
+  color: #e2dcd6;
+  letter-spacing: 0.08em;
+}
+.header-profile-grade {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.75rem;
+  color: rgba(201,168,76,0.7);
+  font-style: italic;
+}
+.header-profile-niveau {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
 }
 
 .header-badge {
