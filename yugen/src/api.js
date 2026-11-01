@@ -72,10 +72,10 @@ export async function leaveSphere(id) {
   return data
 }
 
-export async function updateProfile({ pouvoir_nom, grade, role, signature } = {}) {
+export async function updateProfile({ pouvoir_nom, grade, role, signature, faction } = {}) {
   const res = await apiFetch(`${BASE}/auth/profile`, {
     method: 'PATCH',
-    body: JSON.stringify({ pouvoir_nom, grade, role, signature }),
+    body: JSON.stringify({ pouvoir_nom, grade, role, signature, faction }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.message)
