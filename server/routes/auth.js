@@ -165,7 +165,7 @@ router.patch('/profile', requireAuth, (req, res) => {
     req.user.id
   )
 
-  const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature FROM users WHERE id = ?').get(req.user.id)
+  const user = db.prepare("SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature, COALESCE(faction,'') as faction FROM users WHERE id = ?").get(req.user.id)
   const spheres = db.prepare(`
     SELECT s.id, s.nom, us.grade as grade_sphere
     FROM user_spheres us
