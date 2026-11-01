@@ -6,7 +6,7 @@
 
       <div class="page-header">
         <div>
-          <p class="page-label">Ordre Démoniaque</p>
+          <p class="page-label">{{ ordreLabel }}</p>
           <h1 class="page-title">Sphères</h1>
         </div>
         <button v-if="currentUser?.role === 'admin'" class="btn-new" @click="showForm = !showForm">
@@ -71,11 +71,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { currentUser } from '../auth.js'
 import { getSpheres, createSphere, getUsers } from '../api.js'
 
+const ordreLabel = computed(() => currentUser.value?.faction === 'pourfendeur' ? 'Ordre des Pourfendeurs' : 'Ordre Démoniaque')
 const spheres = ref([])
 const users = ref([])
 const loading = ref(true)

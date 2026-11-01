@@ -6,7 +6,7 @@
 
       <div class="page-header">
         <div>
-          <p class="page-label">Ordre Démoniaque</p>
+          <p class="page-label">{{ ordreLabel }}</p>
           <h1 class="page-title">Paris</h1>
         </div>
         <button v-if="isAdmin" class="btn-new" @click="toggleFormCreation">
@@ -321,6 +321,7 @@ import { currentUser } from '../auth.js'
 import { getParis, createPari, deletePari, addMise, addMyMise, deleteMise, resoudrePari } from '../api.js'
 
 const isAdmin = computed(() => currentUser.value?.role === 'admin')
+const ordreLabel = computed(() => currentUser.value?.faction === 'pourfendeur' ? 'Ordre des Pourfendeurs' : 'Ordre Démoniaque')
 
 const ongletActif = ref('ouvert')
 const recherche = ref('')

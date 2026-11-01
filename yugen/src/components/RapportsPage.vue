@@ -7,7 +7,7 @@
       <!-- En-tête -->
       <div class="page-header">
         <div>
-          <p class="page-label">Ordre Démoniaque</p>
+          <p class="page-label">{{ ordreLabel }}</p>
           <h1 class="page-title">Rapports</h1>
         </div>
         <button class="btn-new" @click="ouvrirCreation">
@@ -261,6 +261,7 @@ import { currentUser } from '../auth.js'
 import { getRapports, createRapport, updateRapport, updateStatutRapport, deleteRapport, uploadImage } from '../api.js'
 import { MEDIA_BASE } from '../config.js'
 const mediaBase = MEDIA_BASE
+const ordreLabel = computed(() => currentUser.value?.faction === 'pourfendeur' ? 'Ordre des Pourfendeurs' : 'Ordre Démoniaque')
 
 const rapports = ref([])
 const loading = ref(true)

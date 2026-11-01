@@ -6,7 +6,7 @@
 
       <div class="page-header">
         <div>
-          <p class="page-label">Ordre Démoniaque</p>
+          <p class="page-label">{{ ordreLabel }}</p>
           <h1 class="page-title">Mes Projets</h1>
         </div>
         <button class="btn-new" @click="showForm = !showForm">
@@ -169,13 +169,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import AppNavbar from './AppNavbar.vue'
 import { getMesProjets, createProjet, updateProjet, deleteProjet, uploadImage } from '../api.js'
+import { currentUser } from '../auth.js'
 
 import { MEDIA_BASE } from '../config.js'
 
 const mediaBase = MEDIA_BASE
+const ordreLabel = computed(() => currentUser.value?.faction === 'pourfendeur' ? 'Ordre des Pourfendeurs' : 'Ordre Démoniaque')
 const projets = ref([])
 const loading = ref(true)
 
