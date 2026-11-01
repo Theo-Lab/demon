@@ -114,6 +114,25 @@
                   Dirigeant des Mythiques
                 </label>
               </div>
+              <div class="field field--full">
+                <label class="field-label">Registre des Démons</label>
+                <label class="field-check">
+                  <input type="checkbox" v-model="form.demons_acces" />
+                  Accès au Registre
+                </label>
+                <label class="field-check">
+                  <input type="checkbox" v-model="form.demons_dirigeant" />
+                  Responsable du Registre
+                </label>
+              </div>
+              <div class="field field--full">
+                <label class="field-label">Faction</label>
+                <select v-model="form.faction" class="field-input">
+                  <option value="">— Non définie —</option>
+                  <option value="demon">Démon</option>
+                  <option value="pourfendeur">Pourfendeur</option>
+                </select>
+              </div>
             </div>
 
             <div v-if="erreur" class="edit-erreur">{{ erreur }}</div>
@@ -188,6 +207,9 @@ function toggleOuvrir(m) {
     glace_dirigeant:      !!m.glace_dirigeant,
     intendance_dirigeant: !!m.intendance_dirigeant,
     mythiques_dirigeant:  !!m.mythiques_dirigeant,
+    demons_acces:         !!m.demons_acces,
+    demons_dirigeant:     !!m.demons_dirigeant,
+    faction:              m.faction || '',
   }
 }
 

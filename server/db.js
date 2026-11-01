@@ -910,4 +910,113 @@ for (const [k, v] of Object.entries(defaultNiveaux)) {
   db.prepare('INSERT OR IGNORE INTO mythiques_config (key, value) VALUES (?, ?)').run(k, v)
 }
 
+// ── Registre des Démons ──────────────────────────────────────────────────────
+try { db.prepare('ALTER TABLE users ADD COLUMN demons_acces INTEGER NOT NULL DEFAULT 0').run() } catch {}
+try { db.prepare('ALTER TABLE users ADD COLUMN demons_dirigeant INTEGER NOT NULL DEFAULT 0').run() } catch {}
+try { db.prepare("ALTER TABLE demons ADD COLUMN photo_url TEXT NOT NULL DEFAULT ''").run() } catch {}
+try { db.prepare("ALTER TABLE demons ADD COLUMN responsable_nom_libre TEXT NOT NULL DEFAULT ''").run() } catch {}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS demons (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom                 TEXT NOT NULL,
+    prenom              TEXT NOT NULL,
+    pouvoir_sanguinaire TEXT DEFAULT '',
+    rang                TEXT NOT NULL DEFAULT 'Faible' CHECK(rang IN ('Faible', 'Fort')),
+    statut              TEXT NOT NULL DEFAULT 'actif' CHECK(statut IN ('actif', 'a_suivre', 'inactif', 'archive')),
+    date_arrivee        TEXT DEFAULT '',
+    responsable_id      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    user_id             INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    notes_generales     TEXT DEFAULT '',
+    objectifs_actuels   TEXT DEFAULT '',
+    created_by          INTEGER NOT NULL REFERENCES users(id),
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS demons_remarques (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    demon_id        INTEGER NOT NULL REFERENCES demons(id) ON DELETE CASCADE,
+    auteur_id       INTEGER NOT NULL REFERENCES users(id),
+    type            TEXT NOT NULL CHECK(type IN ('positive', 'negative', 'neutre')),
+    categorie       TEXT NOT NULL DEFAULT 'Autre',
+    description     TEXT NOT NULL,
+    date_evenement  TEXT NOT NULL,
+    statut_suivi    TEXT NOT NULL DEFAULT 'Information' CHECK(statut_suivi IN ('Information', 'A_surveiller', 'En_cours', 'Resolu')),
+    archive         INTEGER NOT NULL DEFAULT 0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS demons_remarques_historique (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    remarque_id     INTEGER NOT NULL REFERENCES demons_remarques(id) ON DELETE CASCADE,
+    action          TEXT NOT NULL,
+    ancien_contenu  TEXT DEFAULT '{}',
+    nouveau_contenu TEXT DEFAULT '{}',
+    auteur_id       INTEGER NOT NULL REFERENCES users(id),
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS demons_reunions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    titre           TEXT NOT NULL,
+    date_reunion    TEXT NOT NULL,
+    heure           TEXT DEFAULT '',
+    responsable_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    description     TEXT DEFAULT '',
+    ordre_du_jour   TEXT DEFAULT '',
+    sujets_abordes  TEXT DEFAULT '',
+    problemes       TEXT DEFAULT '',
+    demandes        TEXT DEFAULT '',
+    conseils        TEXT DEFAULT '',
+    decisions       TEXT DEFAULT '',
+    objectifs_fixes TEXT DEFAULT '',
+    created_by      INTEGER NOT NULL REFERENCES users(id),
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS demons_reunion_participants (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    reunion_id  INTEGER NOT NULL REFERENCES demons_reunions(id) ON DELETE CASCADE,
+    demon_id    INTEGER NOT NULL REFERENCES demons(id) ON DELETE CASCADE,
+    presence    TEXT NOT NULL DEFAULT 'present' CHECK(presence IN ('present', 'absent', 'excuse')),
+    UNIQUE(reunion_id, demon_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS demons_objectifs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    demon_id        INTEGER NOT NULL REFERENCES demons(id) ON DELETE CASCADE,
+    titre           TEXT NOT NULL,
+    description     TEXT DEFAULT '',
+    responsable_id  INTEGER NOT NULL REFERENCES users(id),
+    echeance        TEXT DEFAULT '',
+    statut          TEXT NOT NULL DEFAULT 'a_faire' CHECK(statut IN ('a_faire', 'en_cours', 'termine', 'abandonne')),
+    note_suivi      TEXT DEFAULT '',
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS demons_changements_rang (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    demon_id        INTEGER NOT NULL REFERENCES demons(id) ON DELETE CASCADE,
+    ancien_rang     TEXT NOT NULL,
+    nouveau_rang    TEXT NOT NULL,
+    responsable_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    motif           TEXT DEFAULT '',
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS demons_historique (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    demon_id    INTEGER REFERENCES demons(id) ON DELETE SET NULL,
+    action      TEXT NOT NULL,
+    details     TEXT DEFAULT '{}',
+    auteur_id   INTEGER NOT NULL REFERENCES users(id),
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`)
+
+// Migration : faction utilisateur (demon / pourfendeur / '')
+try { db.prepare("ALTER TABLE users ADD COLUMN faction TEXT NOT NULL DEFAULT ''").run() } catch {}
+
 module.exports = db

@@ -6,7 +6,7 @@
 
       <div class="page-header">
         <div>
-          <p class="page-label">Ordre Démoniaque</p>
+          <p class="page-label">{{ ordreLabel }}</p>
           <h1 class="page-title">Parchemins</h1>
         </div>
         <button class="btn-new" @click="showForm = !showForm">
@@ -196,6 +196,11 @@ const loading = ref(true)
 const vue = ref('mes')
 
 const isAdmin = computed(() => currentUser.value?.role === 'admin')
+const ordreLabel = computed(() => {
+  const f = currentUser.value?.faction
+  if (f === 'pourfendeur') return 'Ordre des Pourfendeurs'
+  return 'Ordre Démoniaque'
+})
 const mesParchemins = computed(() => parchemins.value.filter(p => !p.auteur_nom || p.auteur_nom === currentUser.value?.nom))
 const listeAffichee = computed(() => isAdmin.value && vue.value === 'tous' ? parchemins.value : mesParchemins.value)
 

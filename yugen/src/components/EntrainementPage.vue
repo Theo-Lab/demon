@@ -73,22 +73,12 @@
           </div>
         </div>
 
-        <!-- Inscription -->
-        <div v-if="me.paye" class="entr-inscription-box">
-          <div v-if="me.inscrit" class="entr-inscrit-msg">
-            <span>✓ Vous êtes inscrit pour cette semaine.</span>
-            <button v-if="semaine.ouvert" class="entr-btn entr-btn--ghost entr-btn--sm" @click="seDesinscrire">Se désinscrire</button>
+        <!-- Statut inscription (lecture seule) -->
+        <div class="entr-inscription-box" :class="me.inscrit ? '' : 'entr-inscription-box--non-paye'">
+          <div class="entr-inscrit-msg">
+            <span v-if="me.inscrit">✓ Vous êtes inscrit pour cette semaine.</span>
+            <span v-else>Vous n'êtes pas inscrit cette semaine.</span>
           </div>
-          <div v-else-if="semaine.ouvert" class="entr-inscrit-msg">
-            <span>Vous n'êtes pas encore inscrit pour cette semaine.</span>
-            <button class="entr-btn entr-btn--sm" @click="sInscrire">S'inscrire</button>
-          </div>
-          <div v-else class="entr-inscrit-msg entr-inscrit-msg--warn">
-            Les inscriptions sont fermées. Revenez lundi prochain.
-          </div>
-        </div>
-        <div v-else class="entr-inscription-box entr-inscription-box--non-paye">
-          Pour participer, versez la contribution de <strong>100 000 ¥</strong> auprès de l'Intendance.
         </div>
 
         <!-- Inscrits de la semaine -->

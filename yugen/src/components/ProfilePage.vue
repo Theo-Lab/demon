@@ -30,6 +30,14 @@
               <span class="info-value info-value--role">{{ user?.role }}</span>
             </div>
             <div class="info-item">
+              <span class="info-label">Faction</span>
+              <select v-model="editFaction" class="pouvoir-input pouvoir-input--select">
+                <option value="">— Non définie —</option>
+                <option value="demon">Démon</option>
+                <option value="pourfendeur">Pourfendeur</option>
+              </select>
+            </div>
+            <div class="info-item">
               <span class="info-label">Grade</span>
               <input v-model="editGrade" class="pouvoir-input" type="text" placeholder="Ex: Lune Supérieure 1..." />
             </div>
@@ -119,6 +127,7 @@ const user = ref(null)
 const pouvNom = ref('')
 const editGrade = ref('')
 const editSignature = ref('')
+const editFaction = ref('')
 const saving = ref(false)
 const saveError = ref('')
 const saveOk = ref(false)
@@ -134,6 +143,7 @@ onMounted(async () => {
     pouvNom.value = data.pouvoir_nom || ''
     editGrade.value = data.grade || ''
     editSignature.value = data.signature || ''
+    editFaction.value = data.faction || ''
     userSphereIds.value = new Set((data.spheres || []).map(s => s.id))
     if (currentUser.value) currentUser.value = { ...currentUser.value, ...data }
   }
@@ -165,13 +175,14 @@ async function saveProfile() {
   saveError.value = ''
   saveOk.value = false
   try {
-    const updated = await updateProfile({ pouvoir_nom: pouvNom.value, grade: editGrade.value, signature: editSignature.value })
+    const updated = await updateProfile({ pouvoir_nom: pouvNom.value, grade: editGrade.value, signature: editSignature.value, faction: editFaction.value })
     user.value = updated
     pouvNom.value = updated.pouvoir_nom || ''
     editGrade.value = updated.grade || ''
     editSignature.value = updated.signature || ''
+    editFaction.value = updated.faction || ''
     if (currentUser.value) {
-      currentUser.value = { ...currentUser.value, pouvoir_nom: updated.pouvoir_nom, grade: updated.grade, signature: updated.signature }
+      currentUser.value = { ...currentUser.value, pouvoir_nom: updated.pouvoir_nom, grade: updated.grade, signature: updated.signature, faction: updated.faction || '' }
     }
     saveOk.value = true
     setTimeout(() => { saveOk.value = false }, 2500)
@@ -369,6 +380,8 @@ async function saveProfile() {
 }
 .pouvoir-input:focus { border-color: rgba(139,26,26,0.5); }
 .pouvoir-input::placeholder { color: rgba(255,255,255,0.18); font-style: italic; }
+.pouvoir-input--select { cursor: pointer; background-color: rgba(255,255,255,0.03); color: #d4cfc9; }
+.pouvoir-input--select option { background: #1a1a1a; color: #d4cfc9; }
 
 .pouvoir-btn {
   background: rgba(139,26,26,0.15);

@@ -113,7 +113,7 @@ router.post('/logout', (req, res) => {
 
 // GET /api/auth/me
 router.get('/me', requireAuth, (req, res) => {
-  const user = db.prepare('SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(sci_dirigeant, 0) as sci_dirigeant, COALESCE(glace_dirigeant, 0) as glace_dirigeant, COALESCE(intendance_dirigeant, 0) as intendance_dirigeant, COALESCE(mythiques_dirigeant, 0) as mythiques_dirigeant, COALESCE(bonbons, 0) as bonbons FROM users WHERE id = ?').get(req.user.id)
+  const user = db.prepare("SELECT id, identifiant, nom, grade, role, pouvoir_nom, signature, COALESCE(solde, 0) as solde, COALESCE(sci_dirigeant, 0) as sci_dirigeant, COALESCE(glace_dirigeant, 0) as glace_dirigeant, COALESCE(intendance_dirigeant, 0) as intendance_dirigeant, COALESCE(mythiques_dirigeant, 0) as mythiques_dirigeant, COALESCE(bonbons, 0) as bonbons, COALESCE(demons_acces, 0) as demons_acces, COALESCE(demons_dirigeant, 0) as demons_dirigeant, COALESCE(faction, '') as faction FROM users WHERE id = ?").get(req.user.id)
   if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' })
 
   const spheres = db.prepare(`
@@ -149,14 +149,19 @@ router.get('/me', requireAuth, (req, res) => {
 
 // PATCH /api/auth/profile
 router.patch('/profile', requireAuth, (req, res) => {
-  const { pouvoir_nom, grade, role, signature } = req.body
-  const current = db.prepare('SELECT pouvoir_nom, grade, role, signature FROM users WHERE id = ?').get(req.user.id)
+  const { pouvoir_nom, grade, role, signature, faction } = req.body
+  const current = db.prepare('SELECT pouvoir_nom, grade, role, signature, faction FROM users WHERE id = ?').get(req.user.id)
 
-  db.prepare('UPDATE users SET pouvoir_nom = ?, grade = ?, role = ?, signature = ? WHERE id = ?').run(
+  const factionVal = faction !== undefined ? faction : (current.faction || '')
+  if (factionVal && !['demon', 'pourfendeur'].includes(factionVal))
+    return res.status(400).json({ message: 'Faction invalide.' })
+
+  db.prepare('UPDATE users SET pouvoir_nom = ?, grade = ?, role = ?, signature = ?, faction = ? WHERE id = ?').run(
     pouvoir_nom !== undefined ? pouvoir_nom : current.pouvoir_nom,
     grade       !== undefined ? grade       : current.grade,
     role        !== undefined ? role        : current.role,
     signature   !== undefined ? signature   : current.signature,
+    factionVal,
     req.user.id
   )
 
@@ -188,7 +193,7 @@ router.delete('/spheres/:id/leave', requireAuth, (req, res) => {
 
 // GET /api/auth/users
 router.get('/users', requireAuth, (req, res) => {
-  const users = db.prepare('SELECT id, nom, identifiant, grade, COALESCE(solde, 1000) as solde FROM users ORDER BY nom ASC').all()
+  const users = db.prepare("SELECT id, nom, identifiant, grade, role, COALESCE(solde, 1000) as solde, COALESCE(sci_dirigeant,0) as sci_dirigeant, COALESCE(glace_dirigeant,0) as glace_dirigeant, COALESCE(intendance_dirigeant,0) as intendance_dirigeant, COALESCE(mythiques_dirigeant,0) as mythiques_dirigeant, COALESCE(demons_acces,0) as demons_acces, COALESCE(demons_dirigeant,0) as demons_dirigeant, COALESCE(faction,'') as faction FROM users ORDER BY nom ASC").all()
   res.json({ users })
 })
 
@@ -200,10 +205,14 @@ router.patch('/users/:id', requireAuth, (req, res) => {
   const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id)
   if (!target) return res.status(404).json({ message: 'Utilisateur introuvable.' })
 
-  const { nom, identifiant, mot_de_passe, grade, pouvoir_nom, role, signature, sci_dirigeant, glace_dirigeant, intendance_dirigeant, mythiques_dirigeant } = req.body
+  const { nom, identifiant, mot_de_passe, grade, pouvoir_nom, role, signature, sci_dirigeant, glace_dirigeant, intendance_dirigeant, mythiques_dirigeant, demons_acces, demons_dirigeant, faction } = req.body
 
   if (role && !['admin', 'groupier', 'membre'].includes(role))
     return res.status(400).json({ message: 'Rôle invalide.' })
+
+  const factionAdmin = faction !== undefined ? faction : (target.faction || '')
+  if (factionAdmin && !['demon', 'pourfendeur'].includes(factionAdmin))
+    return res.status(400).json({ message: 'Faction invalide.' })
 
   let password_hash = target.mot_de_passe
   if (mot_de_passe && mot_de_passe.trim()) {
@@ -222,7 +231,10 @@ router.patch('/users/:id', requireAuth, (req, res) => {
       sci_dirigeant        = ?,
       glace_dirigeant      = ?,
       intendance_dirigeant = ?,
-      mythiques_dirigeant  = ?
+      mythiques_dirigeant  = ?,
+      demons_acces         = ?,
+      demons_dirigeant     = ?,
+      faction              = ?
     WHERE id = ?
   `).run(
     nom                  !== undefined ? nom                  : target.nom,
@@ -236,10 +248,13 @@ router.patch('/users/:id', requireAuth, (req, res) => {
     glace_dirigeant      !== undefined ? (glace_dirigeant      ? 1 : 0) : (target.glace_dirigeant      || 0),
     intendance_dirigeant !== undefined ? (intendance_dirigeant ? 1 : 0) : (target.intendance_dirigeant || 0),
     mythiques_dirigeant  !== undefined ? (mythiques_dirigeant  ? 1 : 0) : (target.mythiques_dirigeant  || 0),
+    demons_acces         !== undefined ? (demons_acces         ? 1 : 0) : (target.demons_acces         || 0),
+    demons_dirigeant     !== undefined ? (demons_dirigeant     ? 1 : 0) : (target.demons_dirigeant     || 0),
+    factionAdmin,
     target.id
   )
 
-  const updated = db.prepare('SELECT id, nom, identifiant, grade, pouvoir_nom, role, signature, COALESCE(solde,0) as solde, COALESCE(sci_dirigeant,0) as sci_dirigeant, COALESCE(glace_dirigeant,0) as glace_dirigeant, COALESCE(intendance_dirigeant,0) as intendance_dirigeant, COALESCE(mythiques_dirigeant,0) as mythiques_dirigeant FROM users WHERE id = ?').get(target.id)
+  const updated = db.prepare("SELECT id, nom, identifiant, grade, pouvoir_nom, role, signature, COALESCE(solde,0) as solde, COALESCE(sci_dirigeant,0) as sci_dirigeant, COALESCE(glace_dirigeant,0) as glace_dirigeant, COALESCE(intendance_dirigeant,0) as intendance_dirigeant, COALESCE(mythiques_dirigeant,0) as mythiques_dirigeant, COALESCE(demons_acces,0) as demons_acces, COALESCE(demons_dirigeant,0) as demons_dirigeant, COALESCE(faction,'') as faction FROM users WHERE id = ?").get(target.id)
   res.json({ user: updated })
 })
 

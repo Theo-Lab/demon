@@ -37,6 +37,8 @@ import IntendancePage from '../components/IntendancePage.vue'
 import IntendanceActivitePage from '../components/IntendanceActivitePage.vue'
 import EntrainementPage from '../components/EntrainementPage.vue'
 import MythiquesPage from '../components/MythiquesPage.vue'
+import RegistreDemons from '../components/RegistreDemons.vue'
+import DemonFiche from '../components/DemonFiche.vue'
 
 const routes = [
   { path: '/',               component: ParchmentPage    },
@@ -75,7 +77,9 @@ const routes = [
   { path: '/intendance/:id',    component: IntendanceActivitePage },
   { path: '/entrainement',      component: EntrainementPage   },
   { path: '/mythiques',         component: MythiquesPage      },
-  { path: '/effets/:token',     component: EffetPublicPage    },
+  { path: '/effets/:token',          component: EffetPublicPage    },
+  { path: '/registre-demons',        component: RegistreDemons     },
+  { path: '/registre-demons/:id',    component: DemonFiche         },
   { path: '/slots/admin',       redirect: '/casino/admin'     },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

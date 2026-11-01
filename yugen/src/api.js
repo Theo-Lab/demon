@@ -1494,3 +1494,148 @@ export async function mythiquesAdminStats() {
   if (!res.ok) throw new Error(data.message)
   return data
 }
+
+// ── Registre des Démons ────────────────────────────────────────────────────────
+
+const RD = `${BASE}/registre-demons`
+
+export async function rdDashboard() {
+  const res = await apiFetch(`${RD}/dashboard`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdGetDemons(params = {}) {
+  const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''))).toString()
+  const res = await apiFetch(`${RD}${qs ? '?' + qs : ''}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdGetDemon(id) {
+  const res = await apiFetch(`${RD}/${id}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdCreateDemon(body) {
+  const res = await apiFetch(`${RD}`, { method: 'POST', body: JSON.stringify(body) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdUpdateDemon(id, body) {
+  const res = await apiFetch(`${RD}/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdChangerRang(id, body) {
+  const res = await apiFetch(`${RD}/${id}/changer-rang`, { method: 'POST', body: JSON.stringify(body) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdGetRemarques(demonId, archive = false) {
+  const res = await apiFetch(`${RD}/${demonId}/remarques${archive ? '?archive=1' : ''}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdAddRemarque(demonId, body) {
+  const res = await apiFetch(`${RD}/${demonId}/remarques`, { method: 'POST', body: JSON.stringify(body) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdUpdateRemarque(demonId, remarqueId, body) {
+  const res = await apiFetch(`${RD}/${demonId}/remarques/${remarqueId}`, { method: 'PATCH', body: JSON.stringify(body) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdArchiverRemarque(demonId, remarqueId) {
+  const res = await apiFetch(`${RD}/${demonId}/remarques/${remarqueId}/archiver`, { method: 'POST' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdGetObjectifs(demonId) {
+  const res = await apiFetch(`${RD}/${demonId}/objectifs`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdAddObjectif(demonId, body) {
+  const res = await apiFetch(`${RD}/${demonId}/objectifs`, { method: 'POST', body: JSON.stringify(body) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdUpdateObjectif(demonId, objectifId, body) {
+  const res = await apiFetch(`${RD}/${demonId}/objectifs/${objectifId}`, { method: 'PATCH', body: JSON.stringify(body) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdGetReunions() {
+  const res = await apiFetch(`${RD}/reunions`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdGetReunion(id) {
+  const res = await apiFetch(`${RD}/reunions/${id}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdCreateReunion(body) {
+  const res = await apiFetch(`${RD}/reunions`, { method: 'POST', body: JSON.stringify(body) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdUpdateReunion(id, body) {
+  const res = await apiFetch(`${RD}/reunions/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdGetDemonReunions(demonId) {
+  const res = await apiFetch(`${RD}/${demonId}/reunions`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdGetHistorique(demonId) {
+  const res = await apiFetch(`${RD}/${demonId}/historique`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}
+
+export async function rdGetUsers() {
+  const res = await apiFetch(`${RD}/users`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message)
+  return data
+}

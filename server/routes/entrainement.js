@@ -117,7 +117,7 @@ router.get('/semaine', requireAuth, (req, res) => {
 
 // ── Inscription (auto) ────────────────────────────────────────────────────────
 
-router.post('/inscription', requireAuth, (req, res) => {
+router.post('/inscription', requireAuth, requireIntendance, (req, res) => {
   const paye = db.prepare('SELECT id FROM entrainement_paiements WHERE user_id = ?').get(req.user.id)
   if (!paye) return res.status(403).json({ message: 'Vous devez avoir payé la contribution pour vous inscrire.' })
   if (!isInscriptionOuverte()) return res.status(403).json({ message: 'Les inscriptions sont fermées (délai : mercredi 19h00).' })
@@ -128,7 +128,7 @@ router.post('/inscription', requireAuth, (req, res) => {
   res.json({ ok: true, semaine })
 })
 
-router.delete('/inscription', requireAuth, (req, res) => {
+router.delete('/inscription', requireAuth, requireIntendance, (req, res) => {
   if (!isInscriptionOuverte()) return res.status(403).json({ message: 'Les inscriptions sont fermées.' })
   const semaine = getSemaineKey()
   db.prepare('DELETE FROM entrainement_inscriptions WHERE semaine = ? AND user_id = ?').run(semaine, req.user.id)
