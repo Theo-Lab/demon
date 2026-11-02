@@ -130,7 +130,7 @@
             <div v-else-if="bloc.type === 'album'" class="bloc-inner">
               <span class="bloc-badge">Album</span>
               <input v-model="bloc.titre" class="field-input" type="text" placeholder="Titre de l'album (optionnel)" />
-              <div class="album-editor">
+              <div class="album-editor" tabindex="0" @paste.prevent="e => handleMultiPaste(e, bloc)">
                 <div v-for="(img, j) in bloc.images" :key="j" class="album-editor-item">
                   <div class="album-editor-thumb">
                     <img :src="`${mediaBase}${img.url}`" alt="" />
