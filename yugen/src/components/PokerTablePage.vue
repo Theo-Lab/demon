@@ -2,41 +2,38 @@
   <div class="page" @click="resumeAudio">
     <AppNavbar />
 
-    <!-- Panneau règles -->
-    <div class="rules-panel" :class="{ 'rules-panel--open': rulesOpen }">
-      <button class="rules-toggle" @click.stop="rulesOpen = !rulesOpen">
-        {{ rulesOpen ? '✕' : '?' }}
-      </button>
-      <div class="rules-content">
-        <p class="rules-title">Mains (force décroissante)</p>
-        <ol class="rules-hands">
-          <li><span class="rh-name">Quinte Flush</span><span class="rh-ex">A♠ K♠ Q♠ J♠ 10♠</span></li>
-          <li><span class="rh-name">Carré</span><span class="rh-ex">A♠ A♥ A♦ A♣ K♠</span></li>
-          <li><span class="rh-name">Full House</span><span class="rh-ex">A♠ A♥ A♦ K♠ K♥</span></li>
-          <li><span class="rh-name">Couleur</span><span class="rh-ex">A♠ J♠ 9♠ 6♠ 3♠</span></li>
-          <li><span class="rh-name">Suite</span><span class="rh-ex">9♠ 8♥ 7♦ 6♣ 5♠</span></li>
-          <li><span class="rh-name">Brelan</span><span class="rh-ex">A♠ A♥ A♦ K♠ Q♥</span></li>
-          <li><span class="rh-name">Double Paire</span><span class="rh-ex">A♠ A♥ K♦ K♣ Q♠</span></li>
-          <li><span class="rh-name">Paire</span><span class="rh-ex">A♠ A♥ K♦ Q♣ J♠</span></li>
-          <li><span class="rh-name">Haute carte</span><span class="rh-ex">A♠ K♥ Q♦ J♣ 9♠</span></li>
-        </ol>
-        <p class="rules-title" style="margin-top:12px">Déroulement</p>
-        <ul class="rules-list">
-          <li><strong>Pré-flop</strong> — 2 cartes privées distribuées, mises SB / BB</li>
-          <li><strong>Flop</strong> — 3 cartes communes révélées</li>
-          <li><strong>Turn</strong> — 4e carte commune</li>
-          <li><strong>River</strong> — 5e carte commune, dernière mise</li>
-          <li><strong>Showdown</strong> — meilleure main sur 5 cartes gagne le pot</li>
-        </ul>
-        <p class="rules-title" style="margin-top:12px">Actions</p>
-        <ul class="rules-list">
-          <li><strong>Check</strong> — passer sans miser (si aucune mise ouverte)</li>
-          <li><strong>Suivre</strong> — égaler la mise en cours</li>
-          <li><strong>Relancer</strong> — surenchérir d'au moins 1 BB</li>
-          <li><strong>Se coucher</strong> — abandonner la main</li>
-          <li><strong>All-in</strong> — miser tous ses jetons</li>
-        </ul>
-      </div>
+    <!-- Encadré règles fixe -->
+    <div class="rules-box">
+      <p class="rules-title">Mains</p>
+      <ol class="rules-hands">
+        <li><span class="rh-name">Quinte Flush</span></li>
+        <li><span class="rh-name">Carré</span></li>
+        <li><span class="rh-name">Full House</span></li>
+        <li><span class="rh-name">Couleur</span></li>
+        <li><span class="rh-name">Suite</span></li>
+        <li><span class="rh-name">Brelan</span></li>
+        <li><span class="rh-name">Double Paire</span></li>
+        <li><span class="rh-name">Paire</span></li>
+        <li><span class="rh-name">Haute carte</span></li>
+      </ol>
+      <div class="rules-sep"></div>
+      <p class="rules-title">Déroulement</p>
+      <ul class="rules-list">
+        <li><strong>Pré-flop</strong> 2 cartes privées + blindes</li>
+        <li><strong>Flop</strong> 3 cartes communes</li>
+        <li><strong>Turn</strong> 4e carte commune</li>
+        <li><strong>River</strong> 5e carte, dernière mise</li>
+        <li><strong>Showdown</strong> meilleure main gagne</li>
+      </ul>
+      <div class="rules-sep"></div>
+      <p class="rules-title">Actions</p>
+      <ul class="rules-list">
+        <li><strong>Check</strong> passer sans miser</li>
+        <li><strong>Suivre</strong> égaler la mise</li>
+        <li><strong>Relancer</strong> surenchérir</li>
+        <li><strong>Se coucher</strong> abandonner</li>
+        <li><strong>All-in</strong> miser tous ses jetons</li>
+      </ul>
     </div>
 
     <!-- Top bar -->
@@ -270,7 +267,6 @@ const flashError     = ref(null)
 
 const justDealt     = ref(false)
 const potPulse      = ref(false)
-const rulesOpen     = ref(false)
 const winnerIds     = ref(new Set())
 const animCommCards = ref(new Set())
 
@@ -813,84 +809,58 @@ watch(() => state.value?.activeUserId, (id, old) => {
 .log-in-enter-active { transition: all 0.2s ease-out; }
 .log-in-enter-from   { opacity: 0; transform: translateX(-6px); }
 
-/* ── Panneau règles ── */
-.rules-panel {
+/* ── Encadré règles ── */
+.rules-box {
   position: fixed;
-  top: 70px; right: 0;
-  width: 260px;
-  max-height: calc(100vh - 80px);
-  overflow-y: auto;
-  background: rgba(8,10,12,0.97);
-  border: 1px solid rgba(201,168,76,0.15);
-  border-right: none;
-  border-radius: 8px 0 0 8px;
+  top: 70px; right: 16px;
+  width: 190px;
+  background: rgba(8,10,12,0.92);
+  border: 1px solid rgba(201,168,76,0.18);
+  border-radius: 8px;
+  padding: 14px 14px 16px;
   z-index: 200;
-  transform: translateX(260px);
-  transition: transform 0.25s cubic-bezier(0.22,1,0.36,1);
-}
-.rules-panel--open { transform: translateX(0); }
-
-.rules-toggle {
-  position: absolute;
-  left: -34px; top: 12px;
-  width: 34px; height: 34px;
-  background: rgba(8,10,12,0.97);
-  border: 1px solid rgba(201,168,76,0.2);
-  border-right: none;
-  border-radius: 6px 0 0 6px;
-  color: #c9a84c;
-  font-family: 'Cinzel', serif;
-  font-size: 0.85rem;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
-}
-.rules-toggle:hover { background: rgba(20,18,10,0.98); }
-
-.rules-content {
-  padding: 14px 16px 18px;
+  pointer-events: none;
 }
 .rules-title {
   font-family: 'Cinzel', serif;
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: #c9a84c;
-  margin-bottom: 8px;
+  margin-bottom: 7px;
+}
+.rules-sep {
+  height: 1px;
+  background: rgba(201,168,76,0.1);
+  margin: 10px 0;
 }
 .rules-hands {
   list-style: decimal;
-  padding-left: 18px;
-  display: flex; flex-direction: column; gap: 5px;
+  padding-left: 16px;
+  display: flex; flex-direction: column; gap: 3px;
+  margin-bottom: 0;
 }
-.rules-hands li {
-  display: flex; flex-direction: column; gap: 1px;
-}
+.rules-hands li { line-height: 1.3; }
 .rh-name {
   font-family: 'Cinzel', serif;
-  font-size: 0.65rem;
-  color: rgba(255,255,255,0.75);
-  letter-spacing: 0.03em;
-}
-.rh-ex {
-  font-size: 0.62rem;
-  color: rgba(255,255,255,0.25);
-  font-style: italic;
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.65);
 }
 .rules-list {
   list-style: none;
   padding: 0;
-  display: flex; flex-direction: column; gap: 5px;
+  display: flex; flex-direction: column; gap: 4px;
 }
 .rules-list li {
-  font-size: 0.7rem;
-  color: rgba(255,255,255,0.45);
-  line-height: 1.45;
-  padding-left: 10px;
-  border-left: 1px solid rgba(201,168,76,0.15);
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.38);
+  line-height: 1.4;
+  padding-left: 8px;
+  border-left: 1px solid rgba(201,168,76,0.12);
 }
 .rules-list li strong {
-  color: rgba(255,255,255,0.7);
+  color: rgba(255,255,255,0.62);
   font-weight: 600;
+  display: block;
 }
 </style>
