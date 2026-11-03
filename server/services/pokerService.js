@@ -126,7 +126,7 @@ function joinTable(tableId, userId, nom, buyIn) {
   const user = db.prepare('SELECT solde FROM users WHERE id = ?').get(userId)
   if (!user || user.solde < buyIn) throw new Error('Solde insuffisant.')
   db.prepare('UPDATE users SET solde = solde - ? WHERE id = ?').run(buyIn, userId)
-  t.players.push({ userId, nom, chips: buyIn, cards: [], bet: 0, totalBet: 0, status: 'waiting' })
+  t.players.push({ userId, nom, chips: buyIn, cards: [], bet: 0, totalBet: 0, status: 'waiting', allIn: false })
   return { solde: user.solde - buyIn }
 }
 
@@ -160,7 +160,7 @@ function findNextActive(t, fromIdx) {
   const n = t.players.length
   for (let i = 0; i < n; i++) {
     const idx = (fromIdx + i) % n
-    if (t.players[idx]?.status === 'active') return idx
+    if (t.players[idx]?.status === 'active' && !t.players[idx]?.allIn) return idx
   }
   return -1
 }
@@ -168,7 +168,7 @@ function findNextActive(t, fromIdx) {
 function roundOver(t) {
   const active = t.players.filter(p => p.status === 'active')
   if (active.length === 0) return true
-  return active.every(p => p.bet === t.currentBet && t.hasActed.has(p.userId))
+  return active.every(p => p.allIn || (p.bet === t.currentBet && t.hasActed.has(p.userId)))
 }
 
 function startHand(tableId) {
@@ -184,7 +184,7 @@ function startHand(tableId) {
 
   for (const p of t.players) {
     p.cards = [t.deck.pop(), t.deck.pop()]
-    p.bet = 0; p.totalBet = 0; p.status = 'active'
+    p.bet = 0; p.totalBet = 0; p.status = 'active'; p.allIn = false
   }
 
   const n = t.players.length
@@ -224,9 +224,23 @@ function playerAction(tableId, userId, act, raiseAmount) {
   } else if (act === 'call') {
     const toCall = t.currentBet - p.bet
     if (toCall <= 0) throw new Error('Rien à suivre, utilisez check.')
-    if (p.chips < toCall) throw new Error(`Jetons insuffisants (${toCall.toLocaleString()} ¥ requis).`)
-    p.chips -= toCall; p.bet += toCall; p.totalBet += toCall; t.pot += toCall
+    if (p.chips <= toCall) {
+      // All-in partiel : mise tout ce qu'il reste
+      t.pot += p.chips; p.bet += p.chips; p.totalBet += p.chips; p.chips = 0; p.allIn = true
+    } else {
+      p.chips -= toCall; p.bet += toCall; p.totalBet += toCall; t.pot += toCall
+    }
     t.hasActed.add(userId)
+  } else if (act === 'allin') {
+    if (p.chips <= 0) throw new Error("Vous n'avez plus de jetons.")
+    const allInAmt = p.chips
+    p.bet += allInAmt; p.totalBet += allInAmt; t.pot += allInAmt; p.chips = 0; p.allIn = true
+    if (p.bet > t.currentBet) {
+      t.currentBet = p.bet
+      t.hasActed = new Set([userId])
+    } else {
+      t.hasActed.add(userId)
+    }
   } else if (act === 'raise') {
     const amt = Math.floor(parseInt(raiseAmount))
     if (!amt || amt < t.bigBlind) throw new Error(`Relance minimum : ${t.bigBlind.toLocaleString()} ¥.`)
@@ -346,7 +360,7 @@ function resetForNextHand(tableId) {
   t.handResult = null
   t.hasActed = new Set()
   for (const p of t.players) {
-    p.cards = []; p.bet = 0; p.totalBet = 0; p.status = 'waiting'
+    p.cards = []; p.bet = 0; p.totalBet = 0; p.status = 'waiting'; p.allIn = false
   }
   return { busted }
 }
@@ -365,7 +379,7 @@ function getTableState(tableId, forUserId) {
     handResult: t.handResult,
     players: t.players.map((p, i) => ({
       userId: p.userId, nom: p.nom, chips: p.chips, bet: p.bet,
-      status: p.status, seatIdx: i,
+      status: p.status, allIn: p.allIn || false, seatIdx: i,
       isDealer: i === t.dealerIdx,
       isSB: i === t.sbIdx,
       isBB: i === t.bbIdx,
