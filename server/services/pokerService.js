@@ -290,6 +290,10 @@ function advancePhase(tableId) {
 
   const n = t.players.length
   t.actionIdx = findNextActive(t, (t.dealerIdx + 1) % n)
+
+  // Tous les joueurs restants sont all-in : distribuer les rues suivantes automatiquement
+  if (t.actionIdx === -1) return advancePhase(tableId)
+
   return { resolved: false }
 }
 

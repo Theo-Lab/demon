@@ -6,15 +6,15 @@
     <div class="rules-box">
       <p class="rules-title">Mains</p>
       <ol class="rules-hands">
-        <li><span class="rh-name">Quinte Flush</span></li>
-        <li><span class="rh-name">Carré</span></li>
-        <li><span class="rh-name">Full House</span></li>
-        <li><span class="rh-name">Couleur</span></li>
-        <li><span class="rh-name">Suite</span></li>
-        <li><span class="rh-name">Brelan</span></li>
-        <li><span class="rh-name">Double Paire</span></li>
-        <li><span class="rh-name">Paire</span></li>
-        <li><span class="rh-name">Haute carte</span></li>
+        <li><span class="rh-name">Quinte Flush</span><span class="rh-desc">5 cartes consécutives de la même couleur — ex : 7♠ 8♠ 9♠ 10♠ J♠</span></li>
+        <li><span class="rh-name">Carré</span><span class="rh-desc">4 cartes de la même valeur — ex : K♠ K♥ K♦ K♣</span></li>
+        <li><span class="rh-name">Full House</span><span class="rh-desc">Un brelan et une paire — ex : J♠ J♥ J♦ 9♠ 9♥</span></li>
+        <li><span class="rh-name">Couleur</span><span class="rh-desc">5 cartes de la même couleur, non consécutives — ex : 2♥ 5♥ 8♥ J♥ A♥</span></li>
+        <li><span class="rh-name">Suite</span><span class="rh-desc">5 cartes consécutives, couleurs variées — ex : 5♠ 6♥ 7♦ 8♣ 9♠</span></li>
+        <li><span class="rh-name">Brelan</span><span class="rh-desc">3 cartes de la même valeur — ex : Q♠ Q♥ Q♦</span></li>
+        <li><span class="rh-name">Double Paire</span><span class="rh-desc">Deux paires différentes — ex : 8♠ 8♥ et K♦ K♣</span></li>
+        <li><span class="rh-name">Paire</span><span class="rh-desc">2 cartes de la même valeur — ex : A♠ A♥</span></li>
+        <li><span class="rh-name">Haute carte</span><span class="rh-desc">Aucune combinaison — la carte la plus haute joue</span></li>
       </ol>
       <div class="rules-sep"></div>
       <p class="rules-title">Déroulement</p>
@@ -845,6 +845,13 @@ watch(() => state.value?.activeUserId, (id, old) => {
   font-family: 'Cinzel', serif;
   font-size: 0.6rem;
   color: rgba(255,255,255,0.65);
+}
+.rh-desc {
+  display: block;
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.3);
+  margin-top: 1px;
+  line-height: 1.3;
 }
 .rules-list {
   list-style: none;
