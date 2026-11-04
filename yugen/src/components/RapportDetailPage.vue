@@ -46,6 +46,11 @@
                 @click="changeStatut('refuse')"
               >Refuser</button>
             </template>
+            <RouterLink
+              v-if="currentUser?.id === rapport.auteur_id"
+              :to="{ path: '/rapports', query: { edit: rapport.token } }"
+              class="action-btn action-btn--edit"
+            >Modifier</RouterLink>
             <button
               v-if="currentUser?.id === rapport.auteur_id || currentUser?.role === 'admin'"
               class="action-btn action-btn--delete"
@@ -287,6 +292,8 @@ function formatDate(dt) {
 .action-btn--valid:hover  { background: rgba(58,122,58,0.1); }
 .action-btn--refuse { color: #8b1a1a; border-color: rgba(139,26,26,0.3); }
 .action-btn--refuse:hover { background: rgba(139,26,26,0.1); }
+.action-btn--edit { color: rgba(255,255,255,0.45); border-color: rgba(255,255,255,0.14); }
+.action-btn--edit:hover { color: #fff; border-color: rgba(255,255,255,0.32); }
 .action-btn--delete { color: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.1); }
 .action-btn--delete:hover { color: #8b1a1a; border-color: rgba(139,26,26,0.3); }
 

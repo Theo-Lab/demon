@@ -255,12 +255,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import AppNavbar from './AppNavbar.vue'
 import BlocRenderer from './BlocRenderer.vue'
 import { currentUser } from '../auth.js'
 import { getRapports, createRapport, updateRapport, updateStatutRapport, deleteRapport, uploadImage } from '../api.js'
 import { MEDIA_BASE } from '../config.js'
 const mediaBase = MEDIA_BASE
+const route = useRoute()
 const ordreLabel = computed(() => currentUser.value?.faction === 'pourfendeur' ? 'Ordre des Pourfendeurs' : 'Ordre Démoniaque')
 
 const rapports = ref([])
@@ -299,6 +301,9 @@ const filteredRapports = computed(() => {
 async function load() {
   try {
     rapports.value = await getRapports()
+    const token = typeof route.query.edit === 'string' ? route.query.edit : ''
+    const rapport = rapports.value.find(r => r.token === token && r.auteur_id === currentUser.value?.id)
+    if (rapport) ouvrirEdition(rapport)
   } catch (e) {
     error.value = e.message
   } finally {
